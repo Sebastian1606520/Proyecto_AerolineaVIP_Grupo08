@@ -1,0 +1,388 @@
+﻿@model IEnumerable<Con_Autenticacion.Models.Comprobante>
+@{
+    ViewBag.Title = "Comprobantes";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    string fDesde = ViewBag.Desde;
+    string fHasta = ViewBag.Hasta;
+    string fTipo = ViewBag.Tipo;
+
+    var sel = ViewBag.Seleccionado as Con_Autenticacion.Models.Comprobante;
+    var emisor = ViewBag.Emisor as Con_Autenticacion.Models.DatosEmisor;
+    var pago = ViewBag.Pago as Con_Autenticacion.Models.Pago;
+    var detalle = ViewBag.Detalle as List<Con_Autenticacion.Models.ReservaPasajeroVuelo>;
+    var codigos = ViewBag.CodigosAsiento as Dictionary<int, string>;
+
+    // Nombre visible de cada tipo de comprobante
+    Func<string, string> nombreTipo = t =>
+        t == "FACTURA" ? "Comprobante de venta académico"
+        : (t == "NOTA_CREDITO" ? "Nota de crédito académica" : "Confirmación");
+}
+
+<style>
+    .comp-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        background: #ffffff;
+    }
+
+    .comp-card-header {
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        border-top-left-radius: 0.75rem;
+        border-top-right-radius: 0.75rem;
+        padding: 0.85rem 1.25rem;
+    }
+
+    .estado-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.3rem 0.6rem;
+        border-radius: 0.4rem;
+        white-space: nowrap;
+    }
+
+    .comp-emitido {
+        background-color: #d1fae5;
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+    }
+
+    .comp-anulado {
+        background-color: #fee2e2;
+        color: #881337;
+        border: 1px solid #fca5a5;
+    }
+
+    .fila-activa {
+        background-color: #fffbeb !important;
+    }
+
+    .preview-doc {
+        border: 2px solid #0f172a;
+        border-radius: 0.5rem;
+        background: #ffffff;
+    }
+
+    .preview-doc-header {
+        background-color: #0f172a;
+        color: #ffffff;
+        border-bottom: 3px solid #f59e0b;
+        padding: 1rem 1.25rem;
+    }
+
+    /* Al imprimir solo se muestra el comprobante */
+    @@media print {
+        body * {
+            visibility: hidden;
+        }
+
+        #areaImpresion, #areaImpresion * {
+            visibility: visible;
+        }
+
+        #areaImpresion {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+
+        .no-print {
+            display: none !important;
+        }
+    }
+</style>
+
+<main class="container py-5">
+
+    <!-- Encabezado corporativo -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3 no-print">
+        <div>
+            <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
+                Aerolínea VIP &middot; Pantalla 16
+            </span>
+            <h2 class="h3 fw-bold text-dark mb-1">Comprobantes</h2>
+            <p class="text-secondary small mb-0">
+                Consulte e imprima los comprobantes académicos de sus operaciones simuladas.
+            </p>
+        </div>
+        <a href="@Url.Action("MisReservas", "Reservas")" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+            &larr; Mis reservas
+        </a>
+    </div>
+
+    <!-- Leyenda obligatoria (RG-13) -->
+    <div class="alert alert-light border small text-secondary mb-4 no-print">
+        <strong class="text-dark">&#9432; Información:</strong>
+        Comprobante académico de una operación simulada. No constituye factura tributaria ni documento autorizado.
+    </div>
+
+    <!-- Filtros -->
+    <div class="comp-card shadow-sm mb-4 no-print">
+        <div class="comp-card-header d-flex justify-content-between align-items-center">
+            <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Filtros</span>
+            <button class="btn btn-outline-secondary btn-sm d-md-none" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#panelFiltros" aria-expanded="false" aria-controls="panelFiltros">
+                Mostrar filtros
+            </button>
+        </div>
+        <div class="collapse d-md-block" id="panelFiltros">
+            <form id="formFiltros" action="@Url.Action("Comprobantes", "Compras")" method="get" class="p-4" novalidate>
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-3">
+                        <label for="desde" class="form-label small fw-semibold text-secondary mb-1">Desde (opcional)</label>
+                        <input type="date" id="desde" name="desde" class="form-control form-control-sm py-2" value="@fDesde" />
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label for="hasta" class="form-label small fw-semibold text-secondary mb-1">Hasta (opcional)</label>
+                        <input type="date" id="hasta" name="hasta" class="form-control form-control-sm py-2" value="@fHasta" aria-describedby="errorRango" />
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label for="tipo" class="form-label small fw-semibold text-secondary mb-1">Tipo (opcional)</label>
+                        <select id="tipo" name="tipo" class="form-select form-select-sm py-2">
+                            <option value="" @(fTipo == "" ? "selected" : "")>Todos</option>
+                            <option value="CONFIRMACION" @(fTipo == "CONFIRMACION" ? "selected" : "")>Confirmación</option>
+                            <option value="FACTURA" @(fTipo == "FACTURA" ? "selected" : "")>Comprobante de venta académico</option>
+                            <option value="NOTA_CREDITO" @(fTipo == "NOTA_CREDITO" ? "selected" : "")>Nota de crédito</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3 d-flex gap-2">
+                        <button type="submit" class="btn btn-dark btn-sm px-4 py-2 fw-semibold flex-grow-1">Filtrar</button>
+                        <a href="@Url.Action("Comprobantes", "Compras")" class="btn btn-outline-secondary btn-sm px-3 py-2">Limpiar</a>
+                    </div>
+                </div>
+                <small id="errorRango" class="text-danger mt-2 @(ViewBag.ErrorFiltro == null ? "d-none" : "d-block")" role="alert" style="font-size: 0.8rem;">
+                    &#9888; @(ViewBag.ErrorFiltro ?? "La fecha «Hasta» no puede ser anterior a la fecha «Desde».")
+                </small>
+            </form>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        @* Estado vacío *@
+        <div class="comp-card shadow-sm p-5 text-center my-4 no-print">
+            <span class="display-6 text-muted">&#128196;</span>
+            @if ((bool)ViewBag.HayFiltros)
+            {
+                <h3 class="h5 fw-bold text-dark mt-3 mb-2">No hay comprobantes para los filtros seleccionados.</h3>
+                <a href="@Url.Action("Comprobantes", "Compras")" class="btn btn-outline-dark fw-semibold px-4 py-2 mt-2">Quitar filtros</a>
+            }
+            else
+            {
+                <h3 class="h5 fw-bold text-dark mt-3 mb-2">Aún no tiene comprobantes</h3>
+                <p class="text-secondary small mb-4">Los comprobantes se emiten cuando una compra queda pagada.</p>
+                <a href="@Url.Action("MisReservas", "Reservas")" class="btn btn-dark fw-semibold px-4 py-2">Ver mis reservas</a>
+            }
+        </div>
+    }
+    else
+    {
+        @* Tabla de comprobantes *@
+        <div class="comp-card shadow-sm mb-4 no-print">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                    <thead class="table-light small text-secondary">
+                        <tr>
+                            <th class="ps-4">Número</th>
+                            <th>Tipo</th>
+                            <th>Fecha</th>
+                            <th class="d-none d-md-table-cell">Reserva</th>
+                            <th class="text-end">Importe</th>
+                            <th>Estado</th>
+                            <th class="text-end pe-4">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Model)
+                        {
+                            bool activa = sel != null && sel.ComprobanteId == c.ComprobanteId;
+                            <tr class="@(activa ? "fila-activa" : "")">
+                                <td class="ps-4 fw-bold text-dark">@c.NumeroComprobante</td>
+                                <td>@nombreTipo(c.TipoComprobanteCodigo)</td>
+                                <td>@c.FechaEmision.ToString("dd/MM/yyyy")</td>
+                                <td class="d-none d-md-table-cell">@c.Compra.Reserva.CodigoReserva</td>
+                                <td class="text-end">
+                                    @if (c.TipoComprobanteCodigo == "CONFIRMACION")
+                                    {
+                                        <span class="text-muted">&mdash;</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@c.Compra.Importe.ToString("N2") USD</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (c.EstadoComprobanteCodigo == "ANULADO")
+                                    {
+                                        <span class="estado-badge comp-anulado">Anulado</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="estado-badge comp-emitido">Emitido</span>
+                                    }
+                                </td>
+                                <td class="text-end pe-4">
+                                    <a href="@Url.Action("Comprobantes", "Compras", new { desde = fDesde, hasta = fHasta, tipo = fTipo, ver = c.ComprobanteId })#vistaPrevia"
+                                       class="btn @(activa ? "btn-dark" : "btn-outline-secondary") btn-sm px-2 py-1">
+                                        Visualizar
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* Vista previa del comprobante seleccionado *@
+    @if (sel != null)
+    {
+        var compra = sel.Compra;
+        var reserva = compra.Reserva;
+
+        <div id="vistaPrevia" class="d-flex flex-wrap justify-content-between align-items-center mb-2 no-print">
+            <h3 class="h6 fw-bold text-dark text-uppercase mb-0" style="letter-spacing: 0.5px;">Vista previa</h3>
+            <div class="d-flex gap-2">
+                <button type="button" id="btnImprimir" class="btn btn-dark btn-sm px-3 fw-semibold">Imprimir / Guardar PDF</button>
+                <a href="@Url.Action("Comprobantes", "Compras", new { desde = fDesde, hasta = fHasta, tipo = fTipo })" class="btn btn-outline-secondary btn-sm px-3">Cerrar</a>
+            </div>
+        </div>
+
+        <div id="areaImpresion" class="preview-doc shadow-sm mb-4">
+            <div class="preview-doc-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <div class="fw-bold" style="letter-spacing: 2px;">AEROLÍNEA VIP</div>
+                    <small class="text-white-50">@nombreTipo(sel.TipoComprobanteCodigo)</small>
+                </div>
+                <div class="text-end">
+                    <div class="fw-bold text-warning">N.º @sel.NumeroComprobante</div>
+                    <small class="text-white-50">Emitido el @sel.FechaEmision.ToString("dd/MM/yyyy HH:mm")</small>
+                </div>
+            </div>
+
+            <div class="p-4">
+                @if (sel.EstadoComprobanteCodigo == "ANULADO")
+                {
+                    <div class="alert alert-danger py-2 small mb-3">Este comprobante se encuentra ANULADO.</div>
+                }
+
+                <!-- Emisor y cliente -->
+                <div class="row g-4 mb-4 small">
+                    <div class="col-12 col-md-6">
+                        <div class="text-secondary text-uppercase fw-semibold mb-2" style="font-size: 0.7rem; letter-spacing: 0.5px;">Emisor</div>
+                        <div class="fw-bold text-dark">@(emisor != null ? emisor.NombreComercial : "Aerolínea VIP")</div>
+                        <div>Identificación: @(emisor != null ? emisor.Identificacion : "PENDIENTE (DP-05)")</div>
+                        <div>Dirección: @(emisor != null ? emisor.Direccion : "PENDIENTE")</div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="text-secondary text-uppercase fw-semibold mb-2" style="font-size: 0.7rem; letter-spacing: 0.5px;">Cliente y operación</div>
+                        <div class="fw-bold text-dark">@ViewBag.ClienteNombre</div>
+                        @if (!string.IsNullOrEmpty((string)ViewBag.ClienteCorreo))
+                        {
+                            <div>@ViewBag.ClienteCorreo</div>
+                        }
+                        <div>Reserva: <strong>@reserva.CodigoReserva</strong></div>
+                        <div>
+                            Pago simulado:
+                            @if (pago != null)
+                            {
+                                <span>@pago.MarcaTarjetaCodigo **** @pago.UltimosCuatroDigitos &middot; @pago.CodigoOperacion</span>
+                                if (pago.EstadoPagoCodigo == "REVERSADO")
+                                {
+                                    <span class="text-danger">(reversado)</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted">Sin pago aprobado</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detalle -->
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle mb-0" style="font-size: 0.85rem;">
+                        <thead class="table-light text-secondary">
+                            <tr>
+                                <th>Pasajero</th>
+                                <th>Vuelo</th>
+                                <th>Ruta</th>
+                                <th>Fecha</th>
+                                <th class="text-center">Asiento</th>
+                                <th class="text-end">Importe</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var a in detalle)
+                            {
+                                <tr>
+                                    <td>@a.Pasajero.Nombres @a.Pasajero.Apellidos</td>
+                                    <td>VIP@(a.VueloId.ToString("D5"))</td>
+                                    <td>@a.Vuelo.Frecuencia.Ruta.Aeropuerto.Localidad &rarr; @a.Vuelo.Frecuencia.Ruta.Aeropuerto1.Localidad</td>
+                                    <td>@a.Vuelo.FechaOperacion.ToString("dd/MM/yyyy")</td>
+                                    <td class="text-center">@codigos[a.AsignacionId]</td>
+                                    <td class="text-end">@a.ImporteTramo.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="5" class="text-end text-secondary">Impuestos</td>
+                                <td class="text-end text-secondary">No calculados (DP-05)</td>
+                            </tr>
+                            <tr class="table-light">
+                                <td colspan="5" class="text-end fw-bold">
+                                    @(sel.TipoComprobanteCodigo == "NOTA_CREDITO" ? "Total reembolsado (simulado)" : "Total")
+                                </td>
+                                <td class="text-end fw-bold">@compra.Importe.ToString("N2") @compra.MonedaCodigo</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- Leyenda académica (RG-13) -->
+                <div class="alert alert-light border small text-secondary mt-4 mb-0">
+                    <strong class="text-dark">&#9432;</strong>
+                    @(emisor != null ? emisor.LeyendaComprobante : "Comprobante académico de una operación simulada. No constituye factura tributaria ni documento autorizado.")
+                </div>
+            </div>
+        </div>
+    }
+</main>
+
+@section scripts {
+    <script>
+        $(function () {
+            // Validación del rango de fechas
+            function rangoValido() {
+                var desde = $('#desde').val();
+                var hasta = $('#hasta').val();
+                return !(desde && hasta && hasta < desde);
+            }
+
+            $('#desde, #hasta').on('change', function () {
+                if (rangoValido()) {
+                    $('#errorRango').addClass('d-none').removeClass('d-block');
+                    $('#hasta').removeClass('is-invalid');
+                }
+            });
+
+            $('#formFiltros').on('submit', function (e) {
+                if (!rangoValido()) {
+                    e.preventDefault();
+                    $('#errorRango').removeClass('d-none').addClass('d-block');
+                    $('#hasta').addClass('is-invalid').focus();
+                }
+            });
+
+            // Imprimir o guardar como PDF desde el navegador
+            $('#btnImprimir').on('click', function () {
+                window.print();
+            });
+        });
+    </script>
+}

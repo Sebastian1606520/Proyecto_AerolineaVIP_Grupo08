@@ -1,0 +1,334 @@
+﻿@model IEnumerable<Con_Autenticacion.Models.Aeronave>
+@{
+    ViewBag.Title = "Aeronaves";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var proximos = (Dictionary<int, int>)ViewBag.Proximos;
+    var sel = ViewBag.Seleccionada as Con_Autenticacion.Models.Aeronave;
+    bool editar = (bool)ViewBag.Editar;
+    var asientos = ViewBag.Asientos as List<Con_Autenticacion.Models.Asiento>;
+    var asignaciones = ViewBag.Asignaciones as List<Con_Autenticacion.Models.Vuelo>;
+}
+
+<style>
+    .admin-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        background: #ffffff;
+    }
+
+    .admin-card-header {
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        border-top-left-radius: 0.75rem;
+        border-top-right-radius: 0.75rem;
+        padding: 0.85rem 1.25rem;
+    }
+
+    .estado-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.3rem 0.6rem;
+        border-radius: 0.4rem;
+        white-space: nowrap;
+    }
+
+    .ea-disponible {
+        background-color: #d1fae5;
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+    }
+
+    .ea-nodisponible {
+        background-color: #fee2e2;
+        color: #881337;
+        border: 1px solid #fca5a5;
+    }
+
+    .fila-activa {
+        background-color: #fffbeb !important;
+    }
+
+    /* Distribución de cabina (solo lectura) */
+    .cabina {
+        border: 2px solid #0f172a;
+        border-radius: 3rem 3rem 0.75rem 0.75rem;
+        padding: 1rem 0.75rem;
+        max-width: 240px;
+        margin: 0 auto;
+        background: #f8fafc;
+    }
+
+    .cabina-fila {
+        display: grid;
+        grid-template-columns: 1fr 0.8fr 1fr;
+        gap: 0.4rem;
+        margin-bottom: 0.4rem;
+        align-items: center;
+    }
+
+    .asiento-ro {
+        background-color: #334155;
+        color: #ffffff;
+        border-radius: 6px;
+        text-align: center;
+        font-weight: 700;
+        font-size: 0.85rem;
+        padding: 0.45rem 0;
+    }
+
+    .zona-texto {
+        text-align: center;
+        font-size: 0.65rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+</style>
+
+<main class="container py-5">
+
+    <!-- Encabezado corporativo -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3">
+        <div>
+            <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
+                Aerolínea VIP &middot; Pantalla 19
+            </span>
+            <h2 class="h3 fw-bold text-dark mb-1">Aeronaves</h2>
+            <p class="text-secondary small mb-0">
+                Flota de tres Embraer Phenom 300E con siete asientos cada una (RN-01, RN-02 y RN-03).
+            </p>
+        </div>
+        <a href="@Url.Action("Index", "Admin")" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+            &larr; Administración
+        </a>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
+            <span>&#9888;</span>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
+    @if (TempData["Exito"] != null)
+    {
+        <div class="alert alert-success py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
+            <span>&#10003;</span>
+            <span>@TempData["Exito"]</span>
+        </div>
+    }
+
+    <!-- Tabla de la flota -->
+    <div class="admin-card shadow-sm mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                <thead class="table-light small text-secondary">
+                    <tr>
+                        <th class="ps-4">Identificador</th>
+                        <th>Modelo</th>
+                        <th class="text-center">Capacidad</th>
+                        <th>Estado</th>
+                        <th class="text-center">Vuelos próximos</th>
+                        <th class="text-end pe-4">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in Model)
+                    {
+                        bool activa = sel != null && sel.AeronaveId == a.AeronaveId;
+                        int numProximos = proximos.ContainsKey(a.AeronaveId) ? proximos[a.AeronaveId] : 0;
+                        <tr class="@(activa ? "fila-activa" : "")">
+                            <td class="ps-4 fw-bold text-dark">@a.Matricula</td>
+                            <td>@a.ModeloAeronave.Fabricante @a.ModeloAeronave.Nombre</td>
+                            <td class="text-center">@a.ModeloAeronave.CapacidadAsientos</td>
+                            <td>
+                                @if (a.EstadoAeronaveCodigo == "DISPONIBLE")
+                                {
+                                    <span class="estado-badge ea-disponible">Disponible</span>
+                                }
+                                else
+                                {
+                                    <span class="estado-badge ea-nodisponible">No disponible</span>
+                                }
+                            </td>
+                            <td class="text-center">@numProximos</td>
+                            <td class="text-end pe-4">
+                                <div class="d-flex flex-wrap justify-content-end gap-1">
+                                    <a href="@Url.Action("Aeronaves", "Admin", new { id = a.AeronaveId })#detalle" class="btn btn-outline-secondary btn-sm px-2 py-1">Consultar</a>
+                                    <a href="@Url.Action("Aeronaves", "Admin", new { id = a.AeronaveId, editar = true })#detalle" class="btn btn-outline-dark btn-sm px-2 py-1">Modificar estado</a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Detalle de la aeronave seleccionada -->
+    @if (sel != null)
+    {
+        <div class="row g-4" id="detalle">
+
+            <!-- Columna izquierda: edición o datos -->
+            <div class="col-12 col-lg-7">
+                @if (editar)
+                {
+                    <div class="admin-card shadow-sm mb-4" style="border-color: #f59e0b;">
+                        <div class="admin-card-header">
+                            <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Editar @sel.Matricula</span>
+                        </div>
+                        <form id="formAeronave" action="@Url.Action("EditarAeronave", "Admin")" method="post" class="p-4" novalidate>
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="aeronaveId" value="@sel.AeronaveId" />
+
+                            <div class="mb-3">
+                                <label for="matricula" class="form-label small fw-semibold text-secondary mb-1">Matrícula / identificador <span class="text-danger">*</span></label>
+                                <input type="text" id="matricula" name="matricula" class="form-control py-2 text-uppercase" value="@sel.Matricula"
+                                       maxlength="15" aria-describedby="errorMatricula" />
+                                <small id="errorMatricula" class="text-danger d-none" role="alert" style="font-size: 0.8rem;">
+                                    &#9888; El identificador es obligatorio (máximo 15 caracteres).
+                                </small>
+                            </div>
+                            <div class="mb-3">
+                                <label for="modeloAeronaveId" class="form-label small fw-semibold text-secondary mb-1">Modelo <span class="text-danger">*</span></label>
+                                @Html.DropDownList("modeloAeronaveId", (SelectList)ViewBag.ModelosLista, new { @class = "form-select py-2", id = "modeloAeronaveId" })
+                            </div>
+                            <div class="mb-3">
+                                <label for="capacidad" class="form-label small fw-semibold text-secondary mb-1">Capacidad</label>
+                                <input type="text" id="capacidad" class="form-control py-2" value="@sel.ModeloAeronave.CapacidadAsientos asientos" readonly />
+                            </div>
+                            <div class="mb-3">
+                                <label for="estadoAeronaveCodigo" class="form-label small fw-semibold text-secondary mb-1">Estado operativo <span class="text-danger">*</span></label>
+                                @Html.DropDownList("estadoAeronaveCodigo", (SelectList)ViewBag.EstadosLista, new { @class = "form-select py-2", id = "estadoAeronaveCodigo" })
+                                <small class="text-muted">Una aeronave no disponible no recibe nuevas asignaciones (trigger trg_Vuelo_Validar).</small>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" id="btnGuardar" class="btn btn-dark px-4 py-2 fw-semibold">Guardar</button>
+                                <a href="@Url.Action("Aeronaves", "Admin", new { id = sel.AeronaveId })#detalle" class="btn btn-outline-secondary px-4 py-2">Cancelar</a>
+                            </div>
+                        </form>
+                    </div>
+                }
+                else
+                {
+                    <div class="admin-card shadow-sm mb-4">
+                        <div class="admin-card-header d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Aeronave @sel.Matricula</span>
+                            <a href="@Url.Action("Aeronaves", "Admin", new { id = sel.AeronaveId, editar = true })#detalle" class="btn btn-outline-dark btn-sm px-3">Modificar estado</a>
+                        </div>
+                        <div class="p-4 small">
+                            <div class="d-flex justify-content-between mb-2"><span class="text-secondary">Modelo</span><strong>@sel.ModeloAeronave.Fabricante @sel.ModeloAeronave.Nombre</strong></div>
+                            <div class="d-flex justify-content-between mb-2"><span class="text-secondary">Capacidad</span><strong>@sel.ModeloAeronave.CapacidadAsientos asientos</strong></div>
+                            <div class="d-flex justify-content-between"><span class="text-secondary">Estado</span><strong>@(sel.EstadoAeronaveCodigo == "DISPONIBLE" ? "Disponible" : "No disponible")</strong></div>
+                        </div>
+                    </div>
+                }
+
+                <!-- Próximas asignaciones -->
+                <div class="admin-card shadow-sm">
+                    <div class="admin-card-header">
+                        <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Próximas asignaciones</span>
+                    </div>
+                    @if (asignaciones == null || !asignaciones.Any())
+                    {
+                        <p class="p-4 small text-secondary mb-0">La aeronave no tiene vuelos próximos asignados.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0" style="font-size: 0.85rem;">
+                                <thead class="table-light text-secondary">
+                                    <tr>
+                                        <th class="ps-4">Vuelo</th>
+                                        <th>Fecha</th>
+                                        <th>Ruta</th>
+                                        <th>Horario</th>
+                                        <th class="pe-4">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var v in asignaciones)
+                                    {
+                                        <tr>
+                                            <td class="ps-4 fw-semibold">VIP@(v.VueloId.ToString("D5"))</td>
+                                            <td>@v.FechaOperacion.ToString("dd/MM/yyyy")</td>
+                                            <td>@v.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @v.Frecuencia.Ruta.Aeropuerto1.CodigoIATA</td>
+                                            <td>@v.Frecuencia.HoraSalida.ToString(@"hh\:mm")&ndash;@v.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</td>
+                                            <td class="pe-4">@v.EstadoVueloCodigo</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Columna derecha: distribución de asientos (solo lectura) -->
+            <div class="col-12 col-lg-5">
+                <div class="admin-card shadow-sm">
+                    <div class="admin-card-header">
+                        <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Distribución (solo lectura)</span>
+                    </div>
+                    <div class="p-4">
+                        <div class="cabina" aria-label="Distribución de asientos del Embraer Phenom 300E">
+                            <div class="zona-texto mb-2">&#9650; Proa &middot; Cabina de mando</div>
+                            @for (int fila = 1; fila <= 4; fila++)
+                            {
+                                var izq = asientos.FirstOrDefault(s => s.Fila == fila && s.Lado == "I");
+                                var der = asientos.FirstOrDefault(s => s.Fila == fila && s.Lado == "D");
+                                <div class="cabina-fila">
+                                    @if (izq != null)
+                                    {
+                                        <div class="asiento-ro" title="@izq.Ubicacion">@izq.Codigo</div>
+                                    }
+                                    else
+                                    {
+                                        <div class="zona-texto">Puerta</div>
+                                    }
+                                    <div class="zona-texto">@(fila == 2 || fila == 3 ? "Pasillo" : "")</div>
+                                    @if (der != null)
+                                    {
+                                        <div class="asiento-ro" title="@der.Ubicacion">@der.Codigo</div>
+                                    }
+                                    else
+                                    {
+                                        <div></div>
+                                    }
+                                </div>
+                            }
+                            <div class="zona-texto mt-2">Baño &middot; Cola</div>
+                        </div>
+                        <p class="small text-muted text-center mt-3 mb-0">
+                            @asientos.Count asientos (D = derecho, I = izquierdo). Nomenclatura propuesta, pendiente de aprobación (DP-11).
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</main>
+
+@section scripts {
+    <script>
+        $(function () {
+            $('#matricula').on('input', function () {
+                $(this).val($(this).val().toUpperCase());
+            });
+
+            $('#formAeronave').on('submit', function (e) {
+                var matricula = $.trim($('#matricula').val());
+                if (matricula.length === 0 || matricula.length > 15) {
+                    e.preventDefault();
+                    $('#errorMatricula').removeClass('d-none');
+                    $('#matricula').addClass('is-invalid').focus();
+                    return;
+                }
+                $('#btnGuardar').attr('disabled', 'disabled').text('Guardando…');
+            });
+        });
+    </script>
+}

@@ -1,0 +1,458 @@
+﻿@model Con_Autenticacion.Models.Reserva
+@{
+    ViewBag.Title = "Gestión de reserva";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    string estadoReserva = ViewBag.EstadoReserva;
+    string estadoCompra = ViewBag.EstadoCompra;
+    decimal importeTotal = (decimal)ViewBag.ImporteTotal;
+    var codigos = (Dictionary<int, string>)ViewBag.CodigosAsiento;
+    bool puedeCancelar = (bool)ViewBag.PuedeCancelar;
+    bool conReembolso = (bool)ViewBag.ConReembolso;
+    double horasRestantes = (double)ViewBag.HorasRestantes;
+    bool requiereMotivo = Model.EstadoReservaCodigo == "CONFIRMADA";
+
+    // Tramos ordenados (un vuelo = un tramo)
+    var vuelos = Model.ReservaPasajeroVuelo
+        .Select(a => a.Vuelo).Distinct()
+        .OrderBy(v => v.FechaOperacion).ThenBy(v => v.Frecuencia.HoraSalida)
+        .ToList();
+
+    var asignaciones = Model.ReservaPasajeroVuelo
+        .OrderBy(a => vuelos.IndexOf(a.Vuelo))
+        .ThenBy(a => a.Pasajero.Apellidos)
+        .ToList();
+
+    // Asientos que se liberarían al cancelar
+    var asientosActivos = asignaciones
+        .Where(a => a.EstadoAsignacionCodigo == "PENDIENTE" || a.EstadoAsignacionCodigo == "CONFIRMADA")
+        .Select(a => codigos[a.AsignacionId])
+        .Distinct()
+        .ToList();
+    string textoAsientos = asientosActivos.Count == 0 ? "" :
+        (asientosActivos.Count == 1 ? "el asiento " + asientosActivos[0]
+            : "los asientos " + string.Join(", ", asientosActivos.Take(asientosActivos.Count - 1)) + " y " + asientosActivos.Last());
+}
+
+<style>
+    .gestion-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        background: #ffffff;
+    }
+
+    .gestion-card-header {
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        border-top-left-radius: 0.75rem;
+        border-top-right-radius: 0.75rem;
+        padding: 0.85rem 1.25rem;
+    }
+
+    .status-badge {
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 0.4rem 0.75rem;
+        border-radius: 0.4rem;
+    }
+
+    .estado-pendiente {
+        background-color: #581c87;
+        color: #ffffff;
+    }
+
+    .estado-confirmada {
+        background-color: #065f46;
+        color: #ffffff;
+    }
+
+    .estado-cancelada {
+        background-color: #e2e8f0;
+        color: #334155;
+    }
+
+    .estado-expirada {
+        background-color: #fef3c7;
+        color: #78350f;
+        border: 1px solid #fcd34d;
+    }
+
+    .compra-pagada {
+        background-color: #d1fae5;
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+    }
+
+    .compra-pendiente {
+        background-color: #fef3c7;
+        color: #78350f;
+        border: 1px solid #fcd34d;
+    }
+
+    .compra-anulada {
+        background-color: #fee2e2;
+        color: #881337;
+        border: 1px solid #fca5a5;
+    }
+
+    .compra-ninguna {
+        background-color: #f1f5f9;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+    }
+
+    .seat-badge {
+        display: inline-block;
+        min-width: 2.6rem;
+        text-align: center;
+        font-weight: 700;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 0.85rem;
+    }
+
+    .seat-reservado {
+        background-color: #581c87;
+        color: #ffffff;
+    }
+
+    .seat-ocupado {
+        background-color: #881337;
+        color: #ffffff;
+    }
+
+    .seat-liberado {
+        background-color: #e2e8f0;
+        color: #475569;
+        text-decoration: line-through;
+    }
+
+    .condicion-item {
+        border-left: 3px solid #e2e8f0;
+        padding: 0.35rem 0 0.35rem 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+        .condicion-item.aplica {
+            border-left-color: #f59e0b;
+            background-color: #fffbeb;
+        }
+</style>
+
+<main class="container py-5">
+
+    <!-- Encabezado corporativo -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 pb-3 border-bottom border-light-subtle gap-3">
+        <div>
+            <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
+                Aerolínea VIP &middot; Pantalla 14
+            </span>
+            <h2 class="h3 fw-bold text-dark mb-1">Reserva @Model.CodigoReserva</h2>
+            <p class="text-secondary small mb-0">
+                Creada el @Model.FechaCreacion.ToString("dd/MM/yyyy HH:mm")
+                @if (estadoReserva == "PENDIENTE" && Model.FechaExpiracion.HasValue)
+                {
+                    <span>&middot; expira el <strong>@Model.FechaExpiracion.Value.ToString("dd/MM/yyyy HH:mm")</strong></span>
+                }
+            </p>
+        </div>
+        <a href="@Url.Action("MisReservas", "Reservas")" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+            &larr; Regresar a mis reservas
+        </a>
+    </div>
+
+    <!-- Etiquetas de estado separadas (RNP-06) -->
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        @switch (estadoReserva)
+        {
+            case "PENDIENTE":<span class="status-badge estado-pendiente">Reserva: Pendiente</span> break;
+            case "CONFIRMADA": <span class="status-badge estado-confirmada">Reserva: Confirmada</span> break;
+            case "CANCELADA": <span class="status-badge estado-cancelada">Reserva: Cancelada</span> break;
+            default: <span class="status-badge estado-expirada">Reserva: Expirada</span>break;
+        }
+        @switch (estadoCompra)
+        {
+            case "PAGADA":<span class="status-badge compra-pagada">Compra: Pagada</span> break;
+            case "PENDIENTE": <span class="status-badge compra-pendiente">Compra: Pendiente de pago</span> break;
+            case "ANULADA": <span class="status-badge compra-anulada">Compra: Anulada</span> break;
+            default: <span class="status-badge compra-ninguna">Compra: Sin compra</span>break;
+        }
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
+            <span>&#9888;</span>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
+    @if (TempData["Exito"] != null)
+    {
+        <div class="alert alert-success py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
+            <span>&#10003;</span>
+            <span>@TempData["Exito"]</span>
+        </div>
+    }
+
+    <div class="row g-4 align-items-start">
+
+        <!-- Columna principal -->
+        <div class="col-12 col-lg-8">
+
+            <!-- Itinerario, pasajeros y asientos -->
+            <div class="gestion-card shadow-sm mb-4">
+                <div class="gestion-card-header d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Itinerario y asientos</span>
+                    <span class="badge bg-light text-secondary border small">
+                        @(vuelos.Count > 1 ? vuelos.Count + " tramos" : "Vuelo directo")
+                    </span>
+                </div>
+                <div class="p-4">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0" style="font-size: 0.9rem;">
+                            <thead class="table-light small text-secondary">
+                                <tr>
+                                    <th>Tramo</th>
+                                    <th>Vuelo</th>
+                                    <th>Ruta</th>
+                                    <th>Fecha y horario</th>
+                                    <th>Pasajero</th>
+                                    <th class="text-center">Asiento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var a in asignaciones)
+                                {
+                                    var v = a.Vuelo;
+                                    string claseAsiento = a.EstadoAsignacionCodigo == "PENDIENTE" ? "seat-reservado"
+                                        : (a.EstadoAsignacionCodigo == "CONFIRMADA" ? "seat-ocupado" : "seat-liberado");
+                                    string textoEstado = a.EstadoAsignacionCodigo == "PENDIENTE" ? "Reservado"
+                                        : (a.EstadoAsignacionCodigo == "CONFIRMADA" ? "Ocupado" : "Liberado");
+                                    <tr>
+                                        <td class="fw-bold">@(vuelos.IndexOf(v) + 1)</td>
+                                        <td class="small">VIP@(v.VueloId.ToString("D5"))</td>
+                                        <td>
+                                            <strong>@v.Frecuencia.Ruta.Aeropuerto.Localidad</strong> &rarr; <strong>@v.Frecuencia.Ruta.Aeropuerto1.Localidad</strong>
+                                        </td>
+                                        <td class="small">
+                                            @v.FechaOperacion.ToString("dd/MM/yyyy")<br />
+                                            <span class="text-muted">@v.Frecuencia.HoraSalida.ToString(@"hh\:mm") &ndash; @v.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</span>
+                                        </td>
+                                        <td>
+                                            <span class="fw-semibold text-dark">@a.Pasajero.Nombres @a.Pasajero.Apellidos</span>
+                                            <small class="d-block text-muted">@a.Pasajero.TipoDocumentoCodigo @a.Pasajero.NumeroDocumento</small>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="seat-badge @claseAsiento">@codigos[a.AsignacionId]</span>
+                                            <small class="d-block text-muted mt-1" style="font-size: 0.7rem;">@textoEstado</small>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Condiciones de cancelación (DP-08) -->
+            <div class="gestion-card shadow-sm mb-4">
+                <div class="gestion-card-header">
+                    <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Condiciones de cancelación y reembolso</span>
+                </div>
+                <div class="p-4 small">
+                    <div class="alert alert-light border small text-secondary mb-3">
+                        <strong class="text-dark">&#9432; Información:</strong>
+                        Las condiciones de reembolso están pendientes de aprobación (DP-08). Los reembolsos son simulados: no se mueve dinero.
+                    </div>
+
+                    <div class="condicion-item @(estadoReserva == "PENDIENTE" ? "aplica" : "")">
+                        <strong class="text-dark">Reserva pendiente de pago:</strong> se cancela sin costo mientras esté vigente.
+                    </div>
+                    <div class="condicion-item @(estadoReserva == "CONFIRMADA" && conReembolso && puedeCancelar ? "aplica" : "")">
+                        <strong class="text-dark">Reserva pagada, 48 horas o más antes del vuelo:</strong> reembolso simulado total y nota de crédito académica.
+                    </div>
+                    <div class="condicion-item @(estadoReserva == "CONFIRMADA" && !conReembolso && puedeCancelar ? "aplica" : "")">
+                        <strong class="text-dark">Reserva pagada, menos de 48 horas antes del vuelo:</strong> se puede cancelar para liberar los asientos, pero sin reembolso.
+                    </div>
+                    <div class="condicion-item">
+                        <strong class="text-dark">Con check-in completado, reserva expirada o ya cancelada:</strong> no se puede cancelar.
+                    </div>
+
+                    @if (puedeCancelar && horasRestantes > 0)
+                    {
+                        <p class="text-secondary mb-0 mt-3">
+                            Faltan aproximadamente <strong class="text-dark">@Math.Floor(horasRestantes) horas</strong> para la salida del primer tramo.
+                        </p>
+                    }
+                </div>
+            </div>
+
+            <!-- Formulario de solicitud -->
+            @if (puedeCancelar)
+            {
+                <form id="formCancelar" action="@Url.Action("Gestionar", "Reservas", new { id = Model.ReservaId })" method="post" novalidate>
+                    @Html.AntiForgeryToken()
+
+                    <div class="gestion-card shadow-sm p-4 mb-4">
+                        <h5 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">Solicitar cancelación</h5>
+
+                        <label for="motivo" class="form-label small fw-semibold text-secondary mb-1">
+                            Motivo de cancelación
+                            @if (requiereMotivo)
+                            {
+                                <span class="text-danger">*</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted fw-normal">(opcional)</span>
+                            }
+                        </label>
+                        <textarea id="motivo" name="motivo" class="form-control form-control-sm" rows="3" maxlength="300"
+                                  placeholder="Describa el motivo (10–300 caracteres)" aria-describedby="errorMotivo contadorMotivo"></textarea>
+                        <div class="d-flex justify-content-between mt-1">
+                            <small id="errorMotivo" class="text-danger d-none" role="alert" style="font-size: 0.8rem;">
+                                &#9888; El motivo debe tener entre 10 y 300 caracteres.
+                            </small>
+                            <small id="contadorMotivo" class="text-muted ms-auto" style="font-size: 0.75rem;">0 / 300</small>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                            <button type="button" id="btnSolicitar" class="btn btn-outline-danger px-4 py-2 fw-semibold">
+                                Solicitar cancelación
+                            </button>
+                            <a href="@Url.Action("MisReservas", "Reservas")" class="btn btn-outline-secondary px-4 py-2">Regresar</a>
+                        </div>
+                    </div>
+                </form>
+            }
+            else
+            {
+                <div class="alert alert-info py-2 px-3 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="status">
+                    <span>&#9432;</span>
+                    <span>@ViewBag.MotivoNoCancelable</span>
+                </div>
+            }
+        </div>
+
+        <!-- Resumen lateral -->
+        <div class="col-12 col-lg-4">
+            <div class="gestion-card shadow-sm">
+                <div class="gestion-card-header">
+                    <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Resumen</span>
+                </div>
+                <div class="p-4 small">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-secondary">Código</span>
+                        <strong class="text-dark">@Model.CodigoReserva</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-secondary">Pasajeros</span>
+                        <strong class="text-dark">@Model.ReservaPasajeroVuelo.Select(a => a.PasajeroId).Distinct().Count()</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-secondary">Tramos</span>
+                        <strong class="text-dark">@vuelos.Count</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3 pb-3 border-bottom">
+                        <span class="text-secondary">Fecha de viaje</span>
+                        <strong class="text-dark">@(vuelos.Any() ? vuelos.First().FechaOperacion.ToString("dd/MM/yyyy") : "—")</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-baseline">
+                        <span class="text-secondary">Importe total</span>
+                        <span class="fs-5 fw-bold text-dark">$@(importeTotal.ToString("N2")) <small class="fs-6 text-muted">USD</small></span>
+                    </div>
+
+                    @if (estadoReserva == "PENDIENTE")
+                    {
+                        <a href="@Url.Action("Pagar", "Compras", new { id = Model.ReservaId })" class="btn btn-dark w-100 mt-4 fw-semibold">
+                            Pagar reserva &rarr;
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Modal de confirmación -->
+@if (puedeCancelar)
+{
+    <div class="modal fade" id="modalCancelar" tabindex="-1" aria-labelledby="modalCancelarLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold text-dark fs-6" id="modalCancelarLabel">Confirmar cancelación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body py-4 small">
+                    <div class="alert alert-warning py-2 px-3 mb-3 border-0" role="alert">
+                        <strong>Advertencia:</strong> La cancelación liberará @textoAsientos. Esta acción no se puede deshacer.
+                    </div>
+                    <p class="mb-0 text-secondary">
+                        @if (estadoReserva == "PENDIENTE")
+                        {
+                            <span>La reserva no tiene pago aprobado, por lo que no hay importes que reembolsar.</span>
+                        }
+                        else if (conReembolso)
+                        {
+                            <span>Se registrará un <strong class="text-dark">reembolso simulado de $@(importeTotal.ToString("N2")) USD</strong> y una nota de crédito académica.</span>
+                        }
+                        else
+                        {
+                            <span>Faltan menos de 48 horas para el vuelo: <strong class="text-dark">la cancelación no genera reembolso</strong>.</span>
+                        }
+                    </p>
+                </div>
+                <div class="modal-footer border-top bg-light">
+                    <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-semibold" data-bs-dismiss="modal" id="btnCerrarModal">
+                        Cancelar
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm px-3 fw-semibold" id="btnConfirmar">
+                        Confirmar solicitud
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section scripts {
+    <script>
+        $(function () {
+            var requiereMotivo = @(requiereMotivo ? "true" : "false");
+
+            function motivoValido() {
+                var largo = $.trim($('#motivo').val()).length;
+                if (!requiereMotivo && largo === 0) return true;   // opcional en reservas pendientes
+                return largo >= 10 && largo <= 300;
+            }
+
+            // Contador de caracteres
+            $('#motivo').on('input', function () {
+                $('#contadorMotivo').text($(this).val().length + ' / 300');
+                if (motivoValido()) {
+                    $('#errorMotivo').addClass('d-none');
+                    $('#motivo').removeClass('is-invalid');
+                }
+            });
+
+            // Abrir el modal solo si el motivo es válido
+            $('#btnSolicitar').on('click', function () {
+                if (!motivoValido()) {
+                    $('#errorMotivo').removeClass('d-none');
+                    $('#motivo').addClass('is-invalid').focus();
+                    return;
+                }
+                var modal = new bootstrap.Modal(document.getElementById('modalCancelar'));
+                modal.show();
+            });
+
+            // Confirmar: evita doble envío y muestra estado de carga
+            $('#btnConfirmar').on('click', function () {
+                $(this).attr('disabled', 'disabled').text('Procesando solicitud…');
+                $('#btnCerrarModal').attr('disabled', 'disabled');
+                $('#formCancelar').submit();
+            });
+        });
+    </script>
+}

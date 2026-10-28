@@ -1,0 +1,67 @@
+﻿@model Con_Autenticacion.Models.Compra
+
+@{
+    ViewBag.Title = "Details";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>Details</h2>
+
+<div>
+    <h4>Compra</h4>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            @Html.DisplayNameFor(model => model.FechaCompra)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.FechaCompra)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.Importe)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Importe)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.ClaveIdempotencia)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.ClaveIdempotencia)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.EstadoCompra.Descripcion)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.EstadoCompra.Descripcion)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.Moneda.Descripcion)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Moneda.Descripcion)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.Reserva.CodigoReserva)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Reserva.CodigoReserva)
+        </dd>
+
+    </dl>
+</div>
+<p>
+    @Html.ActionLink("Edit", "Edit", new { id = Model.CompraId }) |
+    @Html.ActionLink("Back to List", "Index")
+</p>

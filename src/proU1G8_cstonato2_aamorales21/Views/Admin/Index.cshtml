@@ -1,0 +1,163 @@
+﻿@{
+    ViewBag.Title = "Administración";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    bool sinPermiso = (bool)ViewBag.SinPermiso;
+    bool esSuperUsuario = !sinPermiso && (bool)ViewBag.EsSuperUsuario;
+}
+
+<style>
+    .modulo-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        background: #ffffff;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        height: 100%;
+    }
+
+        .modulo-card:hover,
+        .modulo-card:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08);
+            border-color: #f59e0b;
+            color: inherit;
+        }
+
+        .modulo-card:focus {
+            outline: 3px solid #f59e0b;
+            outline-offset: 2px;
+        }
+
+    .modulo-icono {
+        width: 3rem;
+        height: 3rem;
+        border-radius: 0.6rem;
+        background-color: #0f172a;
+        color: #f59e0b;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        flex-shrink: 0;
+    }
+
+    .modulo-numero {
+        font-size: 0.7rem;
+        letter-spacing: 0.5px;
+    }
+</style>
+
+<main class="container py-5">
+
+    <!-- Encabezado corporativo -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3">
+        <div>
+            <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
+                Aerolínea VIP &middot; Pantalla 17
+            </span>
+            <h2 class="h3 fw-bold text-dark mb-1">Administración</h2>
+            <p class="text-secondary small mb-0">
+                Accesos a los módulos administrativos autorizados para su rol.
+            </p>
+        </div>
+        <a href="@Url.Action("Index", "Home")" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+            &larr; Inicio
+        </a>
+    </div>
+
+    @if (sinPermiso)
+    {
+        @* Error de acceso (11.4.7) *@
+        <div class="alert alert-danger py-3 px-3 mb-4 rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
+            <span>&#9940;</span>
+            <span><strong>Error de acceso:</strong> No tiene permisos para acceder a esta sección.</span>
+        </div>
+        <a href="@Url.Action("Index", "Home")" class="btn btn-dark px-4 py-2 fw-semibold">Volver al inicio</a>
+    }
+    else
+    {
+        @* Alcance de la primera entrega *@
+        <div class="alert alert-light border small text-secondary mb-4">
+            <strong class="text-dark">&#9432; Alcance:</strong>
+            El panel de indicadores (dashboard) está excluido de la primera entrega. Esta pantalla solo ofrece accesos a los módulos.
+        </div>
+
+        <div class="row g-4">
+            <!-- Pantalla 18 -->
+            <div class="col-12 col-md-6">
+                <a href="@Url.Action("Vuelos", "Admin")" class="modulo-card shadow-sm p-4">
+                    <div class="d-flex align-items-start gap-3">
+                        <span class="modulo-icono" aria-hidden="true">&#9992;</span>
+                        <div>
+                            <div class="text-uppercase text-secondary fw-semibold modulo-numero">Pantalla 18</div>
+                            <h3 class="h5 fw-bold text-dark mb-1">Administrar vuelos e itinerarios</h3>
+                            <p class="small text-secondary mb-0">Generar vuelos desde las frecuencias, asignar aeronaves, cambiar estados y revisar itinerarios.</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Pantalla 19 -->
+            <div class="col-12 col-md-6">
+                <a href="@Url.Action("Aeronaves", "Admin")" class="modulo-card shadow-sm p-4">
+                    <div class="d-flex align-items-start gap-3">
+                        <span class="modulo-icono" aria-hidden="true">&#128745;</span>
+                        <div>
+                            <div class="text-uppercase text-secondary fw-semibold modulo-numero">Pantalla 19</div>
+                            <h3 class="h5 fw-bold text-dark mb-1">Gestionar aeronaves</h3>
+                            <p class="small text-secondary mb-0">Consultar la flota de tres Embraer Phenom 300E, su estado y su distribución de siete asientos.</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Pantalla 20 -->
+            <div class="col-12 col-md-6">
+                <a href="@Url.Action("Gestion", "Admin")" class="modulo-card shadow-sm p-4">
+                    <div class="d-flex align-items-start gap-3">
+                        <span class="modulo-icono" aria-hidden="true">&#128101;</span>
+                        <div>
+                            <div class="text-uppercase text-secondary fw-semibold modulo-numero">Pantalla 20</div>
+                            <h3 class="h5 fw-bold text-dark mb-1">Usuarios, pasajeros y reservas</h3>
+                            <p class="small text-secondary mb-0">
+                                Consultar y administrar usuarios, pasajeros y reservas.
+                                @if (esSuperUsuario)
+                                {
+                                    <span>Incluye la asignación de roles.</span>
+                                }
+                            </p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Pantalla 21 -->
+            <div class="col-12 col-md-6">
+                <a href="@Url.Action("Reportes", "Admin")" class="modulo-card shadow-sm p-4">
+                    <div class="d-flex align-items-start gap-3">
+                        <span class="modulo-icono" aria-hidden="true">&#128203;</span>
+                        <div>
+                            <div class="text-uppercase text-secondary fw-semibold modulo-numero">Pantalla 21</div>
+                            <h3 class="h5 fw-bold text-dark mb-1">Consultas y reportes</h3>
+                            <p class="small text-secondary mb-0">Ocupación por vuelo, reservas por estado y compras y pagos simulados.</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        if (esSuperUsuario)
+        {
+            @* Función exclusiva del SuperUsuario *@
+            <div class="border rounded-3 bg-white shadow-sm p-3 mt-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <span class="small text-secondary">
+                    <strong class="text-dark">SuperUsuario:</strong> puede registrar cuentas de Counter, Administrador o SuperUsuario.
+                </span>
+                <a href="@Url.Action("Register", "Account")" class="btn btn-outline-dark btn-sm px-3 fw-semibold">Registrar usuario con rol</a>
+            </div>
+        }
+    }
+</main>

@@ -1,0 +1,235 @@
+﻿@using Con_Autenticacion.Models;
+@model Reserva
+
+@{
+    ViewBag.Title = "Confirmación de operación";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .step-indicator {
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+    }
+
+    .step-item.active {
+        color: #0f172a;
+        font-weight: 700;
+        border-bottom: 2px solid #0f172a;
+    }
+
+    .outcome-banner {
+        border-radius: 0.75rem;
+    }
+
+    .status-badge {
+        padding: 0.5rem 1rem;
+        font-weight: 700;
+        font-size: 0.8rem;
+        border-radius: 50rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+</style>
+
+<main class="container py-5">
+
+    <!-- Indicador de Pasos del Flujo -->
+    <div class="d-flex align-items-center justify-content-center gap-4 text-muted small text-uppercase mb-4 pb-2 border-bottom border-light-subtle step-indicator">
+        <span class="pb-2 text-secondary">1. Asientos</span>
+        <span class="pb-2">&rarr;</span>
+        <span class="pb-2 text-secondary">2. Pasajeros</span>
+        <span class="pb-2">&rarr;</span>
+        <span class="pb-2 text-secondary">3. Confirmación</span>
+        <span class="pb-2">&rarr;</span>
+        <span class="step-item active pb-2">4. Resultado</span>
+    </div>
+
+    <!-- Encabezado -->
+    <div class="mb-4">
+        <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
+            Aerolínea VIP &middot; Pantalla 12
+        </span>
+        <h2 class="h3 fw-bold text-dark">Resultado de la Operación</h2>
+    </div>
+
+    <!-- Aviso Permanente de Simulación -->
+    <div class="alert alert-info py-2 px-3 mb-4 rounded-3 border-0 d-flex align-items-center gap-2 small">
+        <span>&#9432;</span>
+        <span><strong>Simulación académica:</strong> no se realizan cobros reales en pasarelas bancarias.</span>
+    </div>
+
+    <!-- Mensajes Principales según el Resultado -->
+    @if ((bool)ViewBag.EsPagada)
+    {
+        <div class="outcome-banner bg-success-subtle border border-success-subtle p-4 mb-4 d-flex gap-3 align-items-start">
+            <span class="fs-3 text-success">&#10004;</span>
+            <div>
+                <h4 class="h5 fw-bold text-success mb-1">¡Compra completada con éxito!</h4>
+                <p class="text-success-emphasis small mb-0">
+                    Compra <strong>@Model.CodigoReserva</strong> pagada. Pago simulado aprobado <strong>@ViewBag.CodigoOperacion</strong>.
+                </p>
+            </div>
+        </div>
+    }
+    else if ((bool)ViewBag.EsSoloReserva)
+    {
+        <div class="outcome-banner bg-warning-subtle border border-warning-subtle p-4 mb-4 d-flex gap-3 align-items-start">
+            <span class="fs-3 text-warning-emphasis">&#9432;</span>
+            <div>
+                <h4 class="h5 fw-bold text-warning-emphasis mb-1">Reserva Registrada</h4>
+                <p class="text-warning-emphasis small mb-0">
+                    Reserva registrada. La compra continúa pendiente de pago (retención máxima de 2 horas).
+                </p>
+            </div>
+        </div>
+    }
+    else if ((bool)ViewBag.EsRechazada)
+    {
+        <div class="outcome-banner bg-danger-subtle border border-danger-subtle p-4 mb-4 d-flex gap-3 align-items-start">
+            <span class="fs-3 text-danger">&#10008;</span>
+            <div>
+                <h4 class="h5 fw-bold text-danger mb-1">Pago Rechazado</h4>
+                <p class="text-danger-emphasis small mb-0">
+                    El pago simulado fue rechazado. La reserva sigue pendiente de pago.
+                </p>
+            </div>
+        </div>
+    }
+
+    <!-- Tres Etiquetas de Estado Separadas -->
+    <div class="d-flex flex-wrap gap-2 mb-4 pb-2 border-bottom">
+        <span class="status-badge bg-dark text-white">
+            Reserva: @ViewBag.EstadoReservaTexto
+        </span>
+
+        <span class="status-badge @((bool)ViewBag.EsPagada ? "bg-success text-white" : "bg-warning text-dark")">
+            Compra: @ViewBag.EstadoCompraTexto
+        </span>
+
+        <span class="status-badge @((bool)ViewBag.EsPagada ? "bg-success text-white" : ((bool)ViewBag.EsRechazada ? "bg-danger text-white" : "bg-secondary text-white"))">
+            Pago simulado: @ViewBag.EstadoPagoTexto
+        </span>
+    </div>
+
+    <!-- Región Central: Detalle y Resumen -->
+    <div class="row g-4 align-items-start">
+
+        <!-- Tabla de Detalle -->
+        <div class="col-12 col-lg-8">
+            <div class="card border border-light-subtle shadow-sm rounded-3">
+                <div class="card-header bg-light border-bottom py-3 fw-bold text-dark small text-uppercase">
+                    Detalle de Pasajeros y Asientos
+                </div>
+                <div class="card-body p-4">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0" style="font-size: 0.9rem;">
+                            <thead class="table-light text-secondary small">
+                                <tr>
+                                    <th>Tramo</th>
+                                    <th>Ruta</th>
+                                    <th>Fecha</th>
+                                    <th>Horario</th>
+                                    <th>Pasajero</th>
+                                    <th class="text-center">Asiento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var rp in Model.ReservaPasajeroVuelo)
+                                {
+                                    <tr>
+                                        <td>1</td>
+                                        <td class="fw-semibold text-dark">@ViewBag.RutaStr</td>
+                                        <td>@ViewBag.FechaVueloStr</td>
+                                        <td class="text-nowrap">@ViewBag.HorarioStr</td>
+                                        <td class="fw-semibold text-dark">@rp.Pasajero.Nombres @rp.Pasajero.Apellidos</td>
+                                        <td class="text-center">
+                                            <span class="badge text-white px-2 py-1" style="background-color: #581c87;">
+                                                @rp.NumeroAsiento
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resumen Comercial -->
+        <div class="col-12 col-lg-4">
+            <div class="card border border-light-subtle shadow-sm rounded-3 p-4">
+                <h5 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">Resumen Comercial</h5>
+
+                <div class="d-flex justify-content-between mb-2 small">
+                    <span class="text-secondary">Código Reserva:</span>
+                    <strong class="text-dark">@Model.CodigoReserva</strong>
+                </div>
+
+                <div class="d-flex justify-content-between mb-3 small">
+                    <span class="text-secondary">Pasajes:</span>
+                    <span class="text-dark">@Model.ReservaPasajeroVuelo.Count</span>
+                </div>
+
+                <div class="border-top pt-3 mt-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-bold text-dark">Total:</span>
+                        <span class="fs-4 fw-bold text-dark">$@(((decimal)ViewBag.TotalPagar).ToString("N2")) <small class="fs-6 text-muted">USD</small></span>
+                    </div>
+                </div>
+
+                @if ((bool)ViewBag.TienePago)
+                {
+                    <div class="border-top pt-3 mt-3">
+                        <span class="d-block fw-bold text-dark small mb-2">Instrumento de Pago</span>
+                        <div class="small bg-light p-2 rounded-2">
+                            <span class="d-block text-secondary">Método: <strong class="text-dark">@ViewBag.MetodoPagoTexto</strong></span>
+                            <span class="d-block text-secondary">Tarjeta: <strong class="text-dark">@ViewBag.TarjetaTexto</strong></span>
+                            @if ((bool)ViewBag.EsPagada)
+                            {
+                                <span class="d-block text-secondary">Operación: <strong class="text-dark text-success">@ViewBag.CodigoOperacion</strong></span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Botones de Navegación -->
+    <div class="d-flex flex-wrap gap-2 mt-4 pt-3 border-top justify-content-between">
+        <div>
+            <!-- Botón 1: Ver reserva (Pantalla 13) -->
+            <a href="@Url.Action("Buscar", "Vuelos")" class="btn btn-outline-secondary px-3 py-2 fw-semibold small">
+                Ver reserva
+            </a>
+
+            <!-- Botón 2: Consultar comprobante (solo si está pagada) -->
+            @if ((bool)ViewBag.EsPagada)
+            {
+                <a href="@Url.Action("Buscar", "Vuelos")" class="btn btn-dark px-4 py-2 fw-semibold small">
+                    Consultar comprobante
+                </a>
+            }
+
+            <!-- Botón 3: Reintentar pago (solo si fue rechazado) -->
+            @if ((bool)ViewBag.EsRechazada)
+            {
+                <a href="@Url.Action("Pagar", "Compras", new { id = Model.ReservaId })" class="btn btn-warning px-4 py-2 fw-semibold text-dark small">
+                    Reintentar pago &rarr;
+                </a>
+            }
+        </div>
+
+        <!-- Botón 4: Volver al inicio -->
+        <a href="@Url.Action("Buscar", "Vuelos")" class="btn btn-outline-dark px-3 py-2 fw-semibold small">
+            Volver al inicio
+        </a>
+    </div>
+
+</main>

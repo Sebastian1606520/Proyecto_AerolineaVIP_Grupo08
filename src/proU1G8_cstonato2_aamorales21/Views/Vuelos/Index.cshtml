@@ -1,0 +1,52 @@
+﻿@model IEnumerable<Con_Autenticacion.Models.Vuelo>
+
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>Index</h2>
+
+<p>
+    @Html.ActionLink("Create New", "Create")
+</p>
+<table class="table">
+    <tr>
+        <th>
+            @Html.DisplayNameFor(model => model.FechaOperacion)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.Aeronave.Matricula)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.EstadoVuelo.Descripcion)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.Frecuencia.FrecuenciaId)
+        </th>
+        <th></th>
+    </tr>
+
+@foreach (var item in Model) {
+    <tr>
+        <td>
+            @Html.DisplayFor(modelItem => item.FechaOperacion)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.Aeronave.Matricula)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.EstadoVuelo.Descripcion)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.Frecuencia.FrecuenciaId)
+        </td>
+        <td>
+            @Html.ActionLink("Edit", "Edit", new { id=item.VueloId }) |
+            @Html.ActionLink("Details", "Details", new { id=item.VueloId }) |
+            @Html.ActionLink("Delete", "Delete", new { id=item.VueloId })
+        </td>
+    </tr>
+}
+
+</table>

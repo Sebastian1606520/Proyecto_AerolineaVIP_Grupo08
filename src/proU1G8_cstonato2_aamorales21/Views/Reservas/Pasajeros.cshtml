@@ -1,0 +1,321 @@
+﻿@model Con_Autenticacion.Models.Vuelo
+@{
+    ViewBag.Title = "Registro de pasajeros";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .step-indicator {
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+    }
+    .step-item.active {
+        color: #0f172a;
+        font-weight: 700;
+        border-bottom: 2px solid #0f172a;
+    }
+    .passenger-block {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        background: #ffffff;
+    }
+    .passenger-block-header {
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        border-top-left-radius: 0.75rem;
+        border-top-right-radius: 0.75rem;
+        padding: 1rem 1.25rem;
+    }
+    .summary-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        background: #ffffff;
+        position: sticky;
+        top: 20px;
+    }
+
+    @@media (max-width: 991.98px) {
+        .summary-card {
+            position: static;
+        }
+    }
+</style>
+
+<main class="container py-5">
+
+    <!-- Indicador de Pasos del Flujo -->
+    <div class="d-flex align-items-center justify-content-center gap-4 text-muted small text-uppercase mb-4 pb-2 border-bottom border-light-subtle step-indicator">
+        <span class="pb-2 text-secondary">1. Asientos</span>
+        <span class="pb-2">&rarr;</span>
+        <span class="step-item active pb-2">2. Datos de Pasajeros</span>
+        <span class="pb-2">&rarr;</span>
+        <span class="pb-2 text-muted">3. Confirmación</span>
+        <span class="pb-2">&rarr;</span>
+        <span class="pb-2 text-muted">4. Pago</span>
+    </div>
+
+    <!-- Encabezado Corporativo -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3">
+        <div>
+            <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
+                Aerolínea VIP &middot; Pantalla 9
+            </span>
+            <h2 class="h3 fw-bold text-dark mb-1">Registro de datos del pasajero</h2>
+            <p class="text-secondary small mb-0">
+                Ingrese la información oficial de cada persona que viajará en esta operación.
+            </p>
+        </div>
+        <a href="@Url.Action("SeleccionAsiento", "Reservas", new { id = Model.VueloId, pasajeros = ((List<int>)ViewBag.AsientosNumeros).Count })"
+           class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+            &larr; Regresar a asientos
+        </a>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2">
+            <span>&#9888;</span>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
+
+    <form id="formRegistroPasajeros" action="@Url.Action("Pasajeros", "Reservas")" method="post">
+        @Html.AntiForgeryToken()
+
+        <div class="row g-4 align-items-start">
+
+            <!-- Columna Principal: Bloques de Pasajeros -->
+            <div class="col-12 col-lg-8">
+                <div class="d-flex flex-column gap-4">
+
+                    @for (int i = 0; i < ((List<int>)ViewBag.AsientosNumeros).Count; i++)
+                    {
+                        <div class="passenger-block shadow-sm">
+                            <!-- Cabecera del bloque -->
+                            <div class="passenger-block-header d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-dark text-white rounded-pill px-2 py-1" style="font-size: 0.75rem;">
+                                        Pasajero @(i + 1)
+                                    </span>
+                                    <span class="fw-bold text-dark">
+                                        Asiento asignado: @(((List<string>)ViewBag.CodigosAsientos)[i])
+                                    </span>
+                                </div>
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle small fw-semibold">
+                                    Confirmado en cabina
+                                </span>
+                            </div>
+
+                            <!-- Campos del Pasajero alineados con la base de datos -->
+                            <div class="p-4">
+
+                                <!-- Fila 1: Documento -->
+                                <div class="row g-3 mb-3">
+                                    <div class="col-12 col-md-5">
+                                        <label class="form-label small fw-semibold text-secondary mb-1">
+                                            Tipo de documento <span class="text-danger">*</span>
+                                        </label>
+                                        <select name="pasajeros[@i].TipoDocumentoCodigo" class="form-select form-select-sm py-2 tipo-doc-select" data-index="@i" required>
+                                            <option value="CEDULA">Cédula</option>
+                                            <option value="PASAPORTE">Pasaporte</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-md-7">
+                                        <label class="form-label small fw-semibold text-secondary mb-1">
+                                            Número de documento <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text"
+                                               name="pasajeros[@i].NumeroDocumento"
+                                               id="doc_@i"
+                                               class="form-control form-control-sm py-2 doc-input"
+                                               placeholder="10 dígitos para cédula"
+                                               maxlength="20"
+                                               required />
+                                        <small class="text-danger d-none doc-error" id="error_doc_@i" style="font-size: 0.75rem;">
+                                            &#9888; La cédula debe tener exactamente 10 dígitos.
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <!-- Fila 2: Nombres y Apellidos -->
+                                <div class="row g-3 mb-3">
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label small fw-semibold text-secondary mb-1">
+                                            Nombres completos <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text"
+                                               name="pasajeros[@i].Nombres"
+                                               class="form-control form-control-sm py-2"
+                                               placeholder="Ej. Carlos Sebastián"
+                                               maxlength="100"
+                                               required />
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label small fw-semibold text-secondary mb-1">
+                                            Apellidos completos <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text"
+                                               name="pasajeros[@i].Apellidos"
+                                               class="form-control form-control-sm py-2"
+                                               placeholder="Ej. Tonato Coronel"
+                                               maxlength="100"
+                                               required />
+                                    </div>
+                                </div>
+
+                                <!-- Fila 3: Nacimiento, Correo y Teléfono -->
+                                <div class="row g-3">
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label small fw-semibold text-secondary mb-1">
+                                            Fecha de nacimiento <span class="text-muted fw-normal">(opcional)</span>
+                                        </label>
+                                        <input type="date"
+                                               name="pasajeros[@i].FechaNacimiento"
+                                               class="form-control form-control-sm py-2"
+                                               max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label small fw-semibold text-secondary mb-1">
+                                            Correo <span class="text-muted fw-normal">(opcional)</span>
+                                        </label>
+                                        <input type="email"
+                                               name="pasajeros[@i].Correo"
+                                               class="form-control form-control-sm py-2"
+                                               placeholder="correo@ejemplo.com"
+                                               maxlength="256" />
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label small fw-semibold text-secondary mb-1">
+                                            Teléfono <span class="text-muted fw-normal">(opcional)</span>
+                                        </label>
+                                        <input type="tel"
+                                               name="pasajeros[@i].Telefono"
+                                               class="form-control form-control-sm py-2"
+                                               placeholder="Ej. 0990000000"
+                                               maxlength="20" />
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    }
+
+                </div>
+
+                <!-- Botones Inferiores -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center mt-4 pt-3 border-top border-light-subtle gap-2">
+                    <a href="@Url.Action("SeleccionAsiento", "Reservas", new { id = Model.VueloId, pasajeros = ((List<int>)ViewBag.AsientosNumeros).Count })"
+                       class="btn btn-outline-secondary px-3 py-2 fw-semibold small">
+                        &larr; Modificar asientos
+                    </a>
+                    <button type="submit" id="btnContinuar" class="btn btn-dark px-4 py-2 fw-semibold">
+                        Continuar a la confirmación &rarr;
+                    </button>
+                </div>
+            </div>
+
+            <!-- Columna Lateral: Resumen del Itinerario -->
+            <div class="col-12 col-lg-4">
+                <div class="summary-card shadow-sm p-4">
+                    <h3 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">
+                        Resumen del Itinerario
+                    </h3>
+
+                    <div class="mb-3">
+                        <span class="text-muted d-block small">Ruta:</span>
+                        <strong class="text-dark">
+                            @Model.Frecuencia.Ruta.Aeropuerto.Localidad (@Model.Frecuencia.Ruta.Aeropuerto.CodigoIATA) &rarr; @Model.Frecuencia.Ruta.Aeropuerto1.Localidad (@Model.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)
+                        </strong>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <span class="text-muted d-block small">Fecha de vuelo:</span>
+                            <span class="text-dark fw-semibold">@Model.FechaOperacion.ToString("dd/MM/yyyy")</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block small">Horario:</span>
+                            <span class="text-dark fw-semibold">@Model.Frecuencia.HoraSalida.ToString(@"hh\:mm")</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <span class="text-muted d-block small">Aeronave:</span>
+                        <span class="text-dark">Embraer Phenom 300E</span>
+                    </div>
+
+                    <div class="border-top pt-3">
+                        <span class="text-muted d-block small mb-2">Asientos asignados:</span>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var cod in (List<string>)ViewBag.CodigosAsientos)
+                            {
+                                <span class="badge bg-dark text-warning px-3 py-2 fs-6">
+                                    @cod
+                                </span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="alert alert-light border small mt-4 mb-0 text-secondary">
+                        <small>&#9432; <em>Verifique que los nombres coincidan exactamente con la identificación oficial.</em></small>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </form>
+
+</main>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Validación en tiempo real del documento (Cédula: 10 dígitos numéricos)
+            $('.doc-input').on('input', function () {
+                var $input = $(this);
+                var id = $input.attr('id').replace('doc_', '');
+                var tipoDoc = $('select[name="pasajeros[' + id + '].TipoDocumentoCodigo"]').val();
+                var valor = $input.val().trim();
+
+                if (tipoDoc === 'CEDULA') {
+                    $input.val(valor.replace(/\D/g, ''));
+                    if ($input.val().length !== 10) {
+                        $('#error_doc_' + id).removeClass('d-none');
+                    } else {
+                        $('#error_doc_' + id).addClass('d-none');
+                    }
+                } else {
+                    $('#error_doc_' + id).addClass('d-none');
+                }
+            });
+
+            // Revalidar cuando se cambia el selector entre Cédula y Pasaporte
+            $('.tipo-doc-select').on('change', function () {
+                var index = $(this).data('index');
+                $('#doc_' + index).trigger('input');
+            });
+
+            // Evitar registrar el mismo documento a dos personas en la misma reserva
+            $('#formRegistroPasajeros').on('submit', function (e) {
+                var docs = [];
+                var repetido = false;
+
+                $('.doc-input').each(function () {
+                    var val = $(this).val().trim().toUpperCase();
+                    if (val) {
+                        if (docs.indexOf(val) !== -1) {
+                            repetido = true;
+                            return false;
+                        }
+                        docs.push(val);
+                    }
+                });
+
+                if (repetido) {
+                    e.preventDefault();
+                    alert('No puede registrar el mismo número de documento para dos pasajeros distintos.');
+                }
+            });
+        });
+    </script>
+}
