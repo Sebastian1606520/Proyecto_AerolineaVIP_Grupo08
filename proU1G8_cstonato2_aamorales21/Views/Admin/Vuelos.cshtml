@@ -1,0 +1,532 @@
+﻿@model IEnumerable<Con_Autenticacion.Models.Vuelo>
+@{
+    ViewBag.Title = "Vuelos e itinerarios";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    string tab = ViewBag.Tab;
+    string fDesde = ViewBag.Desde;
+    string fHasta = ViewBag.Hasta;
+    int? fRutaId = ViewBag.RutaId;
+    string fEstado = ViewBag.Estado;
+    bool mostrarConflictos = (bool)ViewBag.MostrarConflictos;
+
+    var ocupados = (Dictionary<int, int>)ViewBag.Ocupados;
+    var conflictos = ViewBag.Conflictos as List<string[]>;
+    var vueloEditar = ViewBag.VueloEditar as Con_Autenticacion.Models.Vuelo;
+    var frecuencias = ViewBag.Frecuencias as List<Con_Autenticacion.Models.Frecuencia>;
+    var itinerarios = ViewBag.Itinerarios as List<Con_Autenticacion.Models.Itinerario>;
+
+    string[] dias = { "", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo" };
+
+    Func<string, string> claseEstado = e =>
+        e == "CONFIRMADO" ? "ev-confirmado"
+        : (e == "CANCELADO" ? "ev-cancelado"
+        : (e == "COMPLETADO" ? "ev-completado" : "ev-programado"));
+
+    Func<string, string> textoEstado = e =>
+        e == "CONFIRMADO" ? "Confirmado"
+        : (e == "CANCELADO" ? "Cancelado"
+        : (e == "COMPLETADO" ? "Completado" : "Programado"));
+}
+
+<style>
+    .admin-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        background: #ffffff;
+    }
+
+    .admin-card-header {
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        border-top-left-radius: 0.75rem;
+        border-top-right-radius: 0.75rem;
+        padding: 0.85rem 1.25rem;
+    }
+
+    .nav-tabs .nav-link {
+        color: #475569;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+        .nav-tabs .nav-link.active {
+            color: #0f172a;
+            border-bottom: 3px solid #f59e0b;
+        }
+
+    .estado-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.3rem 0.6rem;
+        border-radius: 0.4rem;
+        white-space: nowrap;
+    }
+
+    .ev-programado {
+        background-color: #e0e7ff;
+        color: #3730a3;
+        border: 1px solid #c7d2fe;
+    }
+
+    .ev-confirmado {
+        background-color: #d1fae5;
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+    }
+
+    .ev-cancelado {
+        background-color: #fee2e2;
+        color: #881337;
+        border: 1px solid #fca5a5;
+    }
+
+    .ev-completado {
+        background-color: #0f172a;
+        color: #ffffff;
+    }
+
+    .fila-editando {
+        background-color: #fffbeb !important;
+    }
+</style>
+
+<main class="container py-5">
+
+    <!-- Encabezado corporativo -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3">
+        <div>
+            <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
+                Aerolínea VIP &middot; Pantalla 18
+            </span>
+            <h2 class="h3 fw-bold text-dark mb-1">Vuelos e itinerarios</h2>
+            <p class="text-secondary small mb-0">
+                Genere vuelos desde las frecuencias aprobadas, asigne aeronaves y revise la programación.
+            </p>
+        </div>
+        <a href="@Url.Action("Index", "Admin")" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+            &larr; Administración
+        </a>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
+            <span>&#9888;</span>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
+    @if (TempData["Exito"] != null)
+    {
+        <div class="alert alert-success py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
+            <span>&#10003;</span>
+            <span>@TempData["Exito"]</span>
+        </div>
+    }
+
+    <!-- Pestañas -->
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link @(tab == "vuelos" ? "active" : "")" href="@Url.Action("Vuelos", "Admin", new { tab = "vuelos", desde = fDesde, hasta = fHasta })">Vuelos por fecha</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(tab == "frecuencias" ? "active" : "")" href="@Url.Action("Vuelos", "Admin", new { tab = "frecuencias", desde = fDesde, hasta = fHasta })">Frecuencias aprobadas</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(tab == "itinerarios" ? "active" : "")" href="@Url.Action("Vuelos", "Admin", new { tab = "itinerarios", desde = fDesde, hasta = fHasta })">Itinerarios y tramos</a>
+        </li>
+    </ul>
+
+    <!-- Filtros -->
+    @if (tab != "frecuencias")
+    {
+        <div class="admin-card shadow-sm mb-4">
+            <form id="formFiltros" action="@Url.Action("Vuelos", "Admin")" method="get" class="p-4" novalidate>
+                <input type="hidden" name="tab" value="@tab" />
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-3">
+                        <label for="desde" class="form-label small fw-semibold text-secondary mb-1">Fecha desde <span class="text-danger">*</span></label>
+                        <input type="date" id="desde" name="desde" class="form-control form-control-sm py-2" value="@fDesde" required />
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label for="hasta" class="form-label small fw-semibold text-secondary mb-1">Fecha hasta <span class="text-danger">*</span></label>
+                        <input type="date" id="hasta" name="hasta" class="form-control form-control-sm py-2" value="@fHasta" required aria-describedby="errorRango" />
+                    </div>
+                    @if (tab == "vuelos")
+                    {
+                        <div class="col-12 col-md-3">
+                            <label for="rutaId" class="form-label small fw-semibold text-secondary mb-1">Ruta (opcional)</label>
+                            @Html.DropDownList("rutaId", (SelectList)ViewBag.RutasLista, "Todas", new { @class = "form-select form-select-sm py-2", id = "rutaId" })
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label for="estado" class="form-label small fw-semibold text-secondary mb-1">Estado (opcional)</label>
+                            @Html.DropDownList("estado", (SelectList)ViewBag.EstadosFiltro, "Todos", new { @class = "form-select form-select-sm py-2", id = "estado" })
+                        </div>
+                    }
+                </div>
+
+                <small id="errorRango" class="text-danger mt-2 @(ViewBag.ErrorFiltro == null ? "d-none" : "d-block")" role="alert" style="font-size: 0.8rem;">
+                    &#9888; @(ViewBag.ErrorFiltro ?? "Revise el rango de fechas: «Hasta» no puede ser anterior a «Desde» y el rango no puede superar 366 días.")
+                </small>
+
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <button type="submit" class="btn btn-dark btn-sm px-4 py-2 fw-semibold">Filtrar</button>
+                    @if (tab == "vuelos")
+                    {
+                        <a href="@Url.Action("Vuelos", "Admin", new { tab = "vuelos", desde = fDesde, hasta = fHasta, conflictos = true })" class="btn btn-outline-warning btn-sm px-3 py-2 fw-semibold text-dark">
+                            Consultar conflictos
+                        </a>
+                        <button type="submit" form="formGenerar" id="btnGenerar" class="btn btn-outline-dark btn-sm px-3 py-2 fw-semibold">
+                            Generar vuelos del rango
+                        </button>
+                    }
+                </div>
+            </form>
+
+            @* Formulario separado (POST) para generar vuelos con el rango del filtro *@
+            <form id="formGenerar" action="@Url.Action("GenerarVuelos", "Admin")" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="desde" value="@fDesde" />
+                <input type="hidden" name="hasta" value="@fHasta" />
+            </form>
+        </div>
+    }
+
+    <!-- Resultado de «Consultar conflictos» -->
+    @if (mostrarConflictos && conflictos != null)
+    {
+        <div class="admin-card shadow-sm mb-4">
+            <div class="admin-card-header d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Conflictos operativos del rango</span>
+                <a href="@Url.Action("Vuelos", "Admin", new { tab = "vuelos", desde = fDesde, hasta = fHasta })" class="btn-close" aria-label="Cerrar"></a>
+            </div>
+            <div class="p-4 small">
+                @if (!conflictos.Any())
+                {
+                    <p class="text-success fw-semibold mb-0">&#10003; No se encontraron conflictos de asignación en el rango.</p>
+                }
+                else
+                {
+                    <p class="text-secondary">
+                        <strong class="text-danger">Conflicto:</strong> bloquea la asignación (DP-03, RG-06 y RG-07).
+                        <strong class="text-dark">Advertencia:</strong> requiere decisión del responsable operativo (RG-08).
+                    </p>
+                    <ul class="list-unstyled mb-0">
+                        @foreach (var c in conflictos)
+                        {
+                            <li class="mb-2 d-flex gap-2">
+                                @if (c[0] == "CONFLICTO")
+                                {
+                                    <span class="estado-badge ev-cancelado">Conflicto</span>
+                                }
+                                else
+                                {
+                                    <span class="estado-badge" style="background-color:#fef3c7;color:#78350f;border:1px solid #fcd34d;">Advertencia</span>
+                                }
+                                <span>@c[1]</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Formulario de edición -->
+    @if (vueloEditar != null)
+    {
+        <div class="admin-card shadow-sm mb-4" id="formEdicion" style="border-color: #f59e0b;">
+            <div class="admin-card-header">
+                <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">
+                    Editar vuelo VIP@(vueloEditar.VueloId.ToString("D5"))
+                </span>
+                <small class="text-secondary ms-2">
+                    @vueloEditar.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @vueloEditar.Frecuencia.Ruta.Aeropuerto1.CodigoIATA
+                    &middot; @vueloEditar.FechaOperacion.ToString("dd/MM/yyyy")
+                    &middot; @vueloEditar.Frecuencia.HoraSalida.ToString(@"hh\:mm")&ndash;@vueloEditar.Frecuencia.HoraLlegada.ToString(@"hh\:mm")
+                </small>
+            </div>
+            <form action="@Url.Action("EditarVuelo", "Admin")" method="post" class="p-4">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="vueloId" value="@vueloEditar.VueloId" />
+                <input type="hidden" name="desde" value="@fDesde" />
+                <input type="hidden" name="hasta" value="@fHasta" />
+
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <label for="aeronaveId" class="form-label small fw-semibold text-secondary mb-1">Aeronave asignada</label>
+                        @Html.DropDownList("aeronaveId", (SelectList)ViewBag.AeronavesLista, "Sin asignar", new { @class = "form-select py-2", id = "aeronaveId" })
+                        <small class="text-muted">Un vuelo sin aeronave no se comercializa (RNP-01).</small>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label for="estadoVueloCodigo" class="form-label small fw-semibold text-secondary mb-1">Estado <span class="text-danger">*</span></label>
+                        @Html.DropDownList("estadoVueloCodigo", (SelectList)ViewBag.EstadosLista, new { @class = "form-select py-2", id = "estadoVueloCodigo", required = "required" })
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-3">
+                    <button type="submit" class="btn btn-dark px-4 py-2 fw-semibold">Guardar</button>
+                    <a href="@Url.Action("Vuelos", "Admin", new { tab = "vuelos", desde = fDesde, hasta = fHasta })" class="btn btn-outline-secondary px-4 py-2">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    }
+
+    @* ===================== PESTAÑA: VUELOS POR FECHA ===================== *@
+    @if (tab == "vuelos")
+    {
+        if (!Model.Any())
+        {
+            <div class="admin-card shadow-sm p-5 text-center">
+                <span class="display-6 text-muted">&#9992;</span>
+                <h3 class="h5 fw-bold text-dark mt-3 mb-2">No hay vuelos programados en el rango seleccionado</h3>
+                <p class="text-secondary small mb-4">Use «Generar vuelos del rango» para crearlos desde las frecuencias aprobadas.</p>
+                <button type="submit" form="formGenerar" class="btn btn-dark fw-semibold px-4 py-2">Generar vuelos</button>
+            </div>
+        }
+        else
+        {
+            <div class="admin-card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                        <thead class="table-light small text-secondary">
+                            <tr>
+                                <th class="ps-4">Código</th>
+                                <th>Fecha</th>
+                                <th>Ruta</th>
+                                <th>Horario</th>
+                                <th>Aeronave</th>
+                                <th>Estado</th>
+                                <th class="text-center">Disp.</th>
+                                <th class="text-end pe-4">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var v in Model)
+                            {
+                                int ocup = ocupados.ContainsKey(v.VueloId) ? ocupados[v.VueloId] : 0;
+                                bool editando = vueloEditar != null && vueloEditar.VueloId == v.VueloId;
+                                <tr class="@(editando ? "fila-editando" : "")">
+                                    <td class="ps-4 fw-bold text-dark">VIP@(v.VueloId.ToString("D5"))</td>
+                                    <td>
+                                        @v.FechaOperacion.ToString("dd/MM/yyyy")
+                                        <small class="d-block text-muted">@(dias[(int)v.FechaOperacion.DayOfWeek == 0 ? 7 : (int)v.FechaOperacion.DayOfWeek])</small>
+                                    </td>
+                                    <td>@v.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @v.Frecuencia.Ruta.Aeropuerto1.CodigoIATA</td>
+                                    <td>@v.Frecuencia.HoraSalida.ToString(@"hh\:mm")&ndash;@v.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</td>
+                                    <td>
+                                        @if (v.Aeronave != null)
+                                        {
+                                            <span class="fw-semibold">@v.Aeronave.Matricula</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-danger small fw-semibold">Sin asignar</span>
+                                        }
+                                    </td>
+                                    <td><span class="estado-badge @claseEstado(v.EstadoVueloCodigo)">@textoEstado(v.EstadoVueloCodigo)</span></td>
+                                    <td class="text-center">
+                                        @if (v.EstadoVueloCodigo == "CANCELADO" || v.AeronaveId == null)
+                                        {
+                                            <span class="text-muted">&mdash;</span>
+                                        }
+                                        else
+                                        {
+                                            <span>@(7 - ocup)/7</span>
+                                        }
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <div class="d-flex flex-wrap justify-content-end gap-1">
+                                            @if (v.EstadoVueloCodigo != "COMPLETADO")
+                                            {
+                                                <a href="@Url.Action("Vuelos", "Admin", new { tab = "vuelos", desde = fDesde, hasta = fHasta, rutaId = fRutaId, estado = fEstado, editar = v.VueloId })#formEdicion"
+                                                   class="btn btn-outline-dark btn-sm px-2 py-1">Editar</a>
+                                            }
+                                            @if (v.AeronaveId != null)
+                                            {
+                                                <a href="@Url.Action("Disponibilidad", "Vuelos", new { id = v.VueloId })" class="btn btn-outline-secondary btn-sm px-2 py-1">Detalles</a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="small text-muted mt-2 mb-0">
+                «Disp.» = asientos disponibles sobre la capacidad de siete (asientos reservados u ocupados descontados).
+                Plan base de asignación: provisional, pendiente de validación operativa (DP-02).
+            </p>
+        }
+    }
+
+    @* ===================== PESTAÑA: FRECUENCIAS APROBADAS ===================== *@
+    @if (tab == "frecuencias" && frecuencias != null)
+    {
+        <div class="alert alert-light border small text-secondary mb-3">
+            <strong class="text-dark">&#9432;</strong> Frecuencias confirmadas (RN-04, RN-05 y RN-06). Son de solo lectura: los días y horarios no se modifican.
+        </div>
+        <div class="admin-card shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                    <thead class="table-light small text-secondary">
+                        <tr>
+                            <th class="ps-4">Día</th>
+                            <th>Ruta</th>
+                            <th>Horario</th>
+                            <th class="text-end">Tarifa de ejemplo</th>
+                            <th class="pe-4">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var f in frecuencias)
+                        {
+                            <tr>
+                                <td class="ps-4 fw-semibold">@(dias[f.DiaSemana])</td>
+                                <td>
+                                    @f.Ruta.Aeropuerto.Localidad (@f.Ruta.Aeropuerto.CodigoIATA) &rarr; @f.Ruta.Aeropuerto1.Localidad (@f.Ruta.Aeropuerto1.CodigoIATA)
+                                </td>
+                                <td>@f.HoraSalida.ToString(@"hh\:mm")&ndash;@f.HoraLlegada.ToString(@"hh\:mm")</td>
+                                <td class="text-end">@f.Ruta.TarifaReferencial.ToString("N2") USD</td>
+                                <td class="pe-4">
+                                    @if (f.Activa)
+                                    {
+                                        <span class="estado-badge ev-confirmado">Activa</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="estado-badge ev-cancelado">Inactiva</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* ===================== PESTAÑA: ITINERARIOS Y TRAMOS ===================== *@
+    @if (tab == "itinerarios" && itinerarios != null)
+    {
+        if (!itinerarios.Any())
+        {
+            <div class="admin-card shadow-sm p-5 text-center">
+                <h3 class="h5 fw-bold text-dark mb-2">No hay itinerarios con tramos en el rango seleccionado</h3>
+            </div>
+        }
+        else
+        {
+            <div class="d-flex flex-column gap-3">
+                @foreach (var it in itinerarios)
+                {
+                    var tramos = it.TramoItinerario.OrderBy(t => t.Orden).ToList();
+                    string idColapso = "tramos_" + it.ItinerarioId;
+
+                    <div class="admin-card shadow-sm">
+                        <div class="admin-card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <div>
+                                <span class="fw-bold text-dark">@it.Referencia</span>
+                                <small class="text-secondary ms-2">@it.Nombre</small>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="estado-badge @(it.EstadoItinerarioCodigo == "ACTIVO" ? "ev-confirmado" : "ev-completado")">
+                                    @(it.EstadoItinerarioCodigo == "ACTIVO" ? "Activo" : "Inactivo")
+                                </span>
+                                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#@idColapso" aria-expanded="false" aria-controls="@idColapso">
+                                    Ver tramos (@tramos.Count)
+                                </button>
+                            </div>
+                        </div>
+                        <div class="collapse" id="@idColapso">
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0" style="font-size: 0.85rem;">
+                                    <thead class="table-light text-secondary">
+                                        <tr>
+                                            <th class="ps-4">Orden</th>
+                                            <th>Vuelo</th>
+                                            <th>Ruta</th>
+                                            <th>Horario</th>
+                                            <th>Aeronave</th>
+                                            <th>Estado</th>
+                                            <th class="pe-4">Tiempo hasta el siguiente tramo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @for (int i = 0; i < tramos.Count; i++)
+                                        {
+                                            var t = tramos[i];
+                                            var vt = t.Vuelo;
+                                            string espera = "—";
+                                            if (i < tramos.Count - 1)
+                                            {
+                                                var sig = tramos[i + 1].Vuelo;
+                                                if (sig.FechaOperacion == vt.FechaOperacion)
+                                                {
+                                                    espera = (sig.Frecuencia.HoraSalida - vt.Frecuencia.HoraLlegada).TotalMinutes + " min en "
+                                                             + vt.Frecuencia.Ruta.Aeropuerto1.CodigoIATA;
+                                                }
+                                            }
+                                            <tr>
+                                                <td class="ps-4 fw-bold">@t.Orden</td>
+                                                <td>VIP@(vt.VueloId.ToString("D5"))</td>
+                                                <td>@vt.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @vt.Frecuencia.Ruta.Aeropuerto1.CodigoIATA</td>
+                                                <td>@vt.FechaOperacion.ToString("dd/MM") &middot; @vt.Frecuencia.HoraSalida.ToString(@"hh\:mm")&ndash;@vt.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</td>
+                                                <td>@(vt.Aeronave != null ? vt.Aeronave.Matricula : "Sin asignar")</td>
+                                                <td><span class="estado-badge @claseEstado(vt.EstadoVueloCodigo)">@textoEstado(vt.EstadoVueloCodigo)</span></td>
+                                                <td class="pe-4 text-secondary">@espera</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+</main>
+
+@section scripts {
+    <script>
+        $(function () {
+            // Validación del rango de fechas (obligatorio, Hasta >= Desde, máximo 366 días)
+            function rangoValido() {
+                var desde = $('#desde').val();
+                var hasta = $('#hasta').val();
+                if (!desde || !hasta) return false;
+                if (hasta < desde) return false;
+                var dias = (new Date(hasta) - new Date(desde)) / 86400000;
+                return dias <= 366;
+            }
+
+            $('#desde, #hasta').on('change', function () {
+                if (rangoValido()) {
+                    $('#errorRango').addClass('d-none').removeClass('d-block');
+                }
+            });
+
+            $('#formFiltros').on('submit', function (e) {
+                if (!rangoValido()) {
+                    e.preventDefault();
+                    $('#errorRango').removeClass('d-none').addClass('d-block');
+                }
+            });
+
+            // Generar vuelos: usa el rango que está escrito en los filtros
+            $('#formGenerar').on('submit', function (e) {
+                if (!rangoValido()) {
+                    e.preventDefault();
+                    $('#errorRango').removeClass('d-none').addClass('d-block');
+                    return;
+                }
+                $('#formGenerar input[name="desde"]').val($('#desde').val());
+                $('#formGenerar input[name="hasta"]').val($('#hasta').val());
+                $('button[form="formGenerar"]').attr('disabled', 'disabled').text('Generando vuelos…');
+            });
+        });
+    </script>
+}
