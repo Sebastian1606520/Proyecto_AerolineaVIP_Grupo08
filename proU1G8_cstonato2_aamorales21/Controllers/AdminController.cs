@@ -374,6 +374,144 @@ namespace Con_Autenticacion.Controllers
 
             return RedirectToAction("Vuelos", new { desde = d.ToString("yyyy-MM-dd"), hasta = h.ToString("yyyy-MM-dd") });
         }
+        // =========================================================================
+        // PANTALLA 19: ADMINISTRACIÓN DE AERONAVES (/Admin/Aeronaves)
+        // =========================================================================
+
+        // GET: /Admin/Aeronaves  (id = aeronave consultada; editar = mostrar formulario)
+        [HttpGet]
+        public ActionResult Aeronaves(int? id, bool editar = false)
+        {
+            if (!EsAdministrativo())
+            {
+                TempData["Error"] = "No tiene permisos para acceder a esta sección.";
+                return RedirectToAction("Index");
+            }
+
+            DateTime hoy = DateTime.Today;
+            var aeronaves = db.Aeronave
+                .Include(a => a.ModeloAeronave)
+                .OrderBy(a => a.Matricula)
+                .ToList();
+
+            // Vuelos próximos (desde hoy, no cancelados ni completados) por aeronave
+            var proximos = db.Vuelo
+                .Where(v => v.AeronaveId != null && v.FechaOperacion >= hoy
+                         && v.EstadoVueloCodigo != "CANCELADO" && v.EstadoVueloCodigo != "COMPLETADO")
+                .GroupBy(v => v.AeronaveId.Value)
+                .ToDictionary(g => g.Key, g => g.Count());
+            ViewBag.Proximos = proximos;
+
+            // Aeronave seleccionada: detalle, distribución y próximas asignaciones
+            Aeronave seleccionada = null;
+            if (id.HasValue)
+            {
+                seleccionada = aeronaves.FirstOrDefault(a => a.AeronaveId == id.Value);
+                if (seleccionada == null)
+                {
+                    TempData["Error"] = "La aeronave solicitada no existe.";
+                    return RedirectToAction("Aeronaves");
+                }
+
+                ViewBag.Asientos = db.Asiento
+                    .Where(s => s.ModeloAeronaveId == seleccionada.ModeloAeronaveId)
+                    .OrderBy(s => s.Fila).ThenBy(s => s.Lado)
+                    .ToList();
+
+                ViewBag.Asignaciones = db.Vuelo
+                    .Include(v => v.Frecuencia.Ruta.Aeropuerto)
+                    .Include(v => v.Frecuencia.Ruta.Aeropuerto1)
+                    .Where(v => v.AeronaveId == seleccionada.AeronaveId && v.FechaOperacion >= hoy
+                             && v.EstadoVueloCodigo != "CANCELADO")
+                    .ToList()
+                    .OrderBy(v => Salida(v))
+                    .ToList();
+
+                if (editar)
+                {
+                    ViewBag.ModelosLista = new SelectList(
+                        db.ModeloAeronave.ToList().Select(m => new { m.ModeloAeronaveId, Texto = m.Fabricante + " " + m.Nombre }),
+                        "ModeloAeronaveId", "Texto", seleccionada.ModeloAeronaveId);
+                    ViewBag.EstadosLista = new SelectList(db.EstadoAeronave.ToList(), "Codigo", "Descripcion", seleccionada.EstadoAeronaveCodigo);
+                }
+            }
+
+            ViewBag.Seleccionada = seleccionada;
+            ViewBag.Editar = editar && seleccionada != null;
+            return View(aeronaves);
+        }
+
+        // POST: /Admin/EditarAeronave
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult EditarAeronave(int aeronaveId, string matricula, int modeloAeronaveId, string estadoAeronaveCodigo)
+        {
+            if (!EsAdministrativo())
+            {
+                TempData["Error"] = "No tiene permisos para acceder a esta sección.";
+                return RedirectToAction("Index");
+            }
+
+            var aeronave = db.Aeronave.Find(aeronaveId);
+            if (aeronave == null)
+            {
+                TempData["Error"] = "La aeronave solicitada no existe.";
+                return RedirectToAction("Aeronaves");
+            }
+
+            matricula = (matricula ?? "").Trim().ToUpper();
+
+            // Validaciones del servidor
+            if (matricula.Length == 0 || matricula.Length > 15)
+            {
+                TempData["Error"] = "El identificador es obligatorio y admite hasta 15 caracteres.";
+                return RedirectToAction("Aeronaves", new { id = aeronaveId, editar = true });
+            }
+            if (db.Aeronave.Any(a => a.Matricula == matricula && a.AeronaveId != aeronaveId))
+            {
+                TempData["Error"] = "Ya existe otra aeronave con el identificador " + matricula + ".";
+                return RedirectToAction("Aeronaves", new { id = aeronaveId, editar = true });
+            }
+            var modelo = db.ModeloAeronave.Find(modeloAeronaveId);
+            if (modelo == null || modelo.CapacidadAsientos > 7)
+            {
+                TempData["Error"] = "Seleccione un modelo válido (capacidad máxima de siete asientos, RN-03).";
+                return RedirectToAction("Aeronaves", new { id = aeronaveId, editar = true });
+            }
+            if (string.IsNullOrEmpty(estadoAeronaveCodigo) || !db.EstadoAeronave.Any(e => e.Codigo == estadoAeronaveCodigo))
+            {
+                TempData["Error"] = "Seleccione un estado operativo válido.";
+                return RedirectToAction("Aeronaves", new { id = aeronaveId, editar = true });
+            }
+
+            // Vuelos próximos que quedarían afectados si pasa a NO_DISPONIBLE
+            DateTime hoy = DateTime.Today;
+            int vuelosProximos = db.Vuelo.Count(v => v.AeronaveId == aeronaveId && v.FechaOperacion >= hoy
+                                                  && v.EstadoVueloCodigo != "CANCELADO" && v.EstadoVueloCodigo != "COMPLETADO");
+
+            aeronave.Matricula = matricula;
+            aeronave.ModeloAeronaveId = modeloAeronaveId;
+            aeronave.EstadoAeronaveCodigo = estadoAeronaveCodigo;
+
+            try
+            {
+                db.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                Exception inner = ex;
+                while (inner.InnerException != null) inner = inner.InnerException;
+                TempData["Error"] = "No se guardaron los cambios: " + inner.Message;
+                return RedirectToAction("Aeronaves", new { id = aeronaveId, editar = true });
+            }
+
+            string aviso = (estadoAeronaveCodigo == "NO_DISPONIBLE" && vuelosProximos > 0)
+                ? " Atención: tiene " + vuelosProximos + " vuelos próximos asignados; reasígnelos en la pantalla 18."
+                : "";
+            TempData["Exito"] = "Cambios guardados en la aeronave " + matricula + "." + aviso;
+            return RedirectToAction("Aeronaves", new { id = aeronaveId });
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)

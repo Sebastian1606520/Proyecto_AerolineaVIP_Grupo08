@@ -411,6 +411,7 @@
     <Content Include="Views\Compras\Comprobantes.cshtml" />
     <Content Include="Views\Admin\Index.cshtml" />
     <Content Include="Views\Admin\Vuelos.cshtml" />
+    <Content Include="Views\Admin\Aeronaves.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
