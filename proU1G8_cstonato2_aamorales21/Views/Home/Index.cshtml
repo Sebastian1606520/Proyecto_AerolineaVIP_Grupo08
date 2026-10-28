@@ -1,0 +1,166 @@
+﻿@{
+    ViewBag.Title = "Inicio - Aerolínea VIP";
+}
+
+<main class="container py-4">
+    <!-- ========================================================
+         SECCIÓN 1: PANTALLA 1 OFICIAL (PÁGINA DE INICIO AEROLÍNEA)
+         ======================================================== -->
+    <div class="text-center my-4">
+        <h1 class="display-5 fw-bold text-dark">Vuela a tu próximo destino</h1>
+        <p class="lead text-muted">Viajes privados con atención personalizada en nuestra flota Embraer Phenom 300E.</p>
+    </div>
+
+    <!-- Formulario Encuentra tu vuelo -->
+    <div class="card shadow-sm border-0 mb-4 bg-white rounded-3">
+        <div class="card-body p-4">
+            <h4 class="card-title fw-bold mb-3 text-secondary">Encuentra tu vuelo</h4>
+
+            @using (Html.BeginForm("Resultados", "Vuelos", FormMethod.Get, new { id = "formBuscarVuelos" }))
+            {
+                <input type="hidden" name="btnBuscar" value="1" />
+                <div class="row g-3">
+                    <!-- Campo Origen -->
+                    <div class="col-12 col-md-3">
+                        <label for="selectOrigen" class="form-label fw-semibold">Origen <span class="text-danger">*</span></label>
+                        <select name="origen" id="selectOrigen" class="form-select" required>
+                            <option value="UIO" selected>Quito (UIO)</option>
+                            <option value="GYE">Guayaquil (GYE)</option>
+                            <option value="MEC">Manta (MEC)</option>
+                            <option value="GPS">Galápagos (GPS)</option>
+                        </select>
+                    </div>
+
+                    <!-- Campo Destino -->
+                    <div class="col-12 col-md-3">
+                        <label for="selectDestino" class="form-label fw-semibold">Destino <span class="text-danger">*</span></label>
+                        <select name="destino" id="selectDestino" class="form-select" required>
+                            <option value="">Seleccionar destino</option>
+                            <option value="GYE">Guayaquil (GYE)</option>
+                            <option value="MEC">Manta (MEC)</option>
+                            <option value="GPS">Galápagos (GPS)</option>
+                            <option value="UIO">Quito (UIO)</option>
+                        </select>
+                    </div>
+
+                    <!-- Campo Fecha de Salida -->
+                    <div class="col-12 col-md-3">
+                        <label for="inputFecha" class="form-label fw-semibold">Fecha de salida <span class="text-danger">*</span></label>
+                        <input type="date" name="fecha" id="inputFecha" class="form-control"
+                               value="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")"
+                               min="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                    </div>
+
+                    <!-- Campo Pasajeros -->
+                    <div class="col-12 col-md-3">
+                        <label for="inputPasajeros" class="form-label fw-semibold">Pasajeros <span class="text-danger">*</span></label>
+                        <input type="number" name="pasajeros" id="inputPasajeros" class="form-control"
+                               value="1" min="1" max="7" required />
+                        <small class="text-muted" style="font-size: 0.8rem;">Máximo 7 por aeronave</small>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap align-items-center justify-content-between mt-4">
+                    <button type="submit" class="btn btn-dark px-4 py-2 fw-semibold">
+                        Buscar vuelos
+                    </button>
+                    <small class="text-muted mt-2 mt-md-0">
+                        Horarios sujetos a la programación establecida y disponibilidad real.
+                    </small>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Destinos y días de operación (RN-04, RN-05, RN-06) -->
+    <h5 class="fw-bold mb-3 text-secondary">Destinos y Días de Operación</h5>
+    <div class="row g-3 mb-5">
+        <div class="col-12 col-md-4">
+            <div class="card h-100 border-start border-primary border-4 shadow-sm p-3">
+                <h6 class="fw-bold text-primary mb-1">Guayaquil (GYE)</h6>
+                <p class="small text-muted mb-0"><strong>Días:</strong> Martes, jueves y sábado</p>
+                <small class="text-secondary">Horarios: 09:00 - 10:00 | 14:00 - 15:00 | 19:00 - 20:00</small>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="card h-100 border-start border-primary border-4 shadow-sm p-3">
+                <h6 class="fw-bold text-primary mb-1">Manta (MEC)</h6>
+                <p class="small text-muted mb-0"><strong>Días:</strong> Lunes, miércoles y viernes</p>
+                <small class="text-secondary">Horarios: 09:00 - 10:00 | 14:00 - 15:00 | 19:00 - 20:00</small>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="card h-100 border-start border-primary border-4 shadow-sm p-3">
+                <h6 class="fw-bold text-primary mb-1">Galápagos (GPS)</h6>
+                <p class="small text-muted mb-0"><strong>Días:</strong> Domingos (escala técnica en GYE)</p>
+                <small class="text-secondary">4 tramos programados desde las 09:00</small>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-5 border-secondary" />
+
+    <!-- ========================================================
+         SECCIÓN 2: INFORMACIÓN ACADÉMICA DEL GRUPO 08
+         ======================================================== -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="border border-success border-2 rounded-3 p-3 bg-light shadow-sm">
+                <h4 class="text-success fw-bold mb-1">Proyecto Primer Parcial: Aerolínea VIP</h4>
+                <p class="mb-0 text-muted small">
+                    Sistema monolítico desarrollado en ASP.NET MVC 4.8.1, Entity Framework 6, ASP.NET Identity con bases desacopladas (AerolineaVIP y AerolineaVIP_Identity) y SQL Server.
+                </p>
+            </div>
+        </div>
+
+        <!-- Integrante 1 -->
+        <div class="col-md-4">
+            <div class="card h-100 border-success border-2 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title text-success text-center border-bottom pb-2 fw-bold">Desarrollador 1</h5>
+                    <p class="small mb-1"><strong>Estudiante:</strong> Carlos Sebastian Tonato Coronel</p>
+                    <p class="small mb-1"><strong>Carrera:</strong> Tecnologías de la Información</p>
+                    <p class="small mb-0"><strong>Correo:</strong> cstonato2@espe.edu.ec</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Integrante 2 -->
+        <div class="col-md-4">
+            <div class="card h-100 border-success border-2 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title text-success text-center border-bottom pb-2 fw-bold">Desarrollador 2</h5>
+                    <p class="small mb-1"><strong>Estudiante:</strong> Anthony Alejandro Morales Mendoza</p>
+                    <p class="small mb-1"><strong>Carrera:</strong> Tecnologías de la Información</p>
+                    <p class="small mb-0"><strong>Institución:</strong> ESPE</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contexto institucional -->
+        <div class="col-md-4">
+            <div class="card h-100 border-success border-2 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title text-success text-center border-bottom pb-2 fw-bold">Contexto Institucional</h5>
+                    <p class="small mb-1"><strong>Institución:</strong> Univ. de las Fuerzas Armadas ESPE</p>
+                    <p class="small mb-1"><strong>Materia:</strong> Desarrollo Web</p>
+                    <p class="small mb-1"><strong>Docente:</strong> Ing. Juan Fernando Galarraga</p>
+                    <p class="small mb-0"><strong>Grupo:</strong> Nro 08 &middot; Periodo 2026</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+@section scripts {
+    <script>
+$(function () {
+            $('#formBuscarVuelos').on('submit', function (e) {
+                if ($('#selectOrigen').val() === $('#selectDestino').val()) {
+                    e.preventDefault();
+                    alert('El origen y el destino deben ser distintos.');
+                }
+            });
+});
+    </script>
+}

@@ -1,0 +1,178 @@
+﻿@using Con_Autenticacion.Models
+@model RegisterViewModel
+@{
+    ViewBag.Title = "Crear cuenta";
+    bool esSuperUsuario = User.Identity.IsAuthenticated && User.IsInRole("SuperUsuario");
+}
+
+<style>
+    .scroll-terminos {
+        height: 85px;
+        overflow-y: scroll;
+        background-color: #f8fafc;
+        border: 1px solid #dee2e6;
+        font-size: 0.82rem;
+        line-height: 1.4;
+    }
+</style>
+
+<main class="container py-5 my-auto" aria-labelledby="registerHeading">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-10 col-lg-8 col-xl-7">
+
+            <div class="card shadow-sm border border-light-subtle rounded-3 bg-white">
+                <div class="card-body p-4 p-md-5">
+
+                    <!-- Encabezado corporativo -->
+                    <div class="text-center mb-4">
+                        <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px;">
+                            Aerolínea VIP
+                        </span>
+                        <h2 id="registerHeading" class="h3 fw-bold text-dark mt-2 mb-1">Crear cuenta</h2>
+                        <p class="text-secondary small mb-0">Complete la información para acceder al sistema de reservas y vuelos privados.</p>
+                    </div>
+
+                    @if (TempData["MensajeExito"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show small py-2 mb-3" role="alert">
+                            @TempData["MensajeExito"]
+                            <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    @using (Html.BeginForm("Register", "Account", FormMethod.Post, new { id = "formRegister" }))
+                    {
+                        @Html.AntiForgeryToken()
+
+                        @Html.ValidationSummary(true, "", new { @class = "alert alert-danger py-2 px-3 small border-0 rounded-3 mb-3 list-unstyled" })
+
+                        <!-- FILA 1: Nombre de usuario y Correo electrónico -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-12 col-md-6">
+                                @Html.LabelFor(m => m.UserName, new { @class = "form-label fw-semibold text-secondary small mb-1" })
+                                <span class="text-danger">*</span>
+                                @Html.TextBoxFor(m => m.UserName, new
+                                {
+                                    @class = "form-control",
+                                    id = "UserName",
+                                    placeholder = "Usuario (ej.: ctonato)",
+                                    maxlength = "50",
+                                    autocomplete = "username"
+                                })
+                                @Html.ValidationMessageFor(m => m.UserName, "", new { @class = "text-danger small mt-1 d-block" })
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                @Html.LabelFor(m => m.Email, new { @class = "form-label fw-semibold text-secondary small mb-1" })
+                                <span class="text-danger">*</span>
+                                @Html.TextBoxFor(m => m.Email, new
+                                {
+                                    @class = "form-control",
+                                    id = "Email",
+                                    type = "email",
+                                    placeholder = "correo@ejemplo.com",
+                                    maxlength = "256",
+                                    autocomplete = "email"
+                                })
+                                @Html.ValidationMessageFor(m => m.Email, "", new { @class = "text-danger small mt-1 d-block" })
+                            </div>
+                        </div>
+
+                        <!-- FILA 2: Contraseña y Confirmar Contraseña directas -->
+                        <div class="row g-3 mb-2">
+                            <div class="col-12 col-md-6">
+                                @Html.LabelFor(m => m.Password, new { @class = "form-label fw-semibold text-secondary small mb-1" })
+                                <span class="text-danger">*</span>
+                                @Html.PasswordFor(m => m.Password, new
+                                {
+                                    @class = "form-control",
+                                    id = "Password",
+                                    placeholder = "••••••••",
+                                    autocomplete = "new-password"
+                                })
+                                @Html.ValidationMessageFor(m => m.Password, "", new { @class = "text-danger small mt-1 d-block" })
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                @Html.LabelFor(m => m.ConfirmPassword, new { @class = "form-label fw-semibold text-secondary small mb-1" })
+                                <span class="text-danger">*</span>
+                                @Html.PasswordFor(m => m.ConfirmPassword, new
+                                {
+                                    @class = "form-control",
+                                    id = "ConfirmPassword",
+                                    placeholder = "••••••••",
+                                    autocomplete = "new-password"
+                                })
+                                @Html.ValidationMessageFor(m => m.ConfirmPassword, "", new { @class = "text-danger small mt-1 d-block" })
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <small class="text-muted d-block">
+                                Mín. 8 caracteres &middot; mayúscula &middot; minúscula &middot; número &middot; símbolo.
+                            </small>
+                        </div>
+
+                        <!-- FILA 3: Selector de Rol -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-12 col-md-6">
+                                @Html.LabelFor(m => m.Rol, new { @class = "form-label fw-semibold text-secondary small mb-1" })
+                                <span class="text-danger">*</span>
+                                @if (esSuperUsuario)
+                                {
+                                    @Html.DropDownListFor(m => m.Rol, (IEnumerable<SelectListItem>)ViewBag.RolesDisponibles, new { @class = "form-select", id = "Rol" })
+                                    <div class="form-text text-muted small">Modo SuperUsuario: asignación de roles.</div>
+                                }
+                                else
+                                {
+                                    <select class="form-select bg-light text-muted" disabled="disabled">
+                                        <option value="Cliente" selected="selected">Cliente</option>
+                                    </select>
+                                    @Html.HiddenFor(m => m.Rol, new { Value = "Cliente" })
+                                    <div class="form-text text-muted small">Registro público asigna automáticamente el rol Cliente.</div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- FILA 4: Términos y condiciones -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-secondary small mb-1">Aviso de privacidad y condiciones</label>
+                            <div class="p-3 scroll-terminos rounded-3 text-secondary small" tabindex="0" role="region" aria-label="Aviso de privacidad">
+                                <p class="mb-1 fw-bold text-dark">TÉRMINOS Y CONDICIONES DEL SERVICIO:</p>
+                                <p class="mb-1">1. Los datos proporcionados serán utilizados para la gestión de compras y reservas en nuestra flota Embraer Phenom 300E (capacidad máx. 7 asientos).</p>
+                                <p class="mb-0">2. Los pagos registrados corresponden a una simulación académica sin cobros bancarios reales.</p>
+                            </div>
+                        </div>
+
+                        <!-- FILA 5: Casilla de Aceptación -->
+                        <div class="mb-4 form-check">
+                            @Html.CheckBoxFor(m => m.AceptoCondiciones, new { @class = "form-check-input", id = "AceptoCondiciones" })
+                            <label class="form-check-label text-secondary small" for="AceptoCondiciones">
+                                Acepto el aviso de privacidad y las condiciones <span class="text-danger">*</span>
+                            </label>
+                            @Html.ValidationMessageFor(m => m.AceptoCondiciones, "", new { @class = "text-danger small mt-1 d-block" })
+                        </div>
+
+                        <!-- FILA 6: Botones de Acción -->
+                        <div class="d-flex flex-wrap gap-2 mb-4">
+                            <input type="submit" value="Crear cuenta" class="btn btn-dark px-4 py-2 fw-semibold" />
+                            @Html.ActionLink("Cancelar", "Index", "Home", null, new { @class = "btn btn-outline-secondary px-4 py-2" })
+                        </div>
+
+                        <!-- Retorno a Iniciar Sesión -->
+                        <div class="border-top border-light-subtle pt-3 text-center text-md-start small">
+                            <span class="text-muted">¿Ya tiene una cuenta creada?</span>
+                            @Html.ActionLink("Iniciar sesión", "Login", "Account", null, new { @class = "text-decoration-none fw-bold text-dark ms-1" })
+                        </div>
+                    }
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</main>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}

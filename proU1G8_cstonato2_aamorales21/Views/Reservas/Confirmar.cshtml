@@ -1,0 +1,240 @@
+﻿@model Con_Autenticacion.Models.Vuelo
+@{
+    ViewBag.Title = "Reserva de pasajes";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .step-indicator {
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+    }
+
+    .step-item.active {
+        color: #0f172a;
+        font-weight: 700;
+        border-bottom: 2px solid #0f172a;
+    }
+
+    .confirm-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        background: #ffffff;
+    }
+
+    .confirm-card-header {
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        border-top-left-radius: 0.75rem;
+        border-top-right-radius: 0.75rem;
+        padding: 0.85rem 1.25rem;
+    }
+
+    .seat-badge-purple {
+        background-color: #581c87;
+        color: #ffffff;
+        font-weight: 700;
+        border-radius: 6px;
+        padding: 4px 10px;
+    }
+</style>
+
+<main class="container py-5">
+
+    <!-- Indicador de Pasos del Flujo -->
+    <div class="d-flex align-items-center justify-content-center gap-4 text-muted small text-uppercase mb-4 pb-2 border-bottom border-light-subtle step-indicator">
+        <span class="pb-2 text-secondary">1. Asientos</span>
+        <span class="pb-2">&rarr;</span>
+        <span class="pb-2 text-secondary">2. Pasajeros</span>
+        <span class="pb-2">&rarr;</span>
+        <span class="step-item active pb-2">3. Confirmación</span>
+        <span class="pb-2">&rarr;</span>
+        <span class="pb-2 text-muted">4. Pago</span>
+    </div>
+
+    <!-- Encabezado Corporativo -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3">
+        <div>
+            <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
+                Aerolínea VIP &middot; Pantalla 10
+            </span>
+            <h2 class="h3 fw-bold text-dark mb-1">Confirmación de Reserva</h2>
+            <p class="text-secondary small mb-0">
+                Revise el itinerario y los datos de cada boleto antes de formalizar la operación.
+            </p>
+        </div>
+        <a href="@Url.Action("Pasajeros", "Reservas")" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+            &larr; Volver a modificar pasajeros
+        </a>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2">
+            <span>&#9888;</span>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
+
+    <!-- 1. Bloque: Resumen del Itinerario -->
+    <div class="confirm-card shadow-sm mb-4">
+        <div class="confirm-card-header d-flex justify-content-between align-items-center">
+            <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">
+                Itinerario de Vuelo
+            </span>
+            <span class="badge bg-light text-secondary border small">Vuelo Directo</span>
+        </div>
+        <div class="p-4">
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm align-middle mb-0">
+                    <thead class="table-light small text-secondary">
+                        <tr>
+                            <th>Tramo</th>
+                            <th>Vuelo</th>
+                            <th>Ruta</th>
+                            <th>Fecha</th>
+                            <th>Horario</th>
+                            <th>Aeronave</th>
+                        </tr>
+                    </thead>
+                    <tbody class="small">
+                        <tr>
+                            <td class="fw-bold">1</td>
+                            <td>VIP@(Model.VueloId.ToString("D5"))</td>
+                            <td>
+                                <strong>@Model.Frecuencia.Ruta.Aeropuerto.Localidad (@Model.Frecuencia.Ruta.Aeropuerto.CodigoIATA)</strong>
+                                &rarr;
+                                <strong>@Model.Frecuencia.Ruta.Aeropuerto1.Localidad (@Model.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)</strong>
+                            </td>
+                            <td>@Model.FechaOperacion.ToString("dd/MM/yyyy")</td>
+                            <td>@Model.Frecuencia.HoraSalida.ToString(@"hh\:mm") &ndash; @Model.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</td>
+                            <td>@(Model.Aeronave != null ? Model.Aeronave.Matricula : "AV-02") &middot; Embraer Phenom 300E</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Bloque: Pasajeros y Asientos Asignados -->
+    <div class="confirm-card shadow-sm mb-4">
+        <div class="confirm-card-header d-flex justify-content-between align-items-center">
+            <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">
+                Pasajeros, Asientos e Importes
+            </span>
+            <span class="badge bg-purple text-white px-2 py-1 small" style="background-color: #581c87;">
+                Estado resultante: Pendiente de pago
+            </span>
+        </div>
+        <div class="p-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small text-secondary">
+                        <tr>
+                            <th>#</th>
+                            <th>Nombre Completo</th>
+                            <th>Identificación</th>
+                            <th class="text-center">Asiento</th>
+                            <th class="text-end">Importe Unitario</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int p = 0; p < ((List<Con_Autenticacion.Models.Pasajero>)ViewBag.Pasajeros).Count; p++)
+                        {
+                            var pas = ((List<Con_Autenticacion.Models.Pasajero>)ViewBag.Pasajeros)[p];
+                            <tr>
+                                <td class="text-muted small">@(p + 1)</td>
+                                <td class="fw-semibold text-dark">@pas.Nombres @pas.Apellidos</td>
+                                <td class="small text-secondary">
+                                    <span class="badge bg-light text-dark border me-1">@pas.TipoDocumentoCodigo</span>
+                                    @pas.NumeroDocumento
+                                </td>
+                                <td class="text-center">
+                                    <span class="seat-badge-purple">
+                                        @(((List<string>)ViewBag.CodigosAsientos)[p])
+                                    </span>
+                                </td>
+                                <td class="text-end fw-semibold text-dark">
+                                    $@(((decimal)ViewBag.TarifaIndividual).ToString("N2")) USD
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-group-divider">
+                        <tr class="table-light">
+                            <td colspan="4" class="text-end fw-bold py-3 text-dark">Total estimado a pagar:</td>
+                            <td class="text-end fw-bold py-3 fs-5 text-dark">
+                                $@(((decimal)ViewBag.TotalPagar).ToString("N2")) USD
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="alert alert-light border small text-secondary mt-3 mb-0">
+                <strong class="text-dark">&#9432; Nota de retención (DP-07):</strong>
+                Una vez confirmada, la reserva se conservará en estado <em>Pendiente de pago</em> durante <strong>2 horas</strong>. Al vencer este plazo, los asientos se liberarán automáticamente.
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Formulario de Formalización -->
+    <form id="formConfirmarReserva" action="@Url.Action("Confirmar", "Reservas")" method="post">
+        @Html.AntiForgeryToken()
+
+        <div class="confirm-card shadow-sm p-4 mb-4">
+            <h5 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">
+                Condiciones del Servicio y Transporte Aéreo
+            </h5>
+            <p class="small text-secondary mb-3" style="line-height: 1.6;">
+                Al formalizar esta solicitud, usted certifica que la información de los pasajeros coincide con sus documentos oficiales de identidad. Las tarifas ejecutivas garantizan equipaje de mano de hasta 10 kg y servicio de cabina exclusivo en el Embraer Phenom 300E.
+            </p>
+
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="aceptarCondiciones" id="checkCondiciones" value="true" required>
+                <label class="form-check-label small fw-semibold text-dark" for="checkCondiciones">
+                    Acepto las condiciones de la reserva y las políticas de retención de pasajes <span class="text-danger">*</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <a href="@Url.Action("Pasajeros", "Reservas")" class="btn btn-outline-secondary px-3 py-2 fw-semibold small">
+                &larr; Volver a modificar
+            </a>
+
+            <div class="d-flex gap-2">
+                <button type="submit" name="accionBoton" value="Reservar" id="btnSoloReservar" class="btn btn-outline-dark px-4 py-2 fw-semibold" disabled>
+                    Confirmar reserva (Pendiente de pago)
+                </button>
+
+                <button type="submit" name="accionBoton" value="Pagar" id="btnConfirmarPagar" class="btn btn-dark px-4 py-2 fw-semibold" disabled>
+                    Confirmar y proceder al pago &rarr;
+                </button>
+            </div>
+        </div>
+    </form>
+
+</main>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('#checkCondiciones').on('change', function () {
+                var aceptado = $(this).is(':checked');
+                if (aceptado) {
+                    $('#btnSoloReservar').removeAttr('disabled');
+                    $('#btnConfirmarPagar').removeAttr('disabled');
+                } else {
+                    $('#btnSoloReservar').attr('disabled', 'disabled');
+                    $('#btnConfirmarPagar').attr('disabled', 'disabled');
+                }
+            });
+
+            $('#formConfirmarReserva').on('submit', function () {
+                $('#btnSoloReservar').attr('disabled', 'disabled').text('Registrando reserva...');
+                $('#btnConfirmarPagar').attr('disabled', 'disabled').text('Procesando...');
+            });
+        });
+    </script>
+}

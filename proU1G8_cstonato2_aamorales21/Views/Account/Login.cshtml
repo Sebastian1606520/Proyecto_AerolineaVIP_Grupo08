@@ -1,0 +1,113 @@
+﻿@using Con_Autenticacion.Models
+@model LoginViewModel
+@{
+    ViewBag.Title = "Iniciar sesión";
+}
+
+<main aria-labelledby="title" class="py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+
+            <div class="card shadow-sm border-0 rounded-3">
+                <div class="card-body p-4">
+
+                    <div class="text-center mb-4">
+                        <span class="badge bg-dark text-warning px-3 py-2 text-uppercase" style="letter-spacing: 1px;">
+                            Aerolínea VIP
+                        </span>
+                        <h1 id="title" class="h3 fw-bold mt-3 mb-1">@ViewBag.Title</h1>
+                        <p class="text-muted small mb-0">Ingrese con su nombre de usuario y contraseña.</p>
+                    </div>
+
+                    @* Advertencia: llegó por sesión expirada (ReturnUrl presente) *@
+                    @if (!string.IsNullOrEmpty(ViewBag.ReturnUrl as string))
+                    {
+                        <div class="alert alert-warning py-2 small" role="alert">
+                            Su sesión expiró o necesita iniciar sesión para continuar. Inicie sesión nuevamente.
+                        </div>
+                    }
+
+                    @if (TempData["Mensaje"] != null)
+                    {
+                        <div class="alert alert-success py-2 small" role="status">@TempData["Mensaje"]</div>
+                    }
+
+                    <section id="loginForm">
+                        @using (Html.BeginForm("Login", "Account", new { ReturnUrl = ViewBag.ReturnUrl }, FormMethod.Post,
+                            new { role = "form", onsubmit = "if (this.checkValidity()) { var b = document.getElementById('btnLogin'); b.disabled = true; b.value = 'Verificando…'; }" }))
+                        {
+                            @Html.AntiForgeryToken()
+
+                            @* Resumen de errores (Error de acceso) *@
+                            @Html.ValidationSummary(true, "", new { @class = "alert alert-danger py-2 small", role = "alert" })
+
+                            <div class="row mb-3">
+                                @Html.LabelFor(m => m.UserName, new { @class = "col-md-4 col-form-label fw-semibold" })
+                                <div class="col-md-8">
+                                    @Html.TextBoxFor(m => m.UserName, new
+                                    {
+                                        @class = "form-control",
+                                        placeholder = "Su nombre de usuario",
+                                        maxlength = "256",
+                                        autofocus = "autofocus",
+                                        autocomplete = "username",
+                                        required = "required"
+                                    })
+                                    @Html.ValidationMessageFor(m => m.UserName, "", new { @class = "text-danger small", role = "alert" })
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                @Html.LabelFor(m => m.Password, new { @class = "col-md-4 col-form-label fw-semibold" })
+                                <div class="col-md-8">
+                                    <div class="input-group">
+                                        @Html.PasswordFor(m => m.Password, new
+                                        {
+                                            @class = "form-control",
+                                            placeholder = "••••••••",
+                                            autocomplete = "current-password",
+                                            required = "required"
+                                        })
+                                        <button type="button" class="btn btn-outline-secondary"
+                                                aria-label="Mostrar u ocultar contraseña"
+                                                onclick="var p = document.getElementById('Password'); p.type = (p.type === 'password') ? 'text' : 'password'; this.textContent = (p.type === 'password') ? 'Mostrar' : 'Ocultar';">
+                                            Mostrar
+                                        </button>
+                                    </div>
+                                    @Html.ValidationMessageFor(m => m.Password, "", new { @class = "text-danger small", role = "alert" })
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="offset-md-4 col-md-8">
+                                    <div class="form-check">
+                                        @Html.CheckBoxFor(m => m.RememberMe, new { @class = "form-check-input" })
+                                        @Html.LabelFor(m => m.RememberMe, new { @class = "form-check-label" })
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="offset-md-4 col-md-8 d-grid d-md-block">
+                                    <input type="submit" id="btnLogin" value="Iniciar sesión" class="btn btn-dark px-4" />
+                                </div>
+                            </div>
+
+                            <hr />
+                            <div class="d-flex justify-content-between small">
+                                @Html.ActionLink("¿Olvidó su contraseña?", "ForgotPassword", null, new { @class = "text-muted" })
+                                @Html.ActionLink("Crear cuenta", "Register", null, new { @class = "fw-bold text-dark" })
+                            </div>
+                        }
+                    </section>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</main>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}
