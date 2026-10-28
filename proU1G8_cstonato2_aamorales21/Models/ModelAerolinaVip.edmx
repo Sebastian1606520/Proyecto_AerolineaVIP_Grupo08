@@ -1,0 +1,2040 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="3.0" xmlns:edmx="http://schemas.microsoft.com/ado/2009/11/edmx">
+  <!-- EF Runtime content -->
+  <edmx:Runtime>
+    <!-- SSDL content -->
+    <edmx:StorageModels>
+      <Schema Namespace="AerolineaVIPModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+        <EntityType Name="Aeronave">
+          <Key>
+            <PropertyRef Name="AeronaveId" />
+          </Key>
+          <Property Name="AeronaveId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Matricula" Type="varchar" MaxLength="15" Nullable="false" />
+          <Property Name="ModeloAeronaveId" Type="int" Nullable="false" />
+          <Property Name="EstadoAeronaveCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Aeropuerto">
+          <Key>
+            <PropertyRef Name="AeropuertoId" />
+          </Key>
+          <Property Name="AeropuertoId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="CodigoIATA" Type="char" MaxLength="3" Nullable="false" />
+          <Property Name="Nombre" Type="nvarchar" MaxLength="150" Nullable="false" />
+          <Property Name="Localidad" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="Activo" Type="bit" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Asiento">
+          <Key>
+            <PropertyRef Name="ModeloAeronaveId" />
+            <PropertyRef Name="NumeroAsiento" />
+          </Key>
+          <Property Name="ModeloAeronaveId" Type="int" Nullable="false" />
+          <Property Name="NumeroAsiento" Type="tinyint" Nullable="false" />
+          <Property Name="Codigo" Type="char" MaxLength="2" Nullable="false" />
+          <Property Name="Fila" Type="tinyint" Nullable="false" />
+          <Property Name="Lado" Type="char" MaxLength="1" Nullable="false" />
+          <Property Name="Ubicacion" Type="nvarchar" MaxLength="100" Nullable="false" />
+        </EntityType>
+        <EntityType Name="CheckIn">
+          <Key>
+            <PropertyRef Name="CheckInId" />
+          </Key>
+          <Property Name="CheckInId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="AsignacionId" Type="int" Nullable="false" />
+          <Property Name="FechaRegistro" Type="datetime2" Precision="0" Nullable="false" />
+          <Property Name="EstadoCheckInCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Compra">
+          <Key>
+            <PropertyRef Name="CompraId" />
+          </Key>
+          <Property Name="CompraId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="ReservaId" Type="int" Nullable="false" />
+          <Property Name="FechaCompra" Type="datetime2" Precision="0" Nullable="false" />
+          <Property Name="Importe" Type="decimal" Precision="12" Scale="2" Nullable="false" />
+          <Property Name="MonedaCodigo" Type="char" MaxLength="3" Nullable="false" />
+          <Property Name="EstadoCompraCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="ClaveIdempotencia" Type="uniqueidentifier" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Comprobante">
+          <Key>
+            <PropertyRef Name="ComprobanteId" />
+          </Key>
+          <Property Name="ComprobanteId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="CompraId" Type="int" Nullable="false" />
+          <Property Name="TipoComprobanteCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="NumeroComprobante" Type="varchar" MaxLength="30" Nullable="false" />
+          <Property Name="FechaEmision" Type="datetime2" Precision="0" Nullable="false" />
+          <Property Name="EstadoComprobanteCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+        </EntityType>
+        <EntityType Name="DatosEmisor">
+          <Key>
+            <PropertyRef Name="DatosEmisorId" />
+          </Key>
+          <Property Name="DatosEmisorId" Type="tinyint" Nullable="false" />
+          <Property Name="NombreComercial" Type="nvarchar" MaxLength="150" Nullable="false" />
+          <Property Name="Identificacion" Type="nvarchar" MaxLength="60" Nullable="false" />
+          <Property Name="Direccion" Type="nvarchar" MaxLength="200" Nullable="false" />
+          <Property Name="Telefono" Type="varchar" MaxLength="20" />
+          <Property Name="Correo" Type="nvarchar" MaxLength="256" />
+          <Property Name="LeyendaComprobante" Type="nvarchar" MaxLength="300" Nullable="false" />
+        </EntityType>
+        <EntityType Name="EstadoAeronave">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="Descripcion" Type="nvarchar" MaxLength="100" Nullable="false" />
+        </EntityType>
+        <EntityType Name="EstadoAsignacion">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="Descripcion" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="OcupaInventario" Type="bit" Nullable="false" />
+          <Property Name="EstadoVisual" Type="varchar" MaxLength="20" Nullable="false" />
+        </EntityType>
+        <EntityType Name="EstadoCheckIn">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="Descripcion" Type="nvarchar" MaxLength="100" Nullable="false" />
+        </EntityType>
+        <EntityType Name="EstadoCompra">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="Descripcion" Type="nvarchar" MaxLength="100" Nullable="false" />
+        </EntityType>
+        <EntityType Name="EstadoComprobante">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="Descripcion" Type="nvarchar" MaxLength="100" Nullable="false" />
+        </EntityType>
+        <EntityType Name="EstadoItinerario">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="Descripcion" Type="nvarchar" MaxLength="100" Nullable="false" />
+        </EntityType>
+        <EntityType Name="EstadoPago">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="Descripcion" Type="nvarchar" MaxLength="100" Nullable="false" />
+        </EntityType>
+        <EntityType Name="EstadoReserva">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="Descripcion" Type="nvarchar" MaxLength="100" Nullable="false" />
+        </EntityType>
+        <EntityType Name="EstadoVuelo">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="Descripcion" Type="nvarchar" MaxLength="100" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Frecuencia">
+          <Key>
+            <PropertyRef Name="FrecuenciaId" />
+          </Key>
+          <Property Name="FrecuenciaId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="RutaId" Type="int" Nullable="false" />
+          <Property Name="DiaSemana" Type="tinyint" Nullable="false" />
+          <Property Name="HoraSalida" Type="time" Precision="0" Nullable="false" />
+          <Property Name="HoraLlegada" Type="time" Precision="0" Nullable="false" />
+          <Property Name="Activa" Type="bit" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Itinerario">
+          <Key>
+            <PropertyRef Name="ItinerarioId" />
+          </Key>
+          <Property Name="ItinerarioId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Referencia" Type="varchar" MaxLength="30" Nullable="false" />
+          <Property Name="Nombre" Type="nvarchar" MaxLength="150" Nullable="false" />
+          <Property Name="EstadoItinerarioCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+        </EntityType>
+        <EntityType Name="MarcaTarjeta">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="Nombre" Type="nvarchar" MaxLength="60" Nullable="false" />
+          <Property Name="LongitudNumero" Type="tinyint" Nullable="false" />
+          <Property Name="LongitudCodigoSeguridad" Type="tinyint" Nullable="false" />
+          <Property Name="PrefijosReferencia" Type="varchar" MaxLength="40" Nullable="false" />
+          <Property Name="RutaLogo" Type="varchar" MaxLength="150" Nullable="false" />
+          <Property Name="Activa" Type="bit" Nullable="false" />
+        </EntityType>
+        <EntityType Name="MetodoPago">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="Nombre" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="Activo" Type="bit" Nullable="false" />
+        </EntityType>
+        <EntityType Name="ModeloAeronave">
+          <Key>
+            <PropertyRef Name="ModeloAeronaveId" />
+          </Key>
+          <Property Name="ModeloAeronaveId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Fabricante" Type="nvarchar" MaxLength="60" Nullable="false" />
+          <Property Name="Nombre" Type="nvarchar" MaxLength="60" Nullable="false" />
+          <Property Name="CapacidadAsientos" Type="tinyint" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Moneda">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="char" MaxLength="3" Nullable="false" />
+          <Property Name="Descripcion" Type="nvarchar" MaxLength="100" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Pago">
+          <Key>
+            <PropertyRef Name="PagoId" />
+          </Key>
+          <Property Name="PagoId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="CompraId" Type="int" Nullable="false" />
+          <Property Name="FechaPago" Type="datetime2" Precision="0" Nullable="false" />
+          <Property Name="Importe" Type="decimal" Precision="12" Scale="2" Nullable="false" />
+          <Property Name="EstadoPagoCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="MetodoPagoCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="MarcaTarjetaCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="UltimosCuatroDigitos" Type="char" MaxLength="4" Nullable="false" />
+          <Property Name="NombreTitular" Type="nvarchar" MaxLength="100" />
+          <Property Name="CodigoOperacion" Type="varchar" MaxLength="40" Nullable="false" />
+          <Property Name="EsSimulado" Type="bit" Nullable="false" />
+          <Property Name="MensajeResultado" Type="nvarchar" MaxLength="200" />
+        </EntityType>
+        <EntityType Name="Pasajero">
+          <Key>
+            <PropertyRef Name="PasajeroId" />
+          </Key>
+          <Property Name="PasajeroId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="TipoDocumentoCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="NumeroDocumento" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="Nombres" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="Apellidos" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="FechaNacimiento" Type="date" />
+          <Property Name="Correo" Type="nvarchar" MaxLength="256" />
+          <Property Name="Telefono" Type="varchar" MaxLength="20" />
+          <Property Name="FechaRegistro" Type="datetime2" Precision="0" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Reserva">
+          <Key>
+            <PropertyRef Name="ReservaId" />
+          </Key>
+          <Property Name="ReservaId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="CodigoReserva" Type="varchar" MaxLength="10" StoreGeneratedPattern="Computed" />
+          <Property Name="UsuarioId" Type="nvarchar" MaxLength="128" Nullable="false" />
+          <Property Name="FechaCreacion" Type="datetime2" Precision="0" Nullable="false" />
+          <Property Name="FechaExpiracion" Type="datetime2" Precision="0" />
+          <Property Name="EstadoReservaCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+        </EntityType>
+        <EntityType Name="ReservaPasajeroVuelo">
+          <Key>
+            <PropertyRef Name="AsignacionId" />
+          </Key>
+          <Property Name="AsignacionId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="ReservaId" Type="int" Nullable="false" />
+          <Property Name="PasajeroId" Type="int" Nullable="false" />
+          <Property Name="VueloId" Type="int" Nullable="false" />
+          <Property Name="NumeroAsiento" Type="tinyint" Nullable="false" />
+          <Property Name="ImporteTramo" Type="decimal" Precision="12" Scale="2" Nullable="false" />
+          <Property Name="EstadoAsignacionCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="FechaAsignacion" Type="datetime2" Precision="0" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Ruta">
+          <Key>
+            <PropertyRef Name="RutaId" />
+          </Key>
+          <Property Name="RutaId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="AeropuertoOrigenId" Type="int" Nullable="false" />
+          <Property Name="AeropuertoDestinoId" Type="int" Nullable="false" />
+          <Property Name="TarifaReferencial" Type="decimal" Precision="12" Scale="2" Nullable="false" />
+          <Property Name="Activa" Type="bit" Nullable="false" />
+        </EntityType>
+        <EntityType Name="TipoComprobante">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="Descripcion" Type="nvarchar" MaxLength="150" Nullable="false" />
+        </EntityType>
+        <EntityType Name="TipoDocumentoIdentidad">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="Descripcion" Type="nvarchar" MaxLength="100" Nullable="false" />
+        </EntityType>
+        <EntityType Name="TramoItinerario">
+          <Key>
+            <PropertyRef Name="TramoItinerarioId" />
+          </Key>
+          <Property Name="TramoItinerarioId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="ItinerarioId" Type="int" Nullable="false" />
+          <Property Name="VueloId" Type="int" Nullable="false" />
+          <Property Name="Orden" Type="tinyint" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Vuelo">
+          <Key>
+            <PropertyRef Name="VueloId" />
+          </Key>
+          <Property Name="VueloId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="FrecuenciaId" Type="int" Nullable="false" />
+          <Property Name="FechaOperacion" Type="date" Nullable="false" />
+          <Property Name="AeronaveId" Type="int" />
+          <Property Name="EstadoVueloCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+        </EntityType>
+        <Association Name="FK_Aeronave_Estado">
+          <End Role="EstadoAeronave" Type="Self.EstadoAeronave" Multiplicity="1" />
+          <End Role="Aeronave" Type="Self.Aeronave" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoAeronave">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Aeronave">
+              <PropertyRef Name="EstadoAeronaveCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Aeronave_Modelo">
+          <End Role="ModeloAeronave" Type="Self.ModeloAeronave" Multiplicity="1" />
+          <End Role="Aeronave" Type="Self.Aeronave" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="ModeloAeronave">
+              <PropertyRef Name="ModeloAeronaveId" />
+            </Principal>
+            <Dependent Role="Aeronave">
+              <PropertyRef Name="ModeloAeronaveId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Asiento_Modelo">
+          <End Role="ModeloAeronave" Type="Self.ModeloAeronave" Multiplicity="1" />
+          <End Role="Asiento" Type="Self.Asiento" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="ModeloAeronave">
+              <PropertyRef Name="ModeloAeronaveId" />
+            </Principal>
+            <Dependent Role="Asiento">
+              <PropertyRef Name="ModeloAeronaveId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_CheckIn_Asignacion">
+          <End Role="ReservaPasajeroVuelo" Type="Self.ReservaPasajeroVuelo" Multiplicity="1" />
+          <End Role="CheckIn" Type="Self.CheckIn" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="ReservaPasajeroVuelo">
+              <PropertyRef Name="AsignacionId" />
+            </Principal>
+            <Dependent Role="CheckIn">
+              <PropertyRef Name="AsignacionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_CheckIn_Estado">
+          <End Role="EstadoCheckIn" Type="Self.EstadoCheckIn" Multiplicity="1" />
+          <End Role="CheckIn" Type="Self.CheckIn" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoCheckIn">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="CheckIn">
+              <PropertyRef Name="EstadoCheckInCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Compra_Estado">
+          <End Role="EstadoCompra" Type="Self.EstadoCompra" Multiplicity="1" />
+          <End Role="Compra" Type="Self.Compra" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoCompra">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Compra">
+              <PropertyRef Name="EstadoCompraCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Compra_Moneda">
+          <End Role="Moneda" Type="Self.Moneda" Multiplicity="1" />
+          <End Role="Compra" Type="Self.Compra" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Moneda">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Compra">
+              <PropertyRef Name="MonedaCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Compra_Reserva">
+          <End Role="Reserva" Type="Self.Reserva" Multiplicity="1" />
+          <End Role="Compra" Type="Self.Compra" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Reserva">
+              <PropertyRef Name="ReservaId" />
+            </Principal>
+            <Dependent Role="Compra">
+              <PropertyRef Name="ReservaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Comprobante_Compra">
+          <End Role="Compra" Type="Self.Compra" Multiplicity="1" />
+          <End Role="Comprobante" Type="Self.Comprobante" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Compra">
+              <PropertyRef Name="CompraId" />
+            </Principal>
+            <Dependent Role="Comprobante">
+              <PropertyRef Name="CompraId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Comprobante_Estado">
+          <End Role="EstadoComprobante" Type="Self.EstadoComprobante" Multiplicity="1" />
+          <End Role="Comprobante" Type="Self.Comprobante" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoComprobante">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Comprobante">
+              <PropertyRef Name="EstadoComprobanteCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Comprobante_Tipo">
+          <End Role="TipoComprobante" Type="Self.TipoComprobante" Multiplicity="1" />
+          <End Role="Comprobante" Type="Self.Comprobante" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TipoComprobante">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Comprobante">
+              <PropertyRef Name="TipoComprobanteCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Frecuencia_Ruta">
+          <End Role="Ruta" Type="Self.Ruta" Multiplicity="1" />
+          <End Role="Frecuencia" Type="Self.Frecuencia" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Ruta">
+              <PropertyRef Name="RutaId" />
+            </Principal>
+            <Dependent Role="Frecuencia">
+              <PropertyRef Name="RutaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Itinerario_Estado">
+          <End Role="EstadoItinerario" Type="Self.EstadoItinerario" Multiplicity="1" />
+          <End Role="Itinerario" Type="Self.Itinerario" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoItinerario">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Itinerario">
+              <PropertyRef Name="EstadoItinerarioCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Pago_Compra">
+          <End Role="Compra" Type="Self.Compra" Multiplicity="1" />
+          <End Role="Pago" Type="Self.Pago" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Compra">
+              <PropertyRef Name="CompraId" />
+            </Principal>
+            <Dependent Role="Pago">
+              <PropertyRef Name="CompraId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Pago_Estado">
+          <End Role="EstadoPago" Type="Self.EstadoPago" Multiplicity="1" />
+          <End Role="Pago" Type="Self.Pago" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoPago">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Pago">
+              <PropertyRef Name="EstadoPagoCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Pago_Marca">
+          <End Role="MarcaTarjeta" Type="Self.MarcaTarjeta" Multiplicity="1" />
+          <End Role="Pago" Type="Self.Pago" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="MarcaTarjeta">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Pago">
+              <PropertyRef Name="MarcaTarjetaCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Pago_Metodo">
+          <End Role="MetodoPago" Type="Self.MetodoPago" Multiplicity="1" />
+          <End Role="Pago" Type="Self.Pago" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="MetodoPago">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Pago">
+              <PropertyRef Name="MetodoPagoCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Pasajero_TipoDocumento">
+          <End Role="TipoDocumentoIdentidad" Type="Self.TipoDocumentoIdentidad" Multiplicity="1" />
+          <End Role="Pasajero" Type="Self.Pasajero" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TipoDocumentoIdentidad">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Pasajero">
+              <PropertyRef Name="TipoDocumentoCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Reserva_Estado">
+          <End Role="EstadoReserva" Type="Self.EstadoReserva" Multiplicity="1" />
+          <End Role="Reserva" Type="Self.Reserva" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoReserva">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Reserva">
+              <PropertyRef Name="EstadoReservaCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_RPV_Estado">
+          <End Role="EstadoAsignacion" Type="Self.EstadoAsignacion" Multiplicity="1" />
+          <End Role="ReservaPasajeroVuelo" Type="Self.ReservaPasajeroVuelo" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoAsignacion">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="ReservaPasajeroVuelo">
+              <PropertyRef Name="EstadoAsignacionCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_RPV_Pasajero">
+          <End Role="Pasajero" Type="Self.Pasajero" Multiplicity="1" />
+          <End Role="ReservaPasajeroVuelo" Type="Self.ReservaPasajeroVuelo" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Pasajero">
+              <PropertyRef Name="PasajeroId" />
+            </Principal>
+            <Dependent Role="ReservaPasajeroVuelo">
+              <PropertyRef Name="PasajeroId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_RPV_Reserva">
+          <End Role="Reserva" Type="Self.Reserva" Multiplicity="1" />
+          <End Role="ReservaPasajeroVuelo" Type="Self.ReservaPasajeroVuelo" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Reserva">
+              <PropertyRef Name="ReservaId" />
+            </Principal>
+            <Dependent Role="ReservaPasajeroVuelo">
+              <PropertyRef Name="ReservaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_RPV_Vuelo">
+          <End Role="Vuelo" Type="Self.Vuelo" Multiplicity="1" />
+          <End Role="ReservaPasajeroVuelo" Type="Self.ReservaPasajeroVuelo" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Vuelo">
+              <PropertyRef Name="VueloId" />
+            </Principal>
+            <Dependent Role="ReservaPasajeroVuelo">
+              <PropertyRef Name="VueloId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Ruta_Destino">
+          <End Role="Aeropuerto" Type="Self.Aeropuerto" Multiplicity="1" />
+          <End Role="Ruta" Type="Self.Ruta" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Aeropuerto">
+              <PropertyRef Name="AeropuertoId" />
+            </Principal>
+            <Dependent Role="Ruta">
+              <PropertyRef Name="AeropuertoDestinoId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Ruta_Origen">
+          <End Role="Aeropuerto" Type="Self.Aeropuerto" Multiplicity="1" />
+          <End Role="Ruta" Type="Self.Ruta" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Aeropuerto">
+              <PropertyRef Name="AeropuertoId" />
+            </Principal>
+            <Dependent Role="Ruta">
+              <PropertyRef Name="AeropuertoOrigenId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Tramo_Itinerario">
+          <End Role="Itinerario" Type="Self.Itinerario" Multiplicity="1" />
+          <End Role="TramoItinerario" Type="Self.TramoItinerario" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Itinerario">
+              <PropertyRef Name="ItinerarioId" />
+            </Principal>
+            <Dependent Role="TramoItinerario">
+              <PropertyRef Name="ItinerarioId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Tramo_Vuelo">
+          <End Role="Vuelo" Type="Self.Vuelo" Multiplicity="1" />
+          <End Role="TramoItinerario" Type="Self.TramoItinerario" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Vuelo">
+              <PropertyRef Name="VueloId" />
+            </Principal>
+            <Dependent Role="TramoItinerario">
+              <PropertyRef Name="VueloId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Vuelo_Aeronave">
+          <End Role="Aeronave" Type="Self.Aeronave" Multiplicity="0..1" />
+          <End Role="Vuelo" Type="Self.Vuelo" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Aeronave">
+              <PropertyRef Name="AeronaveId" />
+            </Principal>
+            <Dependent Role="Vuelo">
+              <PropertyRef Name="AeronaveId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Vuelo_Estado">
+          <End Role="EstadoVuelo" Type="Self.EstadoVuelo" Multiplicity="1" />
+          <End Role="Vuelo" Type="Self.Vuelo" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoVuelo">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Vuelo">
+              <PropertyRef Name="EstadoVueloCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Vuelo_Frecuencia">
+          <End Role="Frecuencia" Type="Self.Frecuencia" Multiplicity="1" />
+          <End Role="Vuelo" Type="Self.Vuelo" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Frecuencia">
+              <PropertyRef Name="FrecuenciaId" />
+            </Principal>
+            <Dependent Role="Vuelo">
+              <PropertyRef Name="FrecuenciaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityContainer Name="AerolineaVIPModelStoreContainer">
+          <EntitySet Name="Aeronave" EntityType="Self.Aeronave" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Aeropuerto" EntityType="Self.Aeropuerto" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Asiento" EntityType="Self.Asiento" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="CheckIn" EntityType="Self.CheckIn" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Compra" EntityType="Self.Compra" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Comprobante" EntityType="Self.Comprobante" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="DatosEmisor" EntityType="Self.DatosEmisor" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="EstadoAeronave" EntityType="Self.EstadoAeronave" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="EstadoAsignacion" EntityType="Self.EstadoAsignacion" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="EstadoCheckIn" EntityType="Self.EstadoCheckIn" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="EstadoCompra" EntityType="Self.EstadoCompra" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="EstadoComprobante" EntityType="Self.EstadoComprobante" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="EstadoItinerario" EntityType="Self.EstadoItinerario" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="EstadoPago" EntityType="Self.EstadoPago" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="EstadoReserva" EntityType="Self.EstadoReserva" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="EstadoVuelo" EntityType="Self.EstadoVuelo" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Frecuencia" EntityType="Self.Frecuencia" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Itinerario" EntityType="Self.Itinerario" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="MarcaTarjeta" EntityType="Self.MarcaTarjeta" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="MetodoPago" EntityType="Self.MetodoPago" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="ModeloAeronave" EntityType="Self.ModeloAeronave" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Moneda" EntityType="Self.Moneda" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Pago" EntityType="Self.Pago" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Pasajero" EntityType="Self.Pasajero" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Reserva" EntityType="Self.Reserva" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="ReservaPasajeroVuelo" EntityType="Self.ReservaPasajeroVuelo" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Ruta" EntityType="Self.Ruta" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="TipoComprobante" EntityType="Self.TipoComprobante" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="TipoDocumentoIdentidad" EntityType="Self.TipoDocumentoIdentidad" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="TramoItinerario" EntityType="Self.TramoItinerario" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Vuelo" EntityType="Self.Vuelo" Schema="dbo" store:Type="Tables" />
+          <AssociationSet Name="FK_Aeronave_Estado" Association="Self.FK_Aeronave_Estado">
+            <End Role="EstadoAeronave" EntitySet="EstadoAeronave" />
+            <End Role="Aeronave" EntitySet="Aeronave" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Aeronave_Modelo" Association="Self.FK_Aeronave_Modelo">
+            <End Role="ModeloAeronave" EntitySet="ModeloAeronave" />
+            <End Role="Aeronave" EntitySet="Aeronave" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Asiento_Modelo" Association="Self.FK_Asiento_Modelo">
+            <End Role="ModeloAeronave" EntitySet="ModeloAeronave" />
+            <End Role="Asiento" EntitySet="Asiento" />
+          </AssociationSet>
+          <AssociationSet Name="FK_CheckIn_Asignacion" Association="Self.FK_CheckIn_Asignacion">
+            <End Role="ReservaPasajeroVuelo" EntitySet="ReservaPasajeroVuelo" />
+            <End Role="CheckIn" EntitySet="CheckIn" />
+          </AssociationSet>
+          <AssociationSet Name="FK_CheckIn_Estado" Association="Self.FK_CheckIn_Estado">
+            <End Role="EstadoCheckIn" EntitySet="EstadoCheckIn" />
+            <End Role="CheckIn" EntitySet="CheckIn" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Compra_Estado" Association="Self.FK_Compra_Estado">
+            <End Role="EstadoCompra" EntitySet="EstadoCompra" />
+            <End Role="Compra" EntitySet="Compra" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Compra_Moneda" Association="Self.FK_Compra_Moneda">
+            <End Role="Moneda" EntitySet="Moneda" />
+            <End Role="Compra" EntitySet="Compra" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Compra_Reserva" Association="Self.FK_Compra_Reserva">
+            <End Role="Reserva" EntitySet="Reserva" />
+            <End Role="Compra" EntitySet="Compra" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Comprobante_Compra" Association="Self.FK_Comprobante_Compra">
+            <End Role="Compra" EntitySet="Compra" />
+            <End Role="Comprobante" EntitySet="Comprobante" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Comprobante_Estado" Association="Self.FK_Comprobante_Estado">
+            <End Role="EstadoComprobante" EntitySet="EstadoComprobante" />
+            <End Role="Comprobante" EntitySet="Comprobante" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Comprobante_Tipo" Association="Self.FK_Comprobante_Tipo">
+            <End Role="TipoComprobante" EntitySet="TipoComprobante" />
+            <End Role="Comprobante" EntitySet="Comprobante" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Frecuencia_Ruta" Association="Self.FK_Frecuencia_Ruta">
+            <End Role="Ruta" EntitySet="Ruta" />
+            <End Role="Frecuencia" EntitySet="Frecuencia" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Itinerario_Estado" Association="Self.FK_Itinerario_Estado">
+            <End Role="EstadoItinerario" EntitySet="EstadoItinerario" />
+            <End Role="Itinerario" EntitySet="Itinerario" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Pago_Compra" Association="Self.FK_Pago_Compra">
+            <End Role="Compra" EntitySet="Compra" />
+            <End Role="Pago" EntitySet="Pago" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Pago_Estado" Association="Self.FK_Pago_Estado">
+            <End Role="EstadoPago" EntitySet="EstadoPago" />
+            <End Role="Pago" EntitySet="Pago" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Pago_Marca" Association="Self.FK_Pago_Marca">
+            <End Role="MarcaTarjeta" EntitySet="MarcaTarjeta" />
+            <End Role="Pago" EntitySet="Pago" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Pago_Metodo" Association="Self.FK_Pago_Metodo">
+            <End Role="MetodoPago" EntitySet="MetodoPago" />
+            <End Role="Pago" EntitySet="Pago" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Pasajero_TipoDocumento" Association="Self.FK_Pasajero_TipoDocumento">
+            <End Role="TipoDocumentoIdentidad" EntitySet="TipoDocumentoIdentidad" />
+            <End Role="Pasajero" EntitySet="Pasajero" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Reserva_Estado" Association="Self.FK_Reserva_Estado">
+            <End Role="EstadoReserva" EntitySet="EstadoReserva" />
+            <End Role="Reserva" EntitySet="Reserva" />
+          </AssociationSet>
+          <AssociationSet Name="FK_RPV_Estado" Association="Self.FK_RPV_Estado">
+            <End Role="EstadoAsignacion" EntitySet="EstadoAsignacion" />
+            <End Role="ReservaPasajeroVuelo" EntitySet="ReservaPasajeroVuelo" />
+          </AssociationSet>
+          <AssociationSet Name="FK_RPV_Pasajero" Association="Self.FK_RPV_Pasajero">
+            <End Role="Pasajero" EntitySet="Pasajero" />
+            <End Role="ReservaPasajeroVuelo" EntitySet="ReservaPasajeroVuelo" />
+          </AssociationSet>
+          <AssociationSet Name="FK_RPV_Reserva" Association="Self.FK_RPV_Reserva">
+            <End Role="Reserva" EntitySet="Reserva" />
+            <End Role="ReservaPasajeroVuelo" EntitySet="ReservaPasajeroVuelo" />
+          </AssociationSet>
+          <AssociationSet Name="FK_RPV_Vuelo" Association="Self.FK_RPV_Vuelo">
+            <End Role="Vuelo" EntitySet="Vuelo" />
+            <End Role="ReservaPasajeroVuelo" EntitySet="ReservaPasajeroVuelo" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Ruta_Destino" Association="Self.FK_Ruta_Destino">
+            <End Role="Aeropuerto" EntitySet="Aeropuerto" />
+            <End Role="Ruta" EntitySet="Ruta" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Ruta_Origen" Association="Self.FK_Ruta_Origen">
+            <End Role="Aeropuerto" EntitySet="Aeropuerto" />
+            <End Role="Ruta" EntitySet="Ruta" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Tramo_Itinerario" Association="Self.FK_Tramo_Itinerario">
+            <End Role="Itinerario" EntitySet="Itinerario" />
+            <End Role="TramoItinerario" EntitySet="TramoItinerario" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Tramo_Vuelo" Association="Self.FK_Tramo_Vuelo">
+            <End Role="Vuelo" EntitySet="Vuelo" />
+            <End Role="TramoItinerario" EntitySet="TramoItinerario" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Vuelo_Aeronave" Association="Self.FK_Vuelo_Aeronave">
+            <End Role="Aeronave" EntitySet="Aeronave" />
+            <End Role="Vuelo" EntitySet="Vuelo" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Vuelo_Estado" Association="Self.FK_Vuelo_Estado">
+            <End Role="EstadoVuelo" EntitySet="EstadoVuelo" />
+            <End Role="Vuelo" EntitySet="Vuelo" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Vuelo_Frecuencia" Association="Self.FK_Vuelo_Frecuencia">
+            <End Role="Frecuencia" EntitySet="Frecuencia" />
+            <End Role="Vuelo" EntitySet="Vuelo" />
+          </AssociationSet>
+        </EntityContainer>
+      </Schema>
+    </edmx:StorageModels>
+    <!-- CSDL content -->
+    <edmx:ConceptualModels>
+      <Schema Namespace="AerolineaVIPModel" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
+        <EntityType Name="Aeronave">
+          <Key>
+            <PropertyRef Name="AeronaveId" />
+          </Key>
+          <Property Name="AeronaveId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Matricula" Type="String" MaxLength="15" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="ModeloAeronaveId" Type="Int32" Nullable="false" />
+          <Property Name="EstadoAeronaveCodigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <NavigationProperty Name="EstadoAeronave" Relationship="Self.FK_Aeronave_Estado" FromRole="Aeronave" ToRole="EstadoAeronave" />
+          <NavigationProperty Name="ModeloAeronave" Relationship="Self.FK_Aeronave_Modelo" FromRole="Aeronave" ToRole="ModeloAeronave" />
+          <NavigationProperty Name="Vuelo" Relationship="Self.FK_Vuelo_Aeronave" FromRole="Aeronave" ToRole="Vuelo" />
+        </EntityType>
+        <EntityType Name="Aeropuerto">
+          <Key>
+            <PropertyRef Name="AeropuertoId" />
+          </Key>
+          <Property Name="AeropuertoId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="CodigoIATA" Type="String" MaxLength="3" FixedLength="true" Unicode="false" Nullable="false" />
+          <Property Name="Nombre" Type="String" MaxLength="150" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="Localidad" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="Activo" Type="Boolean" Nullable="false" />
+          <NavigationProperty Name="Ruta" Relationship="Self.FK_Ruta_Destino" FromRole="Aeropuerto" ToRole="Ruta" />
+          <NavigationProperty Name="Ruta1" Relationship="Self.FK_Ruta_Origen" FromRole="Aeropuerto" ToRole="Ruta" />
+        </EntityType>
+        <EntityType Name="Asiento">
+          <Key>
+            <PropertyRef Name="ModeloAeronaveId" />
+            <PropertyRef Name="NumeroAsiento" />
+          </Key>
+          <Property Name="ModeloAeronaveId" Type="Int32" Nullable="false" />
+          <Property Name="NumeroAsiento" Type="Byte" Nullable="false" />
+          <Property Name="Codigo" Type="String" MaxLength="2" FixedLength="true" Unicode="false" Nullable="false" />
+          <Property Name="Fila" Type="Byte" Nullable="false" />
+          <Property Name="Lado" Type="String" MaxLength="1" FixedLength="true" Unicode="false" Nullable="false" />
+          <Property Name="Ubicacion" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <NavigationProperty Name="ModeloAeronave" Relationship="Self.FK_Asiento_Modelo" FromRole="Asiento" ToRole="ModeloAeronave" />
+        </EntityType>
+        <EntityType Name="CheckIn">
+          <Key>
+            <PropertyRef Name="CheckInId" />
+          </Key>
+          <Property Name="CheckInId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="AsignacionId" Type="Int32" Nullable="false" />
+          <Property Name="FechaRegistro" Type="DateTime" Nullable="false" Precision="0" />
+          <Property Name="EstadoCheckInCodigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <NavigationProperty Name="ReservaPasajeroVuelo" Relationship="Self.FK_CheckIn_Asignacion" FromRole="CheckIn" ToRole="ReservaPasajeroVuelo" />
+          <NavigationProperty Name="EstadoCheckIn" Relationship="Self.FK_CheckIn_Estado" FromRole="CheckIn" ToRole="EstadoCheckIn" />
+        </EntityType>
+        <EntityType Name="Compra">
+          <Key>
+            <PropertyRef Name="CompraId" />
+          </Key>
+          <Property Name="CompraId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="ReservaId" Type="Int32" Nullable="false" />
+          <Property Name="FechaCompra" Type="DateTime" Nullable="false" Precision="0" />
+          <Property Name="Importe" Type="Decimal" Precision="12" Scale="2" Nullable="false" />
+          <Property Name="MonedaCodigo" Type="String" MaxLength="3" FixedLength="true" Unicode="false" Nullable="false" />
+          <Property Name="EstadoCompraCodigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="ClaveIdempotencia" Type="Guid" Nullable="false" />
+          <NavigationProperty Name="EstadoCompra" Relationship="Self.FK_Compra_Estado" FromRole="Compra" ToRole="EstadoCompra" />
+          <NavigationProperty Name="Moneda" Relationship="Self.FK_Compra_Moneda" FromRole="Compra" ToRole="Moneda" />
+          <NavigationProperty Name="Reserva" Relationship="Self.FK_Compra_Reserva" FromRole="Compra" ToRole="Reserva" />
+          <NavigationProperty Name="Comprobante" Relationship="Self.FK_Comprobante_Compra" FromRole="Compra" ToRole="Comprobante" />
+          <NavigationProperty Name="Pago" Relationship="Self.FK_Pago_Compra" FromRole="Compra" ToRole="Pago" />
+        </EntityType>
+        <EntityType Name="Comprobante">
+          <Key>
+            <PropertyRef Name="ComprobanteId" />
+          </Key>
+          <Property Name="ComprobanteId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="CompraId" Type="Int32" Nullable="false" />
+          <Property Name="TipoComprobanteCodigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="NumeroComprobante" Type="String" MaxLength="30" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="FechaEmision" Type="DateTime" Nullable="false" Precision="0" />
+          <Property Name="EstadoComprobanteCodigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <NavigationProperty Name="Compra" Relationship="Self.FK_Comprobante_Compra" FromRole="Comprobante" ToRole="Compra" />
+          <NavigationProperty Name="EstadoComprobante" Relationship="Self.FK_Comprobante_Estado" FromRole="Comprobante" ToRole="EstadoComprobante" />
+          <NavigationProperty Name="TipoComprobante" Relationship="Self.FK_Comprobante_Tipo" FromRole="Comprobante" ToRole="TipoComprobante" />
+        </EntityType>
+        <EntityType Name="DatosEmisor">
+          <Key>
+            <PropertyRef Name="DatosEmisorId" />
+          </Key>
+          <Property Name="DatosEmisorId" Type="Byte" Nullable="false" />
+          <Property Name="NombreComercial" Type="String" MaxLength="150" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="Identificacion" Type="String" MaxLength="60" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="Direccion" Type="String" MaxLength="200" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="Telefono" Type="String" MaxLength="20" FixedLength="false" Unicode="false" />
+          <Property Name="Correo" Type="String" MaxLength="256" FixedLength="false" Unicode="true" />
+          <Property Name="LeyendaComprobante" Type="String" MaxLength="300" FixedLength="false" Unicode="true" Nullable="false" />
+        </EntityType>
+        <EntityType Name="EstadoAeronave">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <NavigationProperty Name="Aeronave" Relationship="Self.FK_Aeronave_Estado" FromRole="EstadoAeronave" ToRole="Aeronave" />
+        </EntityType>
+        <EntityType Name="EstadoAsignacion">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="OcupaInventario" Type="Boolean" Nullable="false" />
+          <Property Name="EstadoVisual" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <NavigationProperty Name="ReservaPasajeroVuelo" Relationship="Self.FK_RPV_Estado" FromRole="EstadoAsignacion" ToRole="ReservaPasajeroVuelo" />
+        </EntityType>
+        <EntityType Name="EstadoCheckIn">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <NavigationProperty Name="CheckIn" Relationship="Self.FK_CheckIn_Estado" FromRole="EstadoCheckIn" ToRole="CheckIn" />
+        </EntityType>
+        <EntityType Name="EstadoCompra">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <NavigationProperty Name="Compra" Relationship="Self.FK_Compra_Estado" FromRole="EstadoCompra" ToRole="Compra" />
+        </EntityType>
+        <EntityType Name="EstadoComprobante">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <NavigationProperty Name="Comprobante" Relationship="Self.FK_Comprobante_Estado" FromRole="EstadoComprobante" ToRole="Comprobante" />
+        </EntityType>
+        <EntityType Name="EstadoItinerario">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <NavigationProperty Name="Itinerario" Relationship="Self.FK_Itinerario_Estado" FromRole="EstadoItinerario" ToRole="Itinerario" />
+        </EntityType>
+        <EntityType Name="EstadoPago">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <NavigationProperty Name="Pago" Relationship="Self.FK_Pago_Estado" FromRole="EstadoPago" ToRole="Pago" />
+        </EntityType>
+        <EntityType Name="EstadoReserva">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <NavigationProperty Name="Reserva" Relationship="Self.FK_Reserva_Estado" FromRole="EstadoReserva" ToRole="Reserva" />
+        </EntityType>
+        <EntityType Name="EstadoVuelo">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <NavigationProperty Name="Vuelo" Relationship="Self.FK_Vuelo_Estado" FromRole="EstadoVuelo" ToRole="Vuelo" />
+        </EntityType>
+        <EntityType Name="Frecuencia">
+          <Key>
+            <PropertyRef Name="FrecuenciaId" />
+          </Key>
+          <Property Name="FrecuenciaId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="RutaId" Type="Int32" Nullable="false" />
+          <Property Name="DiaSemana" Type="Byte" Nullable="false" />
+          <Property Name="HoraSalida" Type="Time" Nullable="false" Precision="0" />
+          <Property Name="HoraLlegada" Type="Time" Nullable="false" Precision="0" />
+          <Property Name="Activa" Type="Boolean" Nullable="false" />
+          <NavigationProperty Name="Ruta" Relationship="Self.FK_Frecuencia_Ruta" FromRole="Frecuencia" ToRole="Ruta" />
+          <NavigationProperty Name="Vuelo" Relationship="Self.FK_Vuelo_Frecuencia" FromRole="Frecuencia" ToRole="Vuelo" />
+        </EntityType>
+        <EntityType Name="Itinerario">
+          <Key>
+            <PropertyRef Name="ItinerarioId" />
+          </Key>
+          <Property Name="ItinerarioId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Referencia" Type="String" MaxLength="30" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Nombre" Type="String" MaxLength="150" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="EstadoItinerarioCodigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <NavigationProperty Name="EstadoItinerario" Relationship="Self.FK_Itinerario_Estado" FromRole="Itinerario" ToRole="EstadoItinerario" />
+          <NavigationProperty Name="TramoItinerario" Relationship="Self.FK_Tramo_Itinerario" FromRole="Itinerario" ToRole="TramoItinerario" />
+        </EntityType>
+        <EntityType Name="MarcaTarjeta">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Nombre" Type="String" MaxLength="60" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="LongitudNumero" Type="Byte" Nullable="false" />
+          <Property Name="LongitudCodigoSeguridad" Type="Byte" Nullable="false" />
+          <Property Name="PrefijosReferencia" Type="String" MaxLength="40" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="RutaLogo" Type="String" MaxLength="150" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Activa" Type="Boolean" Nullable="false" />
+          <NavigationProperty Name="Pago" Relationship="Self.FK_Pago_Marca" FromRole="MarcaTarjeta" ToRole="Pago" />
+        </EntityType>
+        <EntityType Name="MetodoPago">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Nombre" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="Activo" Type="Boolean" Nullable="false" />
+          <NavigationProperty Name="Pago" Relationship="Self.FK_Pago_Metodo" FromRole="MetodoPago" ToRole="Pago" />
+        </EntityType>
+        <EntityType Name="ModeloAeronave">
+          <Key>
+            <PropertyRef Name="ModeloAeronaveId" />
+          </Key>
+          <Property Name="ModeloAeronaveId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Fabricante" Type="String" MaxLength="60" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="Nombre" Type="String" MaxLength="60" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="CapacidadAsientos" Type="Byte" Nullable="false" />
+          <NavigationProperty Name="Aeronave" Relationship="Self.FK_Aeronave_Modelo" FromRole="ModeloAeronave" ToRole="Aeronave" />
+          <NavigationProperty Name="Asiento" Relationship="Self.FK_Asiento_Modelo" FromRole="ModeloAeronave" ToRole="Asiento" />
+        </EntityType>
+        <EntityType Name="Moneda">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="String" MaxLength="3" FixedLength="true" Unicode="false" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <NavigationProperty Name="Compra" Relationship="Self.FK_Compra_Moneda" FromRole="Moneda" ToRole="Compra" />
+        </EntityType>
+        <EntityType Name="Pago">
+          <Key>
+            <PropertyRef Name="PagoId" />
+          </Key>
+          <Property Name="PagoId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="CompraId" Type="Int32" Nullable="false" />
+          <Property Name="FechaPago" Type="DateTime" Nullable="false" Precision="0" />
+          <Property Name="Importe" Type="Decimal" Precision="12" Scale="2" Nullable="false" />
+          <Property Name="EstadoPagoCodigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="MetodoPagoCodigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="MarcaTarjetaCodigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="UltimosCuatroDigitos" Type="String" MaxLength="4" FixedLength="true" Unicode="false" Nullable="false" />
+          <Property Name="NombreTitular" Type="String" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="CodigoOperacion" Type="String" MaxLength="40" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="EsSimulado" Type="Boolean" Nullable="false" />
+          <Property Name="MensajeResultado" Type="String" MaxLength="200" FixedLength="false" Unicode="true" />
+          <NavigationProperty Name="Compra" Relationship="Self.FK_Pago_Compra" FromRole="Pago" ToRole="Compra" />
+          <NavigationProperty Name="EstadoPago" Relationship="Self.FK_Pago_Estado" FromRole="Pago" ToRole="EstadoPago" />
+          <NavigationProperty Name="MarcaTarjeta" Relationship="Self.FK_Pago_Marca" FromRole="Pago" ToRole="MarcaTarjeta" />
+          <NavigationProperty Name="MetodoPago" Relationship="Self.FK_Pago_Metodo" FromRole="Pago" ToRole="MetodoPago" />
+        </EntityType>
+        <EntityType Name="Pasajero">
+          <Key>
+            <PropertyRef Name="PasajeroId" />
+          </Key>
+          <Property Name="PasajeroId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="TipoDocumentoCodigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="NumeroDocumento" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Nombres" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="Apellidos" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="FechaNacimiento" Type="DateTime" Precision="0" />
+          <Property Name="Correo" Type="String" MaxLength="256" FixedLength="false" Unicode="true" />
+          <Property Name="Telefono" Type="String" MaxLength="20" FixedLength="false" Unicode="false" />
+          <Property Name="FechaRegistro" Type="DateTime" Nullable="false" Precision="0" />
+          <NavigationProperty Name="TipoDocumentoIdentidad" Relationship="Self.FK_Pasajero_TipoDocumento" FromRole="Pasajero" ToRole="TipoDocumentoIdentidad" />
+          <NavigationProperty Name="ReservaPasajeroVuelo" Relationship="Self.FK_RPV_Pasajero" FromRole="Pasajero" ToRole="ReservaPasajeroVuelo" />
+        </EntityType>
+        <EntityType Name="Reserva">
+          <Key>
+            <PropertyRef Name="ReservaId" />
+          </Key>
+          <Property Name="ReservaId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="CodigoReserva" Type="String" MaxLength="10" FixedLength="false" Unicode="false" annotation:StoreGeneratedPattern="Computed" />
+          <Property Name="UsuarioId" Type="String" MaxLength="128" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="FechaCreacion" Type="DateTime" Nullable="false" Precision="0" />
+          <Property Name="FechaExpiracion" Type="DateTime" Precision="0" />
+          <Property Name="EstadoReservaCodigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <NavigationProperty Name="Compra" Relationship="Self.FK_Compra_Reserva" FromRole="Reserva" ToRole="Compra" />
+          <NavigationProperty Name="EstadoReserva" Relationship="Self.FK_Reserva_Estado" FromRole="Reserva" ToRole="EstadoReserva" />
+          <NavigationProperty Name="ReservaPasajeroVuelo" Relationship="Self.FK_RPV_Reserva" FromRole="Reserva" ToRole="ReservaPasajeroVuelo" />
+        </EntityType>
+        <EntityType Name="ReservaPasajeroVuelo">
+          <Key>
+            <PropertyRef Name="AsignacionId" />
+          </Key>
+          <Property Name="AsignacionId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="ReservaId" Type="Int32" Nullable="false" />
+          <Property Name="PasajeroId" Type="Int32" Nullable="false" />
+          <Property Name="VueloId" Type="Int32" Nullable="false" />
+          <Property Name="NumeroAsiento" Type="Byte" Nullable="false" />
+          <Property Name="ImporteTramo" Type="Decimal" Precision="12" Scale="2" Nullable="false" />
+          <Property Name="EstadoAsignacionCodigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="FechaAsignacion" Type="DateTime" Nullable="false" Precision="0" />
+          <NavigationProperty Name="CheckIn" Relationship="Self.FK_CheckIn_Asignacion" FromRole="ReservaPasajeroVuelo" ToRole="CheckIn" />
+          <NavigationProperty Name="EstadoAsignacion" Relationship="Self.FK_RPV_Estado" FromRole="ReservaPasajeroVuelo" ToRole="EstadoAsignacion" />
+          <NavigationProperty Name="Pasajero" Relationship="Self.FK_RPV_Pasajero" FromRole="ReservaPasajeroVuelo" ToRole="Pasajero" />
+          <NavigationProperty Name="Reserva" Relationship="Self.FK_RPV_Reserva" FromRole="ReservaPasajeroVuelo" ToRole="Reserva" />
+          <NavigationProperty Name="Vuelo" Relationship="Self.FK_RPV_Vuelo" FromRole="ReservaPasajeroVuelo" ToRole="Vuelo" />
+        </EntityType>
+        <EntityType Name="Ruta">
+          <Key>
+            <PropertyRef Name="RutaId" />
+          </Key>
+          <Property Name="RutaId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="AeropuertoOrigenId" Type="Int32" Nullable="false" />
+          <Property Name="AeropuertoDestinoId" Type="Int32" Nullable="false" />
+          <Property Name="TarifaReferencial" Type="Decimal" Precision="12" Scale="2" Nullable="false" />
+          <Property Name="Activa" Type="Boolean" Nullable="false" />
+          <NavigationProperty Name="Aeropuerto" Relationship="Self.FK_Ruta_Destino" FromRole="Ruta" ToRole="Aeropuerto" />
+          <NavigationProperty Name="Aeropuerto1" Relationship="Self.FK_Ruta_Origen" FromRole="Ruta" ToRole="Aeropuerto" />
+          <NavigationProperty Name="Frecuencia" Relationship="Self.FK_Frecuencia_Ruta" FromRole="Ruta" ToRole="Frecuencia" />
+        </EntityType>
+        <EntityType Name="TipoComprobante">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="150" FixedLength="false" Unicode="true" Nullable="false" />
+          <NavigationProperty Name="Comprobante" Relationship="Self.FK_Comprobante_Tipo" FromRole="TipoComprobante" ToRole="Comprobante" />
+        </EntityType>
+        <EntityType Name="TipoDocumentoIdentidad">
+          <Key>
+            <PropertyRef Name="Codigo" />
+          </Key>
+          <Property Name="Codigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <NavigationProperty Name="Pasajero" Relationship="Self.FK_Pasajero_TipoDocumento" FromRole="TipoDocumentoIdentidad" ToRole="Pasajero" />
+        </EntityType>
+        <EntityType Name="TramoItinerario">
+          <Key>
+            <PropertyRef Name="TramoItinerarioId" />
+          </Key>
+          <Property Name="TramoItinerarioId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="ItinerarioId" Type="Int32" Nullable="false" />
+          <Property Name="VueloId" Type="Int32" Nullable="false" />
+          <Property Name="Orden" Type="Byte" Nullable="false" />
+          <NavigationProperty Name="Itinerario" Relationship="Self.FK_Tramo_Itinerario" FromRole="TramoItinerario" ToRole="Itinerario" />
+          <NavigationProperty Name="Vuelo" Relationship="Self.FK_Tramo_Vuelo" FromRole="TramoItinerario" ToRole="Vuelo" />
+        </EntityType>
+        <EntityType Name="Vuelo">
+          <Key>
+            <PropertyRef Name="VueloId" />
+          </Key>
+          <Property Name="VueloId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="FrecuenciaId" Type="Int32" Nullable="false" />
+          <Property Name="FechaOperacion" Type="DateTime" Nullable="false" Precision="0" />
+          <Property Name="AeronaveId" Type="Int32" />
+          <Property Name="EstadoVueloCodigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" Nullable="false" />
+          <NavigationProperty Name="Aeronave" Relationship="Self.FK_Vuelo_Aeronave" FromRole="Vuelo" ToRole="Aeronave" />
+          <NavigationProperty Name="EstadoVuelo" Relationship="Self.FK_Vuelo_Estado" FromRole="Vuelo" ToRole="EstadoVuelo" />
+          <NavigationProperty Name="Frecuencia" Relationship="Self.FK_Vuelo_Frecuencia" FromRole="Vuelo" ToRole="Frecuencia" />
+          <NavigationProperty Name="ReservaPasajeroVuelo" Relationship="Self.FK_RPV_Vuelo" FromRole="Vuelo" ToRole="ReservaPasajeroVuelo" />
+          <NavigationProperty Name="TramoItinerario" Relationship="Self.FK_Tramo_Vuelo" FromRole="Vuelo" ToRole="TramoItinerario" />
+        </EntityType>
+        <Association Name="FK_Aeronave_Estado">
+          <End Role="EstadoAeronave" Type="Self.EstadoAeronave" Multiplicity="1" />
+          <End Role="Aeronave" Type="Self.Aeronave" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoAeronave">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Aeronave">
+              <PropertyRef Name="EstadoAeronaveCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Aeronave_Modelo">
+          <End Role="ModeloAeronave" Type="Self.ModeloAeronave" Multiplicity="1" />
+          <End Role="Aeronave" Type="Self.Aeronave" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="ModeloAeronave">
+              <PropertyRef Name="ModeloAeronaveId" />
+            </Principal>
+            <Dependent Role="Aeronave">
+              <PropertyRef Name="ModeloAeronaveId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Vuelo_Aeronave">
+          <End Role="Aeronave" Type="Self.Aeronave" Multiplicity="0..1" />
+          <End Role="Vuelo" Type="Self.Vuelo" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Aeronave">
+              <PropertyRef Name="AeronaveId" />
+            </Principal>
+            <Dependent Role="Vuelo">
+              <PropertyRef Name="AeronaveId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Ruta_Destino">
+          <End Role="Aeropuerto" Type="Self.Aeropuerto" Multiplicity="1" />
+          <End Role="Ruta" Type="Self.Ruta" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Aeropuerto">
+              <PropertyRef Name="AeropuertoId" />
+            </Principal>
+            <Dependent Role="Ruta">
+              <PropertyRef Name="AeropuertoDestinoId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Ruta_Origen">
+          <End Role="Aeropuerto" Type="Self.Aeropuerto" Multiplicity="1" />
+          <End Role="Ruta" Type="Self.Ruta" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Aeropuerto">
+              <PropertyRef Name="AeropuertoId" />
+            </Principal>
+            <Dependent Role="Ruta">
+              <PropertyRef Name="AeropuertoOrigenId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Asiento_Modelo">
+          <End Role="ModeloAeronave" Type="Self.ModeloAeronave" Multiplicity="1" />
+          <End Role="Asiento" Type="Self.Asiento" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="ModeloAeronave">
+              <PropertyRef Name="ModeloAeronaveId" />
+            </Principal>
+            <Dependent Role="Asiento">
+              <PropertyRef Name="ModeloAeronaveId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_CheckIn_Asignacion">
+          <End Role="ReservaPasajeroVuelo" Type="Self.ReservaPasajeroVuelo" Multiplicity="1" />
+          <End Role="CheckIn" Type="Self.CheckIn" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="ReservaPasajeroVuelo">
+              <PropertyRef Name="AsignacionId" />
+            </Principal>
+            <Dependent Role="CheckIn">
+              <PropertyRef Name="AsignacionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_CheckIn_Estado">
+          <End Role="EstadoCheckIn" Type="Self.EstadoCheckIn" Multiplicity="1" />
+          <End Role="CheckIn" Type="Self.CheckIn" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoCheckIn">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="CheckIn">
+              <PropertyRef Name="EstadoCheckInCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Compra_Estado">
+          <End Role="EstadoCompra" Type="Self.EstadoCompra" Multiplicity="1" />
+          <End Role="Compra" Type="Self.Compra" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoCompra">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Compra">
+              <PropertyRef Name="EstadoCompraCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Compra_Moneda">
+          <End Role="Moneda" Type="Self.Moneda" Multiplicity="1" />
+          <End Role="Compra" Type="Self.Compra" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Moneda">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Compra">
+              <PropertyRef Name="MonedaCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Compra_Reserva">
+          <End Role="Reserva" Type="Self.Reserva" Multiplicity="1" />
+          <End Role="Compra" Type="Self.Compra" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Reserva">
+              <PropertyRef Name="ReservaId" />
+            </Principal>
+            <Dependent Role="Compra">
+              <PropertyRef Name="ReservaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Comprobante_Compra">
+          <End Role="Compra" Type="Self.Compra" Multiplicity="1" />
+          <End Role="Comprobante" Type="Self.Comprobante" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Compra">
+              <PropertyRef Name="CompraId" />
+            </Principal>
+            <Dependent Role="Comprobante">
+              <PropertyRef Name="CompraId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Pago_Compra">
+          <End Role="Compra" Type="Self.Compra" Multiplicity="1" />
+          <End Role="Pago" Type="Self.Pago" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Compra">
+              <PropertyRef Name="CompraId" />
+            </Principal>
+            <Dependent Role="Pago">
+              <PropertyRef Name="CompraId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Comprobante_Estado">
+          <End Role="EstadoComprobante" Type="Self.EstadoComprobante" Multiplicity="1" />
+          <End Role="Comprobante" Type="Self.Comprobante" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoComprobante">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Comprobante">
+              <PropertyRef Name="EstadoComprobanteCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Comprobante_Tipo">
+          <End Role="TipoComprobante" Type="Self.TipoComprobante" Multiplicity="1" />
+          <End Role="Comprobante" Type="Self.Comprobante" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TipoComprobante">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Comprobante">
+              <PropertyRef Name="TipoComprobanteCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_RPV_Estado">
+          <End Role="EstadoAsignacion" Type="Self.EstadoAsignacion" Multiplicity="1" />
+          <End Role="ReservaPasajeroVuelo" Type="Self.ReservaPasajeroVuelo" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoAsignacion">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="ReservaPasajeroVuelo">
+              <PropertyRef Name="EstadoAsignacionCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Itinerario_Estado">
+          <End Role="EstadoItinerario" Type="Self.EstadoItinerario" Multiplicity="1" />
+          <End Role="Itinerario" Type="Self.Itinerario" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoItinerario">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Itinerario">
+              <PropertyRef Name="EstadoItinerarioCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Pago_Estado">
+          <End Role="EstadoPago" Type="Self.EstadoPago" Multiplicity="1" />
+          <End Role="Pago" Type="Self.Pago" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoPago">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Pago">
+              <PropertyRef Name="EstadoPagoCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Reserva_Estado">
+          <End Role="EstadoReserva" Type="Self.EstadoReserva" Multiplicity="1" />
+          <End Role="Reserva" Type="Self.Reserva" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoReserva">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Reserva">
+              <PropertyRef Name="EstadoReservaCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Vuelo_Estado">
+          <End Role="EstadoVuelo" Type="Self.EstadoVuelo" Multiplicity="1" />
+          <End Role="Vuelo" Type="Self.Vuelo" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoVuelo">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Vuelo">
+              <PropertyRef Name="EstadoVueloCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Frecuencia_Ruta">
+          <End Role="Ruta" Type="Self.Ruta" Multiplicity="1" />
+          <End Role="Frecuencia" Type="Self.Frecuencia" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Ruta">
+              <PropertyRef Name="RutaId" />
+            </Principal>
+            <Dependent Role="Frecuencia">
+              <PropertyRef Name="RutaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Vuelo_Frecuencia">
+          <End Role="Frecuencia" Type="Self.Frecuencia" Multiplicity="1" />
+          <End Role="Vuelo" Type="Self.Vuelo" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Frecuencia">
+              <PropertyRef Name="FrecuenciaId" />
+            </Principal>
+            <Dependent Role="Vuelo">
+              <PropertyRef Name="FrecuenciaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Tramo_Itinerario">
+          <End Role="Itinerario" Type="Self.Itinerario" Multiplicity="1" />
+          <End Role="TramoItinerario" Type="Self.TramoItinerario" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Itinerario">
+              <PropertyRef Name="ItinerarioId" />
+            </Principal>
+            <Dependent Role="TramoItinerario">
+              <PropertyRef Name="ItinerarioId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Pago_Marca">
+          <End Role="MarcaTarjeta" Type="Self.MarcaTarjeta" Multiplicity="1" />
+          <End Role="Pago" Type="Self.Pago" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="MarcaTarjeta">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Pago">
+              <PropertyRef Name="MarcaTarjetaCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Pago_Metodo">
+          <End Role="MetodoPago" Type="Self.MetodoPago" Multiplicity="1" />
+          <End Role="Pago" Type="Self.Pago" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="MetodoPago">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Pago">
+              <PropertyRef Name="MetodoPagoCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Pasajero_TipoDocumento">
+          <End Role="TipoDocumentoIdentidad" Type="Self.TipoDocumentoIdentidad" Multiplicity="1" />
+          <End Role="Pasajero" Type="Self.Pasajero" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TipoDocumentoIdentidad">
+              <PropertyRef Name="Codigo" />
+            </Principal>
+            <Dependent Role="Pasajero">
+              <PropertyRef Name="TipoDocumentoCodigo" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_RPV_Pasajero">
+          <End Role="Pasajero" Type="Self.Pasajero" Multiplicity="1" />
+          <End Role="ReservaPasajeroVuelo" Type="Self.ReservaPasajeroVuelo" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Pasajero">
+              <PropertyRef Name="PasajeroId" />
+            </Principal>
+            <Dependent Role="ReservaPasajeroVuelo">
+              <PropertyRef Name="PasajeroId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_RPV_Reserva">
+          <End Role="Reserva" Type="Self.Reserva" Multiplicity="1" />
+          <End Role="ReservaPasajeroVuelo" Type="Self.ReservaPasajeroVuelo" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Reserva">
+              <PropertyRef Name="ReservaId" />
+            </Principal>
+            <Dependent Role="ReservaPasajeroVuelo">
+              <PropertyRef Name="ReservaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_RPV_Vuelo">
+          <End Role="Vuelo" Type="Self.Vuelo" Multiplicity="1" />
+          <End Role="ReservaPasajeroVuelo" Type="Self.ReservaPasajeroVuelo" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Vuelo">
+              <PropertyRef Name="VueloId" />
+            </Principal>
+            <Dependent Role="ReservaPasajeroVuelo">
+              <PropertyRef Name="VueloId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Tramo_Vuelo">
+          <End Role="Vuelo" Type="Self.Vuelo" Multiplicity="1" />
+          <End Role="TramoItinerario" Type="Self.TramoItinerario" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Vuelo">
+              <PropertyRef Name="VueloId" />
+            </Principal>
+            <Dependent Role="TramoItinerario">
+              <PropertyRef Name="VueloId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityContainer Name="AerolineaVIP_Context" annotation:LazyLoadingEnabled="true">
+          <EntitySet Name="Aeronave" EntityType="Self.Aeronave" />
+          <EntitySet Name="Aeropuerto" EntityType="Self.Aeropuerto" />
+          <EntitySet Name="Asiento" EntityType="Self.Asiento" />
+          <EntitySet Name="CheckIn" EntityType="Self.CheckIn" />
+          <EntitySet Name="Compra" EntityType="Self.Compra" />
+          <EntitySet Name="Comprobante" EntityType="Self.Comprobante" />
+          <EntitySet Name="DatosEmisor" EntityType="Self.DatosEmisor" />
+          <EntitySet Name="EstadoAeronave" EntityType="Self.EstadoAeronave" />
+          <EntitySet Name="EstadoAsignacion" EntityType="Self.EstadoAsignacion" />
+          <EntitySet Name="EstadoCheckIn" EntityType="Self.EstadoCheckIn" />
+          <EntitySet Name="EstadoCompra" EntityType="Self.EstadoCompra" />
+          <EntitySet Name="EstadoComprobante" EntityType="Self.EstadoComprobante" />
+          <EntitySet Name="EstadoItinerario" EntityType="Self.EstadoItinerario" />
+          <EntitySet Name="EstadoPago" EntityType="Self.EstadoPago" />
+          <EntitySet Name="EstadoReserva" EntityType="Self.EstadoReserva" />
+          <EntitySet Name="EstadoVuelo" EntityType="Self.EstadoVuelo" />
+          <EntitySet Name="Frecuencia" EntityType="Self.Frecuencia" />
+          <EntitySet Name="Itinerario" EntityType="Self.Itinerario" />
+          <EntitySet Name="MarcaTarjeta" EntityType="Self.MarcaTarjeta" />
+          <EntitySet Name="MetodoPago" EntityType="Self.MetodoPago" />
+          <EntitySet Name="ModeloAeronave" EntityType="Self.ModeloAeronave" />
+          <EntitySet Name="Moneda" EntityType="Self.Moneda" />
+          <EntitySet Name="Pago" EntityType="Self.Pago" />
+          <EntitySet Name="Pasajero" EntityType="Self.Pasajero" />
+          <EntitySet Name="Reserva" EntityType="Self.Reserva" />
+          <EntitySet Name="ReservaPasajeroVuelo" EntityType="Self.ReservaPasajeroVuelo" />
+          <EntitySet Name="Ruta" EntityType="Self.Ruta" />
+          <EntitySet Name="TipoComprobante" EntityType="Self.TipoComprobante" />
+          <EntitySet Name="TipoDocumentoIdentidad" EntityType="Self.TipoDocumentoIdentidad" />
+          <EntitySet Name="TramoItinerario" EntityType="Self.TramoItinerario" />
+          <EntitySet Name="Vuelo" EntityType="Self.Vuelo" />
+          <AssociationSet Name="FK_Aeronave_Estado" Association="Self.FK_Aeronave_Estado">
+            <End Role="EstadoAeronave" EntitySet="EstadoAeronave" />
+            <End Role="Aeronave" EntitySet="Aeronave" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Aeronave_Modelo" Association="Self.FK_Aeronave_Modelo">
+            <End Role="ModeloAeronave" EntitySet="ModeloAeronave" />
+            <End Role="Aeronave" EntitySet="Aeronave" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Vuelo_Aeronave" Association="Self.FK_Vuelo_Aeronave">
+            <End Role="Aeronave" EntitySet="Aeronave" />
+            <End Role="Vuelo" EntitySet="Vuelo" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Ruta_Destino" Association="Self.FK_Ruta_Destino">
+            <End Role="Aeropuerto" EntitySet="Aeropuerto" />
+            <End Role="Ruta" EntitySet="Ruta" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Ruta_Origen" Association="Self.FK_Ruta_Origen">
+            <End Role="Aeropuerto" EntitySet="Aeropuerto" />
+            <End Role="Ruta" EntitySet="Ruta" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Asiento_Modelo" Association="Self.FK_Asiento_Modelo">
+            <End Role="ModeloAeronave" EntitySet="ModeloAeronave" />
+            <End Role="Asiento" EntitySet="Asiento" />
+          </AssociationSet>
+          <AssociationSet Name="FK_CheckIn_Asignacion" Association="Self.FK_CheckIn_Asignacion">
+            <End Role="ReservaPasajeroVuelo" EntitySet="ReservaPasajeroVuelo" />
+            <End Role="CheckIn" EntitySet="CheckIn" />
+          </AssociationSet>
+          <AssociationSet Name="FK_CheckIn_Estado" Association="Self.FK_CheckIn_Estado">
+            <End Role="EstadoCheckIn" EntitySet="EstadoCheckIn" />
+            <End Role="CheckIn" EntitySet="CheckIn" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Compra_Estado" Association="Self.FK_Compra_Estado">
+            <End Role="EstadoCompra" EntitySet="EstadoCompra" />
+            <End Role="Compra" EntitySet="Compra" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Compra_Moneda" Association="Self.FK_Compra_Moneda">
+            <End Role="Moneda" EntitySet="Moneda" />
+            <End Role="Compra" EntitySet="Compra" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Compra_Reserva" Association="Self.FK_Compra_Reserva">
+            <End Role="Reserva" EntitySet="Reserva" />
+            <End Role="Compra" EntitySet="Compra" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Comprobante_Compra" Association="Self.FK_Comprobante_Compra">
+            <End Role="Compra" EntitySet="Compra" />
+            <End Role="Comprobante" EntitySet="Comprobante" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Pago_Compra" Association="Self.FK_Pago_Compra">
+            <End Role="Compra" EntitySet="Compra" />
+            <End Role="Pago" EntitySet="Pago" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Comprobante_Estado" Association="Self.FK_Comprobante_Estado">
+            <End Role="EstadoComprobante" EntitySet="EstadoComprobante" />
+            <End Role="Comprobante" EntitySet="Comprobante" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Comprobante_Tipo" Association="Self.FK_Comprobante_Tipo">
+            <End Role="TipoComprobante" EntitySet="TipoComprobante" />
+            <End Role="Comprobante" EntitySet="Comprobante" />
+          </AssociationSet>
+          <AssociationSet Name="FK_RPV_Estado" Association="Self.FK_RPV_Estado">
+            <End Role="EstadoAsignacion" EntitySet="EstadoAsignacion" />
+            <End Role="ReservaPasajeroVuelo" EntitySet="ReservaPasajeroVuelo" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Itinerario_Estado" Association="Self.FK_Itinerario_Estado">
+            <End Role="EstadoItinerario" EntitySet="EstadoItinerario" />
+            <End Role="Itinerario" EntitySet="Itinerario" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Pago_Estado" Association="Self.FK_Pago_Estado">
+            <End Role="EstadoPago" EntitySet="EstadoPago" />
+            <End Role="Pago" EntitySet="Pago" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Reserva_Estado" Association="Self.FK_Reserva_Estado">
+            <End Role="EstadoReserva" EntitySet="EstadoReserva" />
+            <End Role="Reserva" EntitySet="Reserva" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Vuelo_Estado" Association="Self.FK_Vuelo_Estado">
+            <End Role="EstadoVuelo" EntitySet="EstadoVuelo" />
+            <End Role="Vuelo" EntitySet="Vuelo" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Frecuencia_Ruta" Association="Self.FK_Frecuencia_Ruta">
+            <End Role="Ruta" EntitySet="Ruta" />
+            <End Role="Frecuencia" EntitySet="Frecuencia" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Vuelo_Frecuencia" Association="Self.FK_Vuelo_Frecuencia">
+            <End Role="Frecuencia" EntitySet="Frecuencia" />
+            <End Role="Vuelo" EntitySet="Vuelo" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Tramo_Itinerario" Association="Self.FK_Tramo_Itinerario">
+            <End Role="Itinerario" EntitySet="Itinerario" />
+            <End Role="TramoItinerario" EntitySet="TramoItinerario" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Pago_Marca" Association="Self.FK_Pago_Marca">
+            <End Role="MarcaTarjeta" EntitySet="MarcaTarjeta" />
+            <End Role="Pago" EntitySet="Pago" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Pago_Metodo" Association="Self.FK_Pago_Metodo">
+            <End Role="MetodoPago" EntitySet="MetodoPago" />
+            <End Role="Pago" EntitySet="Pago" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Pasajero_TipoDocumento" Association="Self.FK_Pasajero_TipoDocumento">
+            <End Role="TipoDocumentoIdentidad" EntitySet="TipoDocumentoIdentidad" />
+            <End Role="Pasajero" EntitySet="Pasajero" />
+          </AssociationSet>
+          <AssociationSet Name="FK_RPV_Pasajero" Association="Self.FK_RPV_Pasajero">
+            <End Role="Pasajero" EntitySet="Pasajero" />
+            <End Role="ReservaPasajeroVuelo" EntitySet="ReservaPasajeroVuelo" />
+          </AssociationSet>
+          <AssociationSet Name="FK_RPV_Reserva" Association="Self.FK_RPV_Reserva">
+            <End Role="Reserva" EntitySet="Reserva" />
+            <End Role="ReservaPasajeroVuelo" EntitySet="ReservaPasajeroVuelo" />
+          </AssociationSet>
+          <AssociationSet Name="FK_RPV_Vuelo" Association="Self.FK_RPV_Vuelo">
+            <End Role="Vuelo" EntitySet="Vuelo" />
+            <End Role="ReservaPasajeroVuelo" EntitySet="ReservaPasajeroVuelo" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Tramo_Vuelo" Association="Self.FK_Tramo_Vuelo">
+            <End Role="Vuelo" EntitySet="Vuelo" />
+            <End Role="TramoItinerario" EntitySet="TramoItinerario" />
+          </AssociationSet>
+        </EntityContainer>
+      </Schema>
+    </edmx:ConceptualModels>
+    <!-- C-S mapping content -->
+    <edmx:Mappings>
+      <Mapping Space="C-S" xmlns="http://schemas.microsoft.com/ado/2009/11/mapping/cs">
+        <EntityContainerMapping StorageEntityContainer="AerolineaVIPModelStoreContainer" CdmEntityContainer="AerolineaVIP_Context">
+          <EntitySetMapping Name="Aeronave">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.Aeronave">
+              <MappingFragment StoreEntitySet="Aeronave">
+                <ScalarProperty Name="AeronaveId" ColumnName="AeronaveId" />
+                <ScalarProperty Name="Matricula" ColumnName="Matricula" />
+                <ScalarProperty Name="ModeloAeronaveId" ColumnName="ModeloAeronaveId" />
+                <ScalarProperty Name="EstadoAeronaveCodigo" ColumnName="EstadoAeronaveCodigo" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Aeropuerto">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.Aeropuerto">
+              <MappingFragment StoreEntitySet="Aeropuerto">
+                <ScalarProperty Name="AeropuertoId" ColumnName="AeropuertoId" />
+                <ScalarProperty Name="CodigoIATA" ColumnName="CodigoIATA" />
+                <ScalarProperty Name="Nombre" ColumnName="Nombre" />
+                <ScalarProperty Name="Localidad" ColumnName="Localidad" />
+                <ScalarProperty Name="Activo" ColumnName="Activo" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Asiento">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.Asiento">
+              <MappingFragment StoreEntitySet="Asiento">
+                <ScalarProperty Name="ModeloAeronaveId" ColumnName="ModeloAeronaveId" />
+                <ScalarProperty Name="NumeroAsiento" ColumnName="NumeroAsiento" />
+                <ScalarProperty Name="Codigo" ColumnName="Codigo" />
+                <ScalarProperty Name="Fila" ColumnName="Fila" />
+                <ScalarProperty Name="Lado" ColumnName="Lado" />
+                <ScalarProperty Name="Ubicacion" ColumnName="Ubicacion" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="CheckIn">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.CheckIn">
+              <MappingFragment StoreEntitySet="CheckIn">
+                <ScalarProperty Name="CheckInId" ColumnName="CheckInId" />
+                <ScalarProperty Name="AsignacionId" ColumnName="AsignacionId" />
+                <ScalarProperty Name="FechaRegistro" ColumnName="FechaRegistro" />
+                <ScalarProperty Name="EstadoCheckInCodigo" ColumnName="EstadoCheckInCodigo" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Compra">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.Compra">
+              <MappingFragment StoreEntitySet="Compra">
+                <ScalarProperty Name="CompraId" ColumnName="CompraId" />
+                <ScalarProperty Name="ReservaId" ColumnName="ReservaId" />
+                <ScalarProperty Name="FechaCompra" ColumnName="FechaCompra" />
+                <ScalarProperty Name="Importe" ColumnName="Importe" />
+                <ScalarProperty Name="MonedaCodigo" ColumnName="MonedaCodigo" />
+                <ScalarProperty Name="EstadoCompraCodigo" ColumnName="EstadoCompraCodigo" />
+                <ScalarProperty Name="ClaveIdempotencia" ColumnName="ClaveIdempotencia" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Comprobante">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.Comprobante">
+              <MappingFragment StoreEntitySet="Comprobante">
+                <ScalarProperty Name="ComprobanteId" ColumnName="ComprobanteId" />
+                <ScalarProperty Name="CompraId" ColumnName="CompraId" />
+                <ScalarProperty Name="TipoComprobanteCodigo" ColumnName="TipoComprobanteCodigo" />
+                <ScalarProperty Name="NumeroComprobante" ColumnName="NumeroComprobante" />
+                <ScalarProperty Name="FechaEmision" ColumnName="FechaEmision" />
+                <ScalarProperty Name="EstadoComprobanteCodigo" ColumnName="EstadoComprobanteCodigo" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="DatosEmisor">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.DatosEmisor">
+              <MappingFragment StoreEntitySet="DatosEmisor">
+                <ScalarProperty Name="DatosEmisorId" ColumnName="DatosEmisorId" />
+                <ScalarProperty Name="NombreComercial" ColumnName="NombreComercial" />
+                <ScalarProperty Name="Identificacion" ColumnName="Identificacion" />
+                <ScalarProperty Name="Direccion" ColumnName="Direccion" />
+                <ScalarProperty Name="Telefono" ColumnName="Telefono" />
+                <ScalarProperty Name="Correo" ColumnName="Correo" />
+                <ScalarProperty Name="LeyendaComprobante" ColumnName="LeyendaComprobante" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EstadoAeronave">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.EstadoAeronave">
+              <MappingFragment StoreEntitySet="EstadoAeronave">
+                <ScalarProperty Name="Codigo" ColumnName="Codigo" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EstadoAsignacion">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.EstadoAsignacion">
+              <MappingFragment StoreEntitySet="EstadoAsignacion">
+                <ScalarProperty Name="Codigo" ColumnName="Codigo" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+                <ScalarProperty Name="OcupaInventario" ColumnName="OcupaInventario" />
+                <ScalarProperty Name="EstadoVisual" ColumnName="EstadoVisual" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EstadoCheckIn">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.EstadoCheckIn">
+              <MappingFragment StoreEntitySet="EstadoCheckIn">
+                <ScalarProperty Name="Codigo" ColumnName="Codigo" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EstadoCompra">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.EstadoCompra">
+              <MappingFragment StoreEntitySet="EstadoCompra">
+                <ScalarProperty Name="Codigo" ColumnName="Codigo" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EstadoComprobante">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.EstadoComprobante">
+              <MappingFragment StoreEntitySet="EstadoComprobante">
+                <ScalarProperty Name="Codigo" ColumnName="Codigo" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EstadoItinerario">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.EstadoItinerario">
+              <MappingFragment StoreEntitySet="EstadoItinerario">
+                <ScalarProperty Name="Codigo" ColumnName="Codigo" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EstadoPago">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.EstadoPago">
+              <MappingFragment StoreEntitySet="EstadoPago">
+                <ScalarProperty Name="Codigo" ColumnName="Codigo" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EstadoReserva">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.EstadoReserva">
+              <MappingFragment StoreEntitySet="EstadoReserva">
+                <ScalarProperty Name="Codigo" ColumnName="Codigo" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EstadoVuelo">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.EstadoVuelo">
+              <MappingFragment StoreEntitySet="EstadoVuelo">
+                <ScalarProperty Name="Codigo" ColumnName="Codigo" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Frecuencia">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.Frecuencia">
+              <MappingFragment StoreEntitySet="Frecuencia">
+                <ScalarProperty Name="FrecuenciaId" ColumnName="FrecuenciaId" />
+                <ScalarProperty Name="RutaId" ColumnName="RutaId" />
+                <ScalarProperty Name="DiaSemana" ColumnName="DiaSemana" />
+                <ScalarProperty Name="HoraSalida" ColumnName="HoraSalida" />
+                <ScalarProperty Name="HoraLlegada" ColumnName="HoraLlegada" />
+                <ScalarProperty Name="Activa" ColumnName="Activa" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Itinerario">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.Itinerario">
+              <MappingFragment StoreEntitySet="Itinerario">
+                <ScalarProperty Name="ItinerarioId" ColumnName="ItinerarioId" />
+                <ScalarProperty Name="Referencia" ColumnName="Referencia" />
+                <ScalarProperty Name="Nombre" ColumnName="Nombre" />
+                <ScalarProperty Name="EstadoItinerarioCodigo" ColumnName="EstadoItinerarioCodigo" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="MarcaTarjeta">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.MarcaTarjeta">
+              <MappingFragment StoreEntitySet="MarcaTarjeta">
+                <ScalarProperty Name="Codigo" ColumnName="Codigo" />
+                <ScalarProperty Name="Nombre" ColumnName="Nombre" />
+                <ScalarProperty Name="LongitudNumero" ColumnName="LongitudNumero" />
+                <ScalarProperty Name="LongitudCodigoSeguridad" ColumnName="LongitudCodigoSeguridad" />
+                <ScalarProperty Name="PrefijosReferencia" ColumnName="PrefijosReferencia" />
+                <ScalarProperty Name="RutaLogo" ColumnName="RutaLogo" />
+                <ScalarProperty Name="Activa" ColumnName="Activa" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="MetodoPago">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.MetodoPago">
+              <MappingFragment StoreEntitySet="MetodoPago">
+                <ScalarProperty Name="Codigo" ColumnName="Codigo" />
+                <ScalarProperty Name="Nombre" ColumnName="Nombre" />
+                <ScalarProperty Name="Activo" ColumnName="Activo" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="ModeloAeronave">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.ModeloAeronave">
+              <MappingFragment StoreEntitySet="ModeloAeronave">
+                <ScalarProperty Name="ModeloAeronaveId" ColumnName="ModeloAeronaveId" />
+                <ScalarProperty Name="Fabricante" ColumnName="Fabricante" />
+                <ScalarProperty Name="Nombre" ColumnName="Nombre" />
+                <ScalarProperty Name="CapacidadAsientos" ColumnName="CapacidadAsientos" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Moneda">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.Moneda">
+              <MappingFragment StoreEntitySet="Moneda">
+                <ScalarProperty Name="Codigo" ColumnName="Codigo" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Pago">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.Pago">
+              <MappingFragment StoreEntitySet="Pago">
+                <ScalarProperty Name="PagoId" ColumnName="PagoId" />
+                <ScalarProperty Name="CompraId" ColumnName="CompraId" />
+                <ScalarProperty Name="FechaPago" ColumnName="FechaPago" />
+                <ScalarProperty Name="Importe" ColumnName="Importe" />
+                <ScalarProperty Name="EstadoPagoCodigo" ColumnName="EstadoPagoCodigo" />
+                <ScalarProperty Name="MetodoPagoCodigo" ColumnName="MetodoPagoCodigo" />
+                <ScalarProperty Name="MarcaTarjetaCodigo" ColumnName="MarcaTarjetaCodigo" />
+                <ScalarProperty Name="UltimosCuatroDigitos" ColumnName="UltimosCuatroDigitos" />
+                <ScalarProperty Name="NombreTitular" ColumnName="NombreTitular" />
+                <ScalarProperty Name="CodigoOperacion" ColumnName="CodigoOperacion" />
+                <ScalarProperty Name="EsSimulado" ColumnName="EsSimulado" />
+                <ScalarProperty Name="MensajeResultado" ColumnName="MensajeResultado" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Pasajero">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.Pasajero">
+              <MappingFragment StoreEntitySet="Pasajero">
+                <ScalarProperty Name="PasajeroId" ColumnName="PasajeroId" />
+                <ScalarProperty Name="TipoDocumentoCodigo" ColumnName="TipoDocumentoCodigo" />
+                <ScalarProperty Name="NumeroDocumento" ColumnName="NumeroDocumento" />
+                <ScalarProperty Name="Nombres" ColumnName="Nombres" />
+                <ScalarProperty Name="Apellidos" ColumnName="Apellidos" />
+                <ScalarProperty Name="FechaNacimiento" ColumnName="FechaNacimiento" />
+                <ScalarProperty Name="Correo" ColumnName="Correo" />
+                <ScalarProperty Name="Telefono" ColumnName="Telefono" />
+                <ScalarProperty Name="FechaRegistro" ColumnName="FechaRegistro" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Reserva">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.Reserva">
+              <MappingFragment StoreEntitySet="Reserva">
+                <ScalarProperty Name="ReservaId" ColumnName="ReservaId" />
+                <ScalarProperty Name="CodigoReserva" ColumnName="CodigoReserva" />
+                <ScalarProperty Name="UsuarioId" ColumnName="UsuarioId" />
+                <ScalarProperty Name="FechaCreacion" ColumnName="FechaCreacion" />
+                <ScalarProperty Name="FechaExpiracion" ColumnName="FechaExpiracion" />
+                <ScalarProperty Name="EstadoReservaCodigo" ColumnName="EstadoReservaCodigo" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="ReservaPasajeroVuelo">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.ReservaPasajeroVuelo">
+              <MappingFragment StoreEntitySet="ReservaPasajeroVuelo">
+                <ScalarProperty Name="AsignacionId" ColumnName="AsignacionId" />
+                <ScalarProperty Name="ReservaId" ColumnName="ReservaId" />
+                <ScalarProperty Name="PasajeroId" ColumnName="PasajeroId" />
+                <ScalarProperty Name="VueloId" ColumnName="VueloId" />
+                <ScalarProperty Name="NumeroAsiento" ColumnName="NumeroAsiento" />
+                <ScalarProperty Name="ImporteTramo" ColumnName="ImporteTramo" />
+                <ScalarProperty Name="EstadoAsignacionCodigo" ColumnName="EstadoAsignacionCodigo" />
+                <ScalarProperty Name="FechaAsignacion" ColumnName="FechaAsignacion" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Ruta">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.Ruta">
+              <MappingFragment StoreEntitySet="Ruta">
+                <ScalarProperty Name="RutaId" ColumnName="RutaId" />
+                <ScalarProperty Name="AeropuertoOrigenId" ColumnName="AeropuertoOrigenId" />
+                <ScalarProperty Name="AeropuertoDestinoId" ColumnName="AeropuertoDestinoId" />
+                <ScalarProperty Name="TarifaReferencial" ColumnName="TarifaReferencial" />
+                <ScalarProperty Name="Activa" ColumnName="Activa" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="TipoComprobante">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.TipoComprobante">
+              <MappingFragment StoreEntitySet="TipoComprobante">
+                <ScalarProperty Name="Codigo" ColumnName="Codigo" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="TipoDocumentoIdentidad">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.TipoDocumentoIdentidad">
+              <MappingFragment StoreEntitySet="TipoDocumentoIdentidad">
+                <ScalarProperty Name="Codigo" ColumnName="Codigo" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="TramoItinerario">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.TramoItinerario">
+              <MappingFragment StoreEntitySet="TramoItinerario">
+                <ScalarProperty Name="TramoItinerarioId" ColumnName="TramoItinerarioId" />
+                <ScalarProperty Name="ItinerarioId" ColumnName="ItinerarioId" />
+                <ScalarProperty Name="VueloId" ColumnName="VueloId" />
+                <ScalarProperty Name="Orden" ColumnName="Orden" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Vuelo">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.Vuelo">
+              <MappingFragment StoreEntitySet="Vuelo">
+                <ScalarProperty Name="VueloId" ColumnName="VueloId" />
+                <ScalarProperty Name="FrecuenciaId" ColumnName="FrecuenciaId" />
+                <ScalarProperty Name="FechaOperacion" ColumnName="FechaOperacion" />
+                <ScalarProperty Name="AeronaveId" ColumnName="AeronaveId" />
+                <ScalarProperty Name="EstadoVueloCodigo" ColumnName="EstadoVueloCodigo" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+        </EntityContainerMapping>
+      </Mapping>
+    </edmx:Mappings>
+  </edmx:Runtime>
+  <!-- EF Designer content (DO NOT EDIT MANUALLY BELOW HERE) -->
+  <Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
+    <Connection>
+      <DesignerInfoPropertySet>
+        <DesignerProperty Name="MetadataArtifactProcessing" Value="EmbedInOutputAssembly" />
+      </DesignerInfoPropertySet>
+    </Connection>
+    <Options>
+      <DesignerInfoPropertySet>
+        <DesignerProperty Name="ValidateOnBuild" Value="true" />
+        <DesignerProperty Name="EnablePluralization" Value="false" />
+        <DesignerProperty Name="IncludeForeignKeysInModel" Value="true" />
+        <DesignerProperty Name="UseLegacyProvider" Value="false" />
+        <DesignerProperty Name="CodeGenerationStrategy" Value="Ninguno" />
+      </DesignerInfoPropertySet>
+    </Options>
+    <!-- Diagram content (shape and connector positions) -->
+    <Diagrams></Diagrams>
+  </Designer>
+</edmx:Edmx>

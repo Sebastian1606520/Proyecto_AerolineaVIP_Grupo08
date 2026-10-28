@@ -1,0 +1,11 @@
+node_modules/
+.vs/
+session-state/
+obj/
+bin/
+obj/Debug/
+App_Data/
+Web.Debug.config
+Web.Release.config
+*.user
+*.suo

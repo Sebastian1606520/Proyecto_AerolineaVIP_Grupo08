@@ -1,0 +1,534 @@
+﻿@using Con_Autenticacion.Models;
+@model Vuelo
+
+
+@{
+    ViewBag.Title = "Selección de asientos";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    /* Pasos del proceso */
+    .step-indicator {
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+    }
+
+    .step-item.active {
+        color: #0f172a;
+        font-weight: 700;
+        border-bottom: 2px solid #0f172a;
+    }
+
+    /* Fuselaje */
+    .fuselage-container {
+        background: #ffffff;
+        border: 2px solid #cbd5e1;
+        border-radius: 90px 20px 20px 90px;
+        padding: 24px 32px;
+        position: relative;
+    }
+
+    @@media (max-width: 991.98px) {
+        .fuselage-container {
+            border-radius: 20px;
+            padding: 16px;
+        }
+    }
+
+    /* Asientos interactivos */
+    .seat-btn {
+        width: 78px;
+        height: 78px;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        border: 2px solid transparent;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        position: relative;
+        cursor: pointer;
+    }
+
+    /* Colores oscuros de cabina */
+    .seat-disponible {
+        background-color: #065f46;
+        border-color: #044e39;
+        color: #ffffff;
+    }
+
+        .seat-disponible:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(6, 95, 70, 0.3);
+        }
+
+    .seat-reservado {
+        background-color: #581c87;
+        border-color: #3b0764;
+        color: #ffffff;
+        cursor: not-allowed;
+        opacity: 0.85;
+    }
+
+    .seat-ocupado {
+        background-color: #881337;
+        border-color: #4c0519;
+        color: #ffffff;
+        cursor: not-allowed;
+        opacity: 0.85;
+    }
+
+    /* Asiento seleccionado por el usuario */
+    .seat-seleccionado {
+        background-color: #0f172a !important;
+        border: 3px solid #f59e0b !important;
+        color: #ffffff !important;
+        transform: scale(1.06);
+        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.4) !important;
+    }
+
+    .seat-check-mark {
+        position: absolute;
+        top: 4px;
+        right: 6px;
+        color: #f59e0b;
+        font-size: 0.85rem;
+        font-weight: 900;
+    }
+
+    /* Lista lateral de pasajeros */
+    .passenger-slot {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-left: 4px solid transparent;
+    }
+
+        .passenger-slot.active {
+            background-color: #f8fafc;
+            border-left-color: #0f172a;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+    /* Zonas del fuselaje */
+    .cockpit-zone {
+        border-right: 2px dashed #94a3b8;
+        padding-right: 18px;
+    }
+
+    .aisle-zone {
+        background: #f1f5f9;
+        border-radius: 6px;
+        border-top: 1px dashed #cbd5e1;
+        border-bottom: 1px dashed #cbd5e1;
+        letter-spacing: 3px;
+        font-size: 0.72rem;
+        color: #475569;
+    }
+
+    .table-zone {
+        background: #e2e8f0;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        height: 24px;
+        font-size: 0.65rem;
+        color: #334155;
+    }
+
+    .door-zone {
+        background: #fef3c7;
+        border: 1.5px dashed #d97706;
+        color: #78350f;
+        border-radius: 12px;
+        font-size: 0.7rem;
+    }
+</style>
+
+<main class="container py-5">
+
+    <!-- Indicador de Pasos del Flujo -->
+    <div class="d-flex align-items-center justify-content-center gap-4 text-muted small text-uppercase mb-4 pb-2 border-bottom border-light-subtle step-indicator">
+        <span class="step-item active pb-2">1. Selección de Asientos</span>
+        <span class="pb-2">&rarr;</span>
+        <span class="pb-2">2. Datos de Pasajeros</span>
+        <span class="pb-2">&rarr;</span>
+        <span class="pb-2">3. Confirmación</span>
+        <span class="pb-2">&rarr;</span>
+        <span class="pb-2">4. Pago</span>
+    </div>
+
+    <!-- Encabezado Corporativo -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3">
+        <div>
+            <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
+                Aerolínea VIP &middot; Pantalla 8
+            </span>
+            <h2 class="h3 fw-bold text-dark mb-1">Seleccione su asiento</h2>
+            <p class="text-secondary small mb-0">
+                Vuelo <strong>VIP@(Model.VueloId.ToString("D5"))</strong> &middot;
+                <strong>@Model.Frecuencia.Ruta.Aeropuerto.Localidad (@Model.Frecuencia.Ruta.Aeropuerto.CodigoIATA)</strong> &rarr;
+                <strong>@Model.Frecuencia.Ruta.Aeropuerto1.Localidad (@Model.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)</strong> &middot;
+                @(ViewBag.Pasajeros ?? 1) @(Equals(ViewBag.Pasajeros, 1) ? "asiento por asignar" : "asientos por asignar")
+            </p>
+        </div>
+        <a href="@Url.Action("Disponibilidad", "Vuelos", new { id = Model.VueloId })" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+            &larr; Regresar al mapa
+        </a>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2">
+            <span>&#9888;</span>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
+
+    <!-- Región aria-live para anunciar selecciones a lectores de pantalla (A1-A5) -->
+    <div id="ariaAnunciador" class="visually-hidden" aria-live="polite"></div>
+
+    <form id="formSeleccionAsientos" action="@Url.Action("SeleccionAsiento", "Reservas")" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="vueloId" value="@Model.VueloId" />
+        <input type="hidden" name="pasajeros" value="@(ViewBag.Pasajeros ?? 1)" />
+
+        <div class="row g-4 align-items-start">
+
+            <!-- Columna Izquierda: Fuselaje Interactivo (Phenom 300E) -->
+            <div class="col-12 col-lg-8">
+                <div class="card border border-light-subtle shadow-sm rounded-4 bg-white p-4">
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="small text-muted fw-semibold text-uppercase">
+                            Haga clic en un asiento verde para asignarlo al pasajero activo
+                        </span>
+                        <span class="badge bg-light text-secondary border small">Embraer Phenom 300E</span>
+                    </div>
+
+                    <div class="fuselage-container overflow-auto my-2">
+                        <div class="d-flex align-items-center" style="min-width: 760px;">
+
+                            <!-- Cabina de Mando -->
+                            <div class="cockpit-zone text-center pe-3">
+                                <span class="d-block text-secondary small fw-bold text-uppercase" style="font-size: 0.7rem; writing-mode: vertical-rl; transform: rotate(180deg);">
+                                    &#9992; Cabina Mando
+                                </span>
+                            </div>
+
+                            <!-- Cabina de Pasajeros -->
+                            <div class="flex-grow-1 px-3">
+
+                                <!-- LADO DERECHO (D): 1D, 2D, 3D, 4D -->
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="text-muted small fw-semibold" style="width: 70px;">Lado (D)</span>
+
+                                    <!-- 1D (Asiento 1) -->
+                                    <button type="button"
+                                            class="seat-btn @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 1 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "seat-ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 1 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "seat-reservado" : "seat-disponible")"
+                                            data-numero="1" data-codigo="1D"
+                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 1 && (r.EstadoAsignacionCodigo == "CONFIRMADA" || r.EstadoAsignacionCodigo == "PENDIENTE")) ? "disabled aria-disabled=true" : "aria-pressed=false")
+                                            aria-label="Asiento 1D, ventanilla derecha, fila 1">
+                                        <span class="seat-check-mark d-none">&#10003;</span>
+                                        <span class="fs-5 fw-bold">1D</span>
+                                        <span class="text-uppercase small seat-tag" style="font-size: 0.62rem;">
+                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 1 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "Ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 1 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "Reservado" : "Libre")
+                                        </span>
+                                    </button>
+
+                                    <!-- 2D (Asiento 2) -->
+                                    <button type="button"
+                                            class="seat-btn @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 2 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "seat-ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 2 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "seat-reservado" : "seat-disponible")"
+                                            data-numero="2" data-codigo="2D"
+                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 2 && (r.EstadoAsignacionCodigo == "CONFIRMADA" || r.EstadoAsignacionCodigo == "PENDIENTE")) ? "disabled aria-disabled=true" : "aria-pressed=false")
+                                            aria-label="Asiento 2D, ventanilla derecha, fila 2">
+                                        <span class="seat-check-mark d-none">&#10003;</span>
+                                        <span class="fs-5 fw-bold">2D</span>
+                                        <span class="text-uppercase small seat-tag" style="font-size: 0.62rem;">
+                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 2 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "Ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 2 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "Reservado" : "Libre")
+                                        </span>
+                                    </button>
+
+                                    <!-- 3D (Asiento 4) -->
+                                    <button type="button"
+                                            class="seat-btn @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 4 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "seat-ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 4 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "seat-reservado" : "seat-disponible")"
+                                            data-numero="4" data-codigo="3D"
+                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 4 && (r.EstadoAsignacionCodigo == "CONFIRMADA" || r.EstadoAsignacionCodigo == "PENDIENTE")) ? "disabled aria-disabled=true" : "aria-pressed=false")
+                                            aria-label="Asiento 3D, ventanilla derecha, fila 3">
+                                        <span class="seat-check-mark d-none">&#10003;</span>
+                                        <span class="fs-5 fw-bold">3D</span>
+                                        <span class="text-uppercase small seat-tag" style="font-size: 0.62rem;">
+                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 4 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "Ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 4 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "Reservado" : "Libre")
+                                        </span>
+                                    </button>
+
+                                    <!-- 4D (Asiento 6) -->
+                                    <button type="button"
+                                            class="seat-btn @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 6 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "seat-ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 6 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "seat-reservado" : "seat-disponible")"
+                                            data-numero="6" data-codigo="4D"
+                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 6 && (r.EstadoAsignacionCodigo == "CONFIRMADA" || r.EstadoAsignacionCodigo == "PENDIENTE")) ? "disabled aria-disabled=true" : "aria-pressed=false")
+                                            aria-label="Asiento 4D, ventanilla derecha, fila 4">
+                                        <span class="seat-check-mark d-none">&#10003;</span>
+                                        <span class="fs-5 fw-bold">4D</span>
+                                        <span class="text-uppercase small seat-tag" style="font-size: 0.62rem;">
+                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 6 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "Ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 6 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "Reservado" : "Libre")
+                                        </span>
+                                    </button>
+                                </div>
+
+                                <!-- Mesas Ejecutivas -->
+                                <div class="d-flex justify-content-between align-items-center my-1 text-center">
+                                    <span style="width: 70px;"></span>
+                                    <div style="width: 78px;"></div>
+                                    <div class="table-zone d-flex align-items-center justify-content-center fw-semibold" style="width: 78px;">Mesa</div>
+                                    <div class="table-zone d-flex align-items-center justify-content-center fw-semibold" style="width: 78px;">Mesa</div>
+                                    <div style="width: 78px;"></div>
+                                </div>
+
+                                <!-- Pasillo Central -->
+                                <div class="aisle-zone text-center py-1 my-2 fw-semibold">
+                                    &larr; P A S I L L O &nbsp; C E N T R A L &rarr;
+                                </div>
+
+                                <!-- LADO IZQUIERDO (I): Puerta, 2I, 3I, 4I -->
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <span class="text-muted small fw-semibold" style="width: 70px;">Lado (I)</span>
+
+                                    <!-- Puerta Acceso -->
+                                    <div class="door-zone d-flex flex-column align-items-center justify-content-center fw-semibold" style="width: 78px; height: 78px;">
+                                        <span class="fs-6">&#128682;</span>
+                                        <span style="font-size: 0.62rem;" class="text-center">Puerta</span>
+                                    </div>
+
+                                    <!-- 2I (Asiento 3) -->
+                                    <button type="button"
+                                            class="seat-btn @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 3 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "seat-ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 3 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "seat-reservado" : "seat-disponible")"
+                                            data-numero="3" data-codigo="2I"
+                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 3 && (r.EstadoAsignacionCodigo == "CONFIRMADA" || r.EstadoAsignacionCodigo == "PENDIENTE")) ? "disabled aria-disabled=true" : "aria-pressed=false")
+                                            aria-label="Asiento 2I, ventanilla izquierda, fila 2">
+                                        <span class="seat-check-mark d-none">&#10003;</span>
+                                        <span class="fs-5 fw-bold">2I</span>
+                                        <span class="text-uppercase small seat-tag" style="font-size: 0.62rem;">
+                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 3 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "Ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 3 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "Reservado" : "Libre")
+                                        </span>
+                                    </button>
+
+                                    <!-- 3I (Asiento 5) -->
+                                    <button type="button"
+                                            class="seat-btn @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 5 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "seat-ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 5 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "seat-reservado" : "seat-disponible")"
+                                            data-numero="5" data-codigo="3I"
+                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 5 && (r.EstadoAsignacionCodigo == "CONFIRMADA" || r.EstadoAsignacionCodigo == "PENDIENTE")) ? "disabled aria-disabled=true" : "aria-pressed=false")
+                                            aria-label="Asiento 3I, ventanilla izquierda, fila 3">
+                                        <span class="seat-check-mark d-none">&#10003;</span>
+                                        <span class="fs-5 fw-bold">3I</span>
+                                        <span class="text-uppercase small seat-tag" style="font-size: 0.62rem;">
+                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 5 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "Ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 5 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "Reservado" : "Libre")
+                                        </span>
+                                    </button>
+
+                                    <!-- 4I (Asiento 7) -->
+                                    <button type="button"
+                                            class="seat-btn @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 7 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "seat-ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 7 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "seat-reservado" : "seat-disponible")"
+                                            data-numero="7" data-codigo="4I"
+                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 7 && (r.EstadoAsignacionCodigo == "CONFIRMADA" || r.EstadoAsignacionCodigo == "PENDIENTE")) ? "disabled aria-disabled=true" : "aria-pressed=false")
+                                            aria-label="Asiento 4I, ventanilla izquierda, fila 4">
+                                        <span class="seat-check-mark d-none">&#10003;</span>
+                                        <span class="fs-5 fw-bold">4I</span>
+                                        <span class="text-uppercase small seat-tag" style="font-size: 0.62rem;">
+                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 7 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "Ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 7 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "Reservado" : "Libre")
+                                        </span>
+                                    </button>
+                                </div>
+
+                            </div>
+
+                            <!-- Popa / Baño -->
+                            <div class="text-center ps-3 border-start border-2 border-secondary-subtle">
+                                <div class="p-2 bg-light rounded-3 text-secondary small fw-bold" style="font-size: 0.68rem;">
+                                    &#128701; Baño<br />
+                                    <span class="text-muted fw-normal">Privado</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Leyenda Oficial -->
+                    <div class="d-flex flex-wrap justify-content-center align-items-center gap-3 mt-3 pt-3 border-top border-light-subtle small">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="d-inline-block rounded-2" style="width: 16px; height: 16px; background-color: #065f46;"></span>
+                            <span class="text-secondary">Disponible</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="d-inline-block rounded-2" style="width: 16px; height: 16px; background-color: #0f172a; border: 2px solid #f59e0b;"></span>
+                            <span class="text-secondary fw-semibold">Su selección</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="d-inline-block rounded-2" style="width: 16px; height: 16px; background-color: #581c87;"></span>
+                            <span class="text-secondary">Reservado</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="d-inline-block rounded-2" style="width: 16px; height: 16px; background-color: #881337;"></span>
+                            <span class="text-secondary">Ocupado</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Panel de Asignación por Pasajero -->
+            <div class="col-12 col-lg-4">
+                <div class="card border border-light-subtle shadow-sm rounded-4 bg-white p-4">
+
+                    <h3 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">
+                        Pasajeros por ubicar (@(ViewBag.Pasajeros ?? 1))
+                    </h3>
+
+                    <!-- Lista de pasajeros a ubicar -->
+                    <div class="d-flex flex-column gap-2 mb-4" id="listaPasajeros">
+                        @for (int p = 1; p <= (int)(ViewBag.Pasajeros ?? 1); p++)
+                        {
+                            <div class="passenger-slot p-3 border rounded-3 d-flex justify-content-between align-items-center @(p == 1 ? "active" : "")"
+                                 data-pasajero="@p" id="pasajero-card-@p">
+                                <div>
+                                    <span class="fw-bold text-dark d-block">Pasajero @p</span>
+                                    <small class="text-muted d-block" id="texto-asiento-@p">Sin asiento asignado</small>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-light text-dark border fs-6 fw-bold px-3 py-1 d-none" id="badge-asiento-@p">--</span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-quitar-asiento d-none p-1"
+                                            data-pasajero="@p" title="Quitar selección">
+                                        &times;
+                                    </button>
+                                </div>
+                                <!-- Input oculto que se envía al controlador -->
+                                <input type="hidden" name="asientosSeleccionados" id="input-asiento-@p" value="" />
+                            </div>
+                        }
+                    </div>
+
+                    <div class="alert alert-info py-2 px-3 small border-0 rounded-3 mb-4 text-secondary">
+                        <small>&#9432; <em>Su selección es temporal: la reserva se registra al confirmar en el paso 3.</em></small>
+                    </div>
+
+                    <!-- Botón de Continuar (Deshabilitado hasta completar la asignación) -->
+                    <button type="submit" id="btnContinuar" class="btn btn-dark w-100 py-2 fw-semibold" disabled>
+                        Continuar con datos de pasajeros &rarr;
+                    </button>
+
+                </div>
+            </div>
+
+        </div>
+    </form>
+
+</main>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            var pasajeroActivo = 1;
+            var totalPasajeros = parseInt('@(ViewBag.Pasajeros ?? 1)');
+
+            // 1. Cambiar pasajero activo al hacer clic en su tarjeta
+            $('.passenger-slot').on('click', function () {
+                $('.passenger-slot').removeClass('active');
+                $(this).addClass('active');
+                pasajeroActivo = parseInt($(this).data('pasajero'));
+            });
+
+            // 2. Clic en asiento verde disponible
+            $('.seat-btn.seat-disponible').on('click', function () {
+                var numeroAsiento = $(this).data('numero');
+                var codigoAsiento = $(this).data('codigo');
+
+                // Si este asiento ya lo tenía otro pasajero, no permitir duplicados
+                var asignadoA = null;
+                $('input[name="asientosSeleccionados"]').each(function () {
+                    if ($(this).val() == numeroAsiento) {
+                        asignadoA = $(this).closest('.passenger-slot').data('pasajero');
+                    }
+                });
+
+                if (asignadoA && asignadoA !== pasajeroActivo) {
+                    alert('El asiento ' + codigoAsiento + ' ya está asignado al Pasajero ' + asignadoA + '.');
+                    return;
+                }
+
+                // Si el pasajero activo ya tenía un asiento previo, liberarlo en el dibujo
+                var asientoPrevio = $('#input-asiento-' + pasajeroActivo).val();
+                if (asientoPrevio) {
+                    var $botonPrevio = $('.seat-btn[data-numero="' + asientoPrevio + '"]');
+                    $botonPrevio.removeClass('seat-seleccionado').attr('aria-pressed', 'false');
+                    $botonPrevio.find('.seat-check-mark').addClass('d-none');
+                }
+
+                // Asignar el nuevo asiento al pasajero activo
+                $('#input-asiento-' + pasajeroActivo).val(numeroAsiento);
+                $('#badge-asiento-' + pasajeroActivo).text(codigoAsiento).removeClass('d-none');
+                $('#texto-asiento-' + pasajeroActivo).text('Asiento ' + codigoAsiento + ' seleccionado');
+                $('#pasajero-card-' + pasajeroActivo).find('.btn-quitar-asiento').removeClass('d-none');
+
+                // Marcar visualmente el asiento como seleccionado
+                $(this).addClass('seat-seleccionado').attr('aria-pressed', 'true');
+                $(this).find('.seat-check-mark').removeClass('d-none');
+
+                // Anuncio de accesibilidad (A1-A5)
+                $('#ariaAnunciador').text('Asiento ' + codigoAsiento + ' seleccionado para Pasajero ' + pasajeroActivo);
+
+                // Avanzar automáticamente al siguiente pasajero sin asiento
+                var proximoSinAsiento = null;
+                for (var p = 1; p <= totalPasajeros; p++) {
+                    if (!$('#input-asiento-' + p).val()) {
+                        proximoSinAsiento = p;
+                        break;
+                    }
+                }
+
+                if (proximoSinAsiento) {
+                    $('#pasajero-card-' + proximoSinAsiento).trigger('click');
+                }
+
+                validarCompleto();
+            });
+
+            // 3. Quitar selección de un pasajero
+            $('.btn-quitar-asiento').on('click', function (e) {
+                e.stopPropagation();
+                var p = $(this).data('pasajero');
+                var numeroAsiento = $('#input-asiento-' + p).val();
+
+                if (numeroAsiento) {
+                    var $boton = $('.seat-btn[data-numero="' + numeroAsiento + '"]');
+                    $boton.removeClass('seat-seleccionado').attr('aria-pressed', 'false');
+                    $boton.find('.seat-check-mark').addClass('d-none');
+                }
+
+                $('#input-asiento-' + p).val('');
+                $('#badge-asiento-' + p).addClass('d-none').text('--');
+                $('#texto-asiento-' + p).text('Sin asiento asignado');
+                $(this).addClass('d-none');
+
+                $('#pasajero-card-' + p).trigger('click');
+                validarCompleto();
+            });
+
+            // 4. Validar si todos los pasajeros tienen asiento asignado
+            function validarCompleto() {
+                var todosCompletos = true;
+                for (var p = 1; p <= totalPasajeros; p++) {
+                    if (!$('#input-asiento-' + p).val()) {
+                        todosCompletos = false;
+                        break;
+                    }
+                }
+
+                if (todosCompletos) {
+                    $('#btnContinuar').removeAttr('disabled').removeClass('btn-secondary').addClass('btn-dark');
+                } else {
+                    $('#btnContinuar').attr('disabled', 'disabled');
+                }
+            }
+        });
+    </script>
+}

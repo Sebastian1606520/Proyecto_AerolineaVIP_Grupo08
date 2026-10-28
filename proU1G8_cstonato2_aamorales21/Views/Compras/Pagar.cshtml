@@ -1,0 +1,388 @@
+﻿@model Con_Autenticacion.Models.Reserva
+@{
+    ViewBag.Title = "Proceso de compra y pago";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .step-indicator {
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+    }
+
+    .step-item.active {
+        color: #0f172a;
+        font-weight: 700;
+        border-bottom: 2px solid #0f172a;
+    }
+
+    .brand-card {
+        border: 2px solid #e2e8f0;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: #ffffff;
+    }
+
+        .brand-card:hover {
+            border-color: #94a3b8;
+        }
+
+        .brand-card.active {
+            border-color: #0f172a;
+            background-color: #f8fafc;
+            box-shadow: 0 0 0 1px #0f172a;
+        }
+
+    .card-input-box {
+        background-color: #f8fafc;
+        border: 1px solid #cbd5e1;
+        font-family: monospace;
+        font-size: 1.1rem;
+        letter-spacing: 2px;
+    }
+
+    .academic-banner {
+        background-color: #eff6ff;
+        border-left: 4px solid #3b82f6;
+    }
+</style>
+
+<main class="container py-5">
+
+    <!-- Indicador de Pasos del Flujo -->
+    <div class="d-flex align-items-center justify-content-center gap-4 text-muted small text-uppercase mb-4 pb-2 border-bottom border-light-subtle step-indicator">
+        <span class="pb-2 text-secondary">1. Asientos</span>
+        <span class="pb-2">&rarr;</span>
+        <span class="pb-2 text-secondary">2. Pasajeros</span>
+        <span class="pb-2">&rarr;</span>
+        <span class="pb-2 text-secondary">3. Confirmación</span>
+        <span class="pb-2">&rarr;</span>
+        <span class="step-item active pb-2">4. Pago</span>
+    </div>
+
+    <!-- Encabezado -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3">
+        <div>
+            <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
+                Aerolínea VIP &middot; Pantalla 11
+            </span>
+            <h2 class="h3 fw-bold text-dark mb-1">Pasarela de Pago Simulado</h2>
+            <p class="text-secondary small mb-0">
+                Formalice la compra de su reserva <strong>@Model.CodigoReserva</strong>.
+            </p>
+        </div>
+        <a href="@Url.Action("Confirmar", "Reservas")" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+            &larr; Volver a la reserva
+        </a>
+    </div>
+
+    <!-- Aviso Permanente de Simulación Académica -->
+    <div class="academic-banner p-3 mb-4 rounded-3 d-flex align-items-center gap-3">
+        <span class="fs-4 text-primary">&#9432;</span>
+        <div>
+            <strong class="text-primary d-block small">Simulación académica</strong>
+            <span class="text-secondary small">No se realizan cobros reales ni se conectará a pasarelas bancarias. Utilice cualquier tarjeta de prueba (evite terminar en 0000 para no forzar rechazo).</span>
+        </div>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2">
+            <span>&#9888;</span>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
+
+    <div class="row g-4 align-items-start">
+
+        <!-- Columna Izquierda: Formulario de Tarjeta -->
+        <div class="col-12 col-lg-8">
+            <div class="card border border-light-subtle shadow-sm rounded-3">
+                <div class="card-header bg-light border-bottom py-3">
+                    <span class="fw-bold text-dark small text-uppercase">Datos del Instrumento de Pago</span>
+                </div>
+                <div class="card-body p-4">
+
+                    <!-- 1. Método de Pago (Radio) -->
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold text-secondary mb-2">Método de pago <span class="text-danger">*</span></label>
+                        <div class="d-flex gap-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="metodoRadio" id="radioCredito" value="TARJETA_CREDITO" checked>
+                                <label class="form-check-label small fw-semibold" for="radioCredito">Tarjeta de Crédito</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="metodoRadio" id="radioDebito" value="TARJETA_DEBITO">
+                                <label class="form-check-label small fw-semibold" for="radioDebito">Tarjeta de Débito</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Marca de Tarjeta -->
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold text-secondary mb-2">Marca de la tarjeta <span class="text-danger">*</span></label>
+                        <div class="row g-2">
+                            <div class="col-6 col-sm-3">
+                                <div class="brand-card active" data-brand="VISA" data-len="16" data-cvv="3">
+                                    <div class="fw-bold text-primary mb-1">VISA</div>
+                                    <small class="text-muted" style="font-size: 0.7rem;">16 dígitos</small>
+                                </div>
+                            </div>
+                            <div class="col-6 col-sm-3">
+                                <div class="brand-card" data-brand="MASTERCARD" data-len="16" data-cvv="3">
+                                    <div class="fw-bold text-danger mb-1">Mastercard</div>
+                                    <small class="text-muted" style="font-size: 0.7rem;">16 dígitos</small>
+                                </div>
+                            </div>
+                            <div class="col-6 col-sm-3">
+                                <div class="brand-card" data-brand="AMEX" data-len="15" data-cvv="4">
+                                    <div class="fw-bold text-info mb-1">Amex</div>
+                                    <small class="text-muted" style="font-size: 0.7rem;">15 dígitos</small>
+                                </div>
+                            </div>
+                            <div class="col-6 col-sm-3">
+                                <div class="brand-card" data-brand="DINERS" data-len="14" data-cvv="3">
+                                    <div class="fw-bold text-secondary mb-1">Diners Club</div>
+                                    <small class="text-muted" style="font-size: 0.7rem;">14 dígitos</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Campos de Tarjeta -->
+                    <form id="formTarjetaFrontend" onsubmit="return false;">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-secondary mb-1">Número de tarjeta <span class="text-danger">*</span></label>
+                            <input type="text" id="inputNumeroVisual" class="form-control card-input-box py-2" placeholder="0000 0000 0000 0000" maxlength="19" required />
+                            <small class="text-muted d-block mt-1" style="font-size: 0.75rem;" id="ayudaNumero">Ingrese los 16 dígitos de su tarjeta.</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-secondary mb-1">Nombre completo del titular <span class="text-danger">*</span></label>
+                            <input type="text" id="inputTitularVisual" class="form-control py-2 text-uppercase" placeholder="COMO FIGURA EN EL PLÁSTICO" maxlength="100" required />
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold text-secondary mb-1">Vencimiento <span class="text-danger">*</span></label>
+                                <input type="text" id="inputVenceVisual" class="form-control py-2 text-center" placeholder="MM/AA" maxlength="5" required />
+                                <small class="text-muted" style="font-size: 0.75rem;">Mes / Año</small>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold text-secondary mb-1">Código de seguridad <span class="text-danger">*</span></label>
+                                <input type="password" id="inputCvvVisual" class="form-control py-2 text-center" placeholder="CVV" maxlength="3" required />
+                                <small class="text-muted" style="font-size: 0.75rem;" id="ayudaCvv">3 dígitos al reverso</small>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                            <a href="@Url.Action("Confirmar", "Reservas")" class="btn btn-outline-secondary px-3 py-2 fw-semibold small">
+                                &larr; Volver
+                            </a>
+                            <button type="button" id="btnAbrirModal" class="btn btn-dark px-4 py-2 fw-semibold">
+                                Pagar $@(((decimal)ViewBag.TotalPagar).ToString("N2")) USD &rarr;
+                            </button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Resumen de Compra -->
+        <div class="col-12 col-lg-4">
+            <div class="card border border-light-subtle shadow-sm rounded-3 p-4">
+                <h5 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">Resumen de la Orden</h5>
+
+                <div class="d-flex justify-content-between mb-2 small">
+                    <span class="text-secondary">Código Reserva:</span>
+                    <strong class="text-dark">@Model.CodigoReserva</strong>
+                </div>
+
+                <div class="d-flex justify-content-between mb-2 small">
+                    <span class="text-secondary">Ruta:</span>
+                    <span class="text-dark fw-semibold">@ViewBag.CodigoRuta</span>
+                </div>
+
+                <div class="d-flex justify-content-between mb-2 small">
+                    <span class="text-secondary">Fecha de Vuelo:</span>
+                    <span class="text-dark">@ViewBag.FechaVuelo</span>
+                </div>
+
+                <div class="d-flex justify-content-between mb-3 small">
+                    <span class="text-secondary">Boletos reservados:</span>
+                    <span class="text-dark">@Model.ReservaPasajeroVuelo.Count</span>
+                </div>
+
+                <div class="border-top pt-3 mt-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-bold text-dark">Total a debitar:</span>
+                        <span class="fs-4 fw-bold text-dark">$@(((decimal)ViewBag.TotalPagar).ToString("N2")) <small class="fs-6 text-muted">USD</small></span>
+                    </div>
+                    <small class="text-muted d-block mt-2" style="font-size: 0.75rem;">
+                        Estado actual: <span class="badge bg-warning text-dark">Pendiente de pago</span>
+                    </small>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</main>
+
+<!-- Modal de Confirmación de Pago -->
+<div class="modal fade" id="modalConfirmarPago" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-3 shadow">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold text-dark fs-6" id="modalLabel">Confirmación de Transacción</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body py-4">
+                <p class="text-secondary small mb-3">
+                    ¿Está seguro de que desea realizar este pago simulado por un total de
+                    <strong class="text-dark">$@(((decimal)ViewBag.TotalPagar).ToString("N2")) USD</strong> para la reserva <strong>@Model.CodigoReserva</strong>?
+                </p>
+                <div class="alert alert-light border small text-muted mb-0">
+                    &#9432; Al confirmar, se emitirán los pasajes y los asientos quedarán confirmados en cabina.
+                </div>
+            </div>
+            <div class="modal-footer border-top bg-light">
+                <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-semibold" data-bs-dismiss="modal" id="btnCancelarModal">
+                    Cancelar
+                </button>
+
+                <!-- Formulario POST Real -->
+                <form action="@Url.Action("Pagar", "Compras")" method="post" id="formRealPago">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="reservaId" value="@Model.ReservaId" />
+                    <input type="hidden" name="metodoPago" id="hiddenMetodo" value="TARJETA_CREDITO" />
+                    <input type="hidden" name="marcaTarjeta" id="hiddenMarca" value="VISA" />
+                    <input type="hidden" name="numeroTarjeta" id="hiddenNumero" value="" />
+                    <input type="hidden" name="titularTarjeta" id="hiddenTitular" value="" />
+                    <input type="hidden" name="vencimiento" id="hiddenVence" value="" />
+                    <input type="hidden" name="codigoSeguridad" id="hiddenCvv" value="" />
+
+                    <button type="submit" class="btn btn-dark btn-sm px-4 fw-semibold" id="btnEjecutarPago">
+                        Confirmar y Pagar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            var marcaActual = "VISA";
+            var digitosEsperados = 16;
+            var cvvEsperado = 3;
+
+            // Selector de Marca
+            $('.brand-card').on('click', function () {
+                $('.brand-card').removeClass('active');
+                $(this).addClass('active');
+
+                marcaActual = $(this).data('brand');
+                digitosEsperados = parseInt($(this).data('len'));
+                cvvEsperado = parseInt($(this).data('cvv'));
+
+                $('#hiddenMarca').val(marcaActual);
+                $('#inputCvvVisual').attr('maxlength', cvvEsperado);
+                $('#ayudaCvv').text(cvvEsperado + ' dígitos');
+                $('#ayudaNumero').text('Ingrese los ' + digitosEsperados + ' dígitos para ' + marcaActual + '.');
+
+                $('#inputNumeroVisual').val('').trigger('input');
+            });
+
+            // Método de pago
+            $('input[name="metodoRadio"]').on('change', function () {
+                $('#hiddenMetodo').val($(this).val());
+            });
+
+            // Formateo de número en bloques de 4
+            $('#inputNumeroVisual').on('input', function () {
+                var valor = $(this).val().replace(/\D/g, '');
+                if (valor.length > digitosEsperados) {
+                    valor = valor.substring(0, digitosEsperados);
+                }
+
+                var partes = [];
+                for (var i = 0; i < valor.length; i += 4) {
+                    partes.push(valor.substring(i, i + 4));
+                }
+                $(this).val(partes.join(' '));
+            });
+
+            // Formateo de Vencimiento MM/AA
+            $('#inputVenceVisual').on('input', function () {
+                var v = $(this).val().replace(/\D/g, '');
+                if (v.length > 4) v = v.substring(0, 4);
+
+                if (v.length >= 2) {
+                    var mes = parseInt(v.substring(0, 2));
+                    if (mes > 12) v = '12' + v.substring(2);
+                    if (mes === 0) v = '01' + v.substring(2);
+                    $(this).val(v.substring(0, 2) + '/' + v.substring(2));
+                } else {
+                    $(this).val(v);
+                }
+            });
+
+            // Solo números en CVV
+            $('#inputCvvVisual').on('input', function () {
+                $(this).val($(this).val().replace(/\D/g, ''));
+            });
+
+            // Validación y despliegue del modal
+            $('#btnAbrirModal').on('click', function () {
+                var num = $('#inputNumeroVisual').val().replace(/\D/g, '');
+                var titular = $('#inputTitularVisual').val().trim();
+                var vence = $('#inputVenceVisual').val().trim();
+                var cvv = $('#inputCvvVisual').val().trim();
+
+                if (num.length !== digitosEsperados) {
+                    alert('El número de tarjeta debe tener exactamente ' + digitosEsperados + ' dígitos para ' + marcaActual + '.');
+                    $('#inputNumeroVisual').focus();
+                    return;
+                }
+
+                if (titular.length < 3) {
+                    alert('Por favor ingrese el nombre del titular.');
+                    $('#inputTitularVisual').focus();
+                    return;
+                }
+
+                if (vence.length !== 5) {
+                    alert('Ingrese una fecha de vencimiento válida en formato MM/AA.');
+                    $('#inputVenceVisual').focus();
+                    return;
+                }
+
+                if (cvv.length !== cvvEsperado) {
+                    alert('El código de seguridad debe tener ' + cvvEsperado + ' dígitos.');
+                    $('#inputCvvVisual').focus();
+                    return;
+                }
+
+                $('#hiddenNumero').val(num);
+                $('#hiddenTitular').val(titular);
+                $('#hiddenVence').val(vence);
+                $('#hiddenCvv').val(cvv);
+
+                var modal = new bootstrap.Modal(document.getElementById('modalConfirmarPago'));
+                modal.show();
+            });
+
+            // Estado de carga
+            $('#formRealPago').on('submit', function () {
+                $('#btnEjecutarPago').attr('disabled', 'disabled').text('Procesando pago simulado...');
+                $('#btnCancelarModal').attr('disabled', 'disabled');
+            });
+        });
+    </script>
+}

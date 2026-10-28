@@ -1,0 +1,59 @@
+﻿@model Con_Autenticacion.Models.Reserva
+
+@{
+    ViewBag.Title = "Details";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>Details</h2>
+
+<div>
+    <h4>Reserva</h4>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            @Html.DisplayNameFor(model => model.CodigoReserva)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.CodigoReserva)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.UsuarioId)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.UsuarioId)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.FechaCreacion)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.FechaCreacion)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.FechaExpiracion)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.FechaExpiracion)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.EstadoReserva.Descripcion)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.EstadoReserva.Descripcion)
+        </dd>
+
+    </dl>
+</div>
+<p>
+    @Html.ActionLink("Edit", "Edit", new { id = Model.ReservaId }) |
+    @Html.ActionLink("Back to List", "Index")
+</p>
