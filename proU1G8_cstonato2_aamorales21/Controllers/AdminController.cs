@@ -897,6 +897,132 @@ namespace Con_Autenticacion.Controllers
             return RedirectToAction("Gestion", new { tab = "pasajeros" });
         }
 
+        // =========================================================================
+        // PANTALLA 21: CONSULTAS Y REPORTES ADMINISTRATIVOS (/Admin/Reportes)
+        // =========================================================================
+        [HttpGet]
+        public ActionResult Reportes(string consulta, DateTime? desde, DateTime? hasta, int? rutaId, int? aeronaveId, string estado)
+        {
+            if (!EsAdministrativo())
+            {
+                TempData["Error"] = "No tiene permisos para acceder a esta sección.";
+                return RedirectToAction("Index");
+            }
+
+            consulta = (consulta == "reservas" || consulta == "pagos") ? consulta : "ocupacion";
+            DateTime fDesde = (desde ?? DateTime.Today.AddDays(-30)).Date;
+            DateTime fHasta = (hasta ?? DateTime.Today.AddDays(30)).Date;
+            estado = estado ?? "";
+
+            if (fHasta < fDesde)
+            {
+                ViewBag.ErrorFiltro = "La fecha «Hasta» no puede ser anterior a la fecha «Desde».";
+                fHasta = fDesde.AddDays(30);
+            }
+            if ((fHasta - fDesde).TotalDays > 366)
+            {
+                ViewBag.ErrorFiltro = "El rango no puede superar 366 días.";
+                fHasta = fDesde.AddDays(366);
+            }
+            DateTime hastaExclusivo = fHasta.AddDays(1);   // incluye todo el día "hasta"
+
+            // ---------------- OCUPACIÓN POR VUELO ----------------
+            if (consulta == "ocupacion")
+            {
+                var vuelos = db.Vuelo
+                    .Include(v => v.Frecuencia.Ruta.Aeropuerto)
+                    .Include(v => v.Frecuencia.Ruta.Aeropuerto1)
+                    .Include(v => v.Aeronave.ModeloAeronave)
+                    .Where(v => v.FechaOperacion >= fDesde && v.FechaOperacion <= fHasta);
+
+                if (rutaId.HasValue) vuelos = vuelos.Where(v => v.Frecuencia.RutaId == rutaId.Value);
+                if (aeronaveId.HasValue) vuelos = vuelos.Where(v => v.AeronaveId == aeronaveId.Value);
+                if (estado != "") vuelos = vuelos.Where(v => v.EstadoVueloCodigo == estado);
+
+                var lista = vuelos.ToList()
+                    .OrderBy(v => v.FechaOperacion).ThenBy(v => v.Frecuencia.HoraSalida)
+                    .ToList();
+
+                // Reservados (PENDIENTE) y ocupados (CONFIRMADA) por vuelo
+                var ids = lista.Select(v => v.VueloId).ToList();
+                var asignaciones = db.ReservaPasajeroVuelo
+                    .Where(a => ids.Contains(a.VueloId) && (a.EstadoAsignacionCodigo == "PENDIENTE" || a.EstadoAsignacionCodigo == "CONFIRMADA"))
+                    .Select(a => new { a.VueloId, a.EstadoAsignacionCodigo })
+                    .ToList();
+
+                ViewBag.Reservados = asignaciones.Where(a => a.EstadoAsignacionCodigo == "PENDIENTE")
+                    .GroupBy(a => a.VueloId).ToDictionary(g => g.Key, g => g.Count());
+                ViewBag.OcupadosConfirmados = asignaciones.Where(a => a.EstadoAsignacionCodigo == "CONFIRMADA")
+                    .GroupBy(a => a.VueloId).ToDictionary(g => g.Key, g => g.Count());
+                ViewBag.Vuelos = lista;
+            }
+
+            // ---------------- RESERVAS POR ESTADO ----------------
+            if (consulta == "reservas")
+            {
+                var reservas = db.Reserva
+                    .Include(r => r.Compra)
+                    .Where(r => r.FechaCreacion >= fDesde && r.FechaCreacion < hastaExclusivo);
+
+                if (rutaId.HasValue)
+                    reservas = reservas.Where(r => r.ReservaPasajeroVuelo.Any(a => a.Vuelo.Frecuencia.RutaId == rutaId.Value));
+                if (aeronaveId.HasValue)
+                    reservas = reservas.Where(r => r.ReservaPasajeroVuelo.Any(a => a.Vuelo.AeronaveId == aeronaveId.Value));
+                if (estado != "")
+                    reservas = reservas.Where(r => r.EstadoReservaCodigo == estado);
+
+                var lista = reservas.OrderByDescending(r => r.FechaCreacion).ToList();
+                ViewBag.Reservas = lista;
+
+                // Resumen por estado: [estado, cantidad, pasajeros, importe]
+                ViewBag.ResumenReservas = lista
+                    .GroupBy(r => r.EstadoReservaCodigo)
+                    .Select(g => new object[]
+                    {
+                        g.Key,
+                        g.Count(),
+                        g.Sum(r => r.ReservaPasajeroVuelo.Select(a => a.PasajeroId).Distinct().Count()),
+                        g.Sum(r => r.ReservaPasajeroVuelo.Sum(a => a.ImporteTramo))
+                    })
+                    .OrderBy(x => (string)x[0])
+                    .ToList();
+            }
+
+            // ---------------- COMPRAS Y PAGOS SIMULADOS ----------------
+            if (consulta == "pagos")
+            {
+                var compras = db.Compra
+                    .Include(c => c.Reserva)
+                    .Include(c => c.Pago)
+                    .Where(c => c.FechaCompra >= fDesde && c.FechaCompra < hastaExclusivo);
+
+                if (rutaId.HasValue)
+                    compras = compras.Where(c => c.Reserva.ReservaPasajeroVuelo.Any(a => a.Vuelo.Frecuencia.RutaId == rutaId.Value));
+                if (aeronaveId.HasValue)
+                    compras = compras.Where(c => c.Reserva.ReservaPasajeroVuelo.Any(a => a.Vuelo.AeronaveId == aeronaveId.Value));
+                if (estado != "")
+                    compras = compras.Where(c => c.EstadoCompraCodigo == estado);
+
+                ViewBag.Compras = compras.OrderByDescending(c => c.FechaCompra).ToList();
+            }
+
+            // Listas de filtros
+            ViewBag.RutasLista = new SelectList(
+                db.Ruta.ToList().Select(r => new { r.RutaId, Texto = r.Aeropuerto.CodigoIATA + " → " + r.Aeropuerto1.CodigoIATA }),
+                "RutaId", "Texto", rutaId);
+            ViewBag.AeronavesLista = new SelectList(db.Aeronave.OrderBy(a => a.Matricula).ToList(), "AeronaveId", "Matricula", aeronaveId);
+
+            ViewBag.Consulta = consulta;
+            ViewBag.Desde = fDesde.ToString("yyyy-MM-dd");
+            ViewBag.Hasta = fHasta.ToString("yyyy-MM-dd");
+            ViewBag.RutaId = rutaId;
+            ViewBag.AeronaveId = aeronaveId;
+            ViewBag.Estado = estado;
+            ViewBag.FechaCorte = DateTime.Now;
+
+            return View();
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
