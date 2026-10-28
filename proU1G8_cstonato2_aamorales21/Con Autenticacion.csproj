@@ -406,6 +406,7 @@
     <Content Include="Views\Compras\Confirmacion.cshtml" />
     <Content Include="Views\Reservas\MisReservas.cshtml" />
     <Content Include="Views\Reservas\Gestionar.cshtml" />
+    <Content Include="Views\Reservas\CheckIn.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

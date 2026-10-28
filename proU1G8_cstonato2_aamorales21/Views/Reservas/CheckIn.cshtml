@@ -1,0 +1,367 @@
+﻿@model Con_Autenticacion.Models.Reserva
+@{
+    ViewBag.Title = "Check-in";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    string codigo = ViewBag.Codigo ?? "";
+    string documento = ViewBag.Documento ?? "";
+    string errorBusqueda = ViewBag.ErrorBusqueda;
+
+    var elegibilidad = ViewBag.Elegibilidad as Dictionary<int, string>;
+    var codigosAsiento = ViewBag.CodigosAsiento as Dictionary<int, string>;
+
+    // Asignaciones ordenadas por tramo y pasajero
+    var asignaciones = Model == null ? new List<Con_Autenticacion.Models.ReservaPasajeroVuelo>()
+        : Model.ReservaPasajeroVuelo
+            .OrderBy(a => a.Vuelo.FechaOperacion).ThenBy(a => a.Vuelo.Frecuencia.HoraSalida)
+            .ThenBy(a => a.Pasajero.Apellidos)
+            .ToList();
+    int elegibles = Model == null ? 0 : asignaciones.Count(a => elegibilidad[a.AsignacionId] == "ELEGIBLE");
+}
+
+<style>
+    .checkin-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        background: #ffffff;
+    }
+
+    .checkin-card-header {
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        border-top-left-radius: 0.75rem;
+        border-top-right-radius: 0.75rem;
+        padding: 0.85rem 1.25rem;
+    }
+
+    .paso-numero {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.6rem;
+        height: 1.6rem;
+        border-radius: 50%;
+        background-color: #0f172a;
+        color: #f59e0b;
+        font-weight: 700;
+        font-size: 0.8rem;
+        margin-right: 0.5rem;
+    }
+
+    .seat-badge {
+        display: inline-block;
+        min-width: 2.6rem;
+        text-align: center;
+        font-weight: 700;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 0.85rem;
+        background-color: #881337;
+        color: #ffffff;
+    }
+
+    .eleg-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.3rem 0.6rem;
+        border-radius: 0.4rem;
+        display: inline-block;
+    }
+
+    .eleg-si {
+        background-color: #d1fae5;
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+    }
+
+    .eleg-registrado {
+        background-color: #0f172a;
+        color: #ffffff;
+    }
+
+    .eleg-espera {
+        background-color: #fef3c7;
+        color: #78350f;
+        border: 1px solid #fcd34d;
+    }
+
+    .eleg-no {
+        background-color: #f1f5f9;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+    }
+</style>
+
+<main class="container py-5">
+
+    <!-- Encabezado corporativo -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3">
+        <div>
+            <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
+                Aerolínea VIP &middot; Pantalla 15
+            </span>
+            <h2 class="h3 fw-bold text-dark mb-1">Check-in</h2>
+            <p class="text-secondary small mb-0">
+                Registre el check-in de los pasajeros de una reserva pagada. Se habilita 48 horas antes de cada vuelo y cierra 90 minutos antes de la salida.
+            </p>
+        </div>
+        <a href="@Url.Action("MisReservas", "Reservas")" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+            &larr; Mis reservas
+        </a>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
+            <span>&#9888;</span>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
+    @if (TempData["Exito"] != null)
+    {
+        <div class="alert alert-success py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
+            <span>&#10003;</span>
+            <span>@TempData["Exito"]</span>
+        </div>
+    }
+
+    <!-- Paso 1: Localizar reserva -->
+    <div class="checkin-card shadow-sm mb-4">
+        <div class="checkin-card-header">
+            <span class="paso-numero">1</span>
+            <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Localizar reserva</span>
+        </div>
+        <form id="formBuscar" action="@Url.Action("CheckIn", "Reservas")" method="get" class="p-4" novalidate>
+            <div class="row g-3 align-items-start">
+                <div class="col-12 col-md-5">
+                    <label for="codigo" class="form-label small fw-semibold text-secondary mb-1">
+                        Código de reserva <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" id="codigo" name="codigo" class="form-control py-2 text-uppercase" value="@codigo"
+                           placeholder="RV00000000" maxlength="10" aria-describedby="errorCodigo" />
+                    <small id="errorCodigo" class="text-danger d-none" role="alert" style="font-size: 0.8rem;">
+                        &#9888; Use el formato RV seguido de 8 dígitos.
+                    </small>
+                </div>
+                <div class="col-12 col-md-5">
+                    <label for="documento" class="form-label small fw-semibold text-secondary mb-1">
+                        Número de documento del pasajero <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" id="documento" name="documento" class="form-control py-2" value="@documento"
+                           placeholder="Cédula o pasaporte" maxlength="20" aria-describedby="errorDocumento" />
+                    <small id="errorDocumento" class="text-danger d-none" role="alert" style="font-size: 0.8rem;">
+                        &#9888; El documento debe tener entre 5 y 20 caracteres.
+                    </small>
+                </div>
+                <div class="col-12 col-md-2 d-grid" style="padding-top: 1.75rem;">
+                    <button type="submit" id="btnBuscar" class="btn btn-dark py-2 fw-semibold">Iniciar check-in</button>
+                </div>
+            </div>
+
+            @if (errorBusqueda != null)
+            {
+                <div class="alert alert-light border small text-secondary mt-3 mb-0" role="alert">
+                    <strong class="text-dark">&#9432;</strong> @errorBusqueda
+                </div>
+            }
+        </form>
+    </div>
+
+    <!-- Paso 2: Pasajeros y tramos -->
+    @if (Model != null)
+    {
+        <form id="formCheckIn" action="@Url.Action("CheckIn", "Reservas")" method="post" novalidate>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="codigo" value="@codigo" />
+            <input type="hidden" name="documento" value="@documento" />
+
+            <div class="checkin-card shadow-sm mb-4">
+                <div class="checkin-card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div>
+                        <span class="paso-numero">2</span>
+                        <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Pasajeros de la reserva @Model.CodigoReserva</span>
+                    </div>
+                    <span class="badge bg-light text-secondary border small">
+                        @elegibles @(elegibles == 1 ? "registro elegible" : "registros elegibles")
+                    </span>
+                </div>
+
+                <!-- Tabla (escritorio y tableta) -->
+                <div class="table-responsive d-none d-md-block">
+                    <table class="table align-middle mb-0" style="font-size: 0.9rem;">
+                        <thead class="table-light small text-secondary">
+                            <tr>
+                                <th class="ps-4" style="width: 3rem;">
+                                    @if (elegibles > 0)
+                                    {
+                                        <input type="checkbox" class="form-check-input" id="seleccionarTodos" aria-label="Seleccionar todos los elegibles" />
+                                    }
+                                </th>
+                                <th>Pasajero</th>
+                                <th>Vuelo</th>
+                                <th>Ruta</th>
+                                <th>Fecha y hora</th>
+                                <th class="text-center">Asiento</th>
+                                <th>Elegibilidad</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var a in asignaciones)
+                            {
+                                string estado = elegibilidad[a.AsignacionId];
+                                bool esElegible = estado == "ELEGIBLE";
+                                string clase = esElegible ? "eleg-si"
+                                    : (estado.StartsWith("Registrado") ? "eleg-registrado"
+                                    : (estado.StartsWith("Aún no") ? "eleg-espera" : "eleg-no"));
+                                string idCheck = "asig_" + a.AsignacionId;
+
+                                <tr>
+                                    <td class="ps-4">
+                                        @if (esElegible)
+                                        {
+                                            <input type="checkbox" class="form-check-input chk-asignacion" name="asignaciones" value="@a.AsignacionId" id="@idCheck" />
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">&mdash;</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <label for="@idCheck" class="fw-semibold text-dark mb-0">@a.Pasajero.Nombres @a.Pasajero.Apellidos</label>
+                                        <small class="d-block text-muted">@a.Pasajero.TipoDocumentoCodigo @a.Pasajero.NumeroDocumento</small>
+                                    </td>
+                                    <td class="small">VIP@(a.VueloId.ToString("D5"))</td>
+                                    <td>
+                                        @a.Vuelo.Frecuencia.Ruta.Aeropuerto.Localidad &rarr; @a.Vuelo.Frecuencia.Ruta.Aeropuerto1.Localidad
+                                    </td>
+                                    <td class="small">
+                                        @a.Vuelo.FechaOperacion.ToString("dd/MM/yyyy")<br />
+                                        <span class="text-muted">Salida @a.Vuelo.Frecuencia.HoraSalida.ToString(@"hh\:mm")</span>
+                                    </td>
+                                    <td class="text-center"><span class="seat-badge">@codigosAsiento[a.AsignacionId]</span></td>
+                                    <td><span class="eleg-badge @clase">@(esElegible ? "Elegible" : estado)</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Tarjetas (móvil) -->
+                <div class="d-md-none p-3 d-flex flex-column gap-3">
+                    @foreach (var a in asignaciones)
+                    {
+                        string estado = elegibilidad[a.AsignacionId];
+                        bool esElegible = estado == "ELEGIBLE";
+                        string clase = esElegible ? "eleg-si"
+                            : (estado.StartsWith("Registrado") ? "eleg-registrado"
+                            : (estado.StartsWith("Aún no") ? "eleg-espera" : "eleg-no"));
+                        string idCheckMovil = "asigm_" + a.AsignacionId;
+
+                        <div class="border rounded-3 p-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <div class="fw-semibold text-dark">@a.Pasajero.Nombres @a.Pasajero.Apellidos</div>
+                                    <small class="text-muted">VIP@(a.VueloId.ToString("D5")) &middot; @a.Vuelo.FechaOperacion.ToString("dd/MM/yyyy") @a.Vuelo.Frecuencia.HoraSalida.ToString(@"hh\:mm")</small>
+                                </div>
+                                <span class="seat-badge">@codigosAsiento[a.AsignacionId]</span>
+                            </div>
+                            <div class="small mb-2">@a.Vuelo.Frecuencia.Ruta.Aeropuerto.Localidad &rarr; @a.Vuelo.Frecuencia.Ruta.Aeropuerto1.Localidad</div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="eleg-badge @clase">@(esElegible ? "Elegible" : estado)</span>
+                                @if (esElegible)
+                                {
+                                    <div class="form-check mb-0">
+                                        <input type="checkbox" class="form-check-input chk-movil" data-asignacion="@a.AsignacionId" id="@idCheckMovil" />
+                                        <label class="form-check-label small" for="@idCheckMovil">Registrar</label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="p-4 border-top">
+                    <small id="errorSeleccion" class="text-danger d-none d-block mb-2" role="alert" style="font-size: 0.8rem;">
+                        &#9888; Seleccione al menos un pasajero para registrar el check-in.
+                    </small>
+                    <div class="d-flex flex-wrap gap-2">
+                        @if (elegibles > 0)
+                        {
+                            <button type="submit" id="btnConfirmar" class="btn btn-dark px-4 py-2 fw-semibold">Confirmar</button>
+                        }
+                        <a href="@Url.Action("CheckIn", "Reservas", new { codigo = codigo, documento = documento })" class="btn btn-outline-secondary px-4 py-2">
+                            Consultar estado
+                        </a>
+                    </div>
+                    @if (elegibles == 0)
+                    {
+                        <p class="small text-secondary mt-3 mb-0">
+                            &#9432; En este momento no hay pasajeros con check-in disponible. El check-in solo puede completarse para reservas pagadas y dentro de su ventana horaria.
+                        </p>
+                    }
+                </div>
+            </div>
+        </form>
+    }
+</main>
+
+@section scripts {
+    <script>
+        $(function () {
+            // ---- Paso 1: validación del formulario de búsqueda ----
+            $('#codigo').on('input', function () {
+                $(this).val($(this).val().toUpperCase().replace(/\s/g, ''));
+            });
+
+            $('#formBuscar').on('submit', function (e) {
+                var codigo = $.trim($('#codigo').val()).toUpperCase();
+                var documento = $.trim($('#documento').val());
+                var valido = true;
+
+                if (!/^RV\d{8}$/.test(codigo)) {
+                    $('#errorCodigo').removeClass('d-none');
+                    $('#codigo').addClass('is-invalid');
+                    valido = false;
+                } else {
+                    $('#errorCodigo').addClass('d-none');
+                    $('#codigo').removeClass('is-invalid');
+                }
+
+                if (documento.length < 5 || documento.length > 20) {
+                    $('#errorDocumento').removeClass('d-none');
+                    $('#documento').addClass('is-invalid');
+                    valido = false;
+                } else {
+                    $('#errorDocumento').addClass('d-none');
+                    $('#documento').removeClass('is-invalid');
+                }
+
+                if (!valido) {
+                    e.preventDefault();
+                } else {
+                    $('#btnBuscar').attr('disabled', 'disabled').text('Buscando reserva…');
+                }
+            });
+
+            // ---- Paso 2: selección de pasajeros ----
+            $('#seleccionarTodos').on('change', function () {
+                $('.chk-asignacion').prop('checked', $(this).is(':checked'));
+            });
+
+            // En móvil, las casillas marcan las mismas asignaciones del formulario
+            $('.chk-movil').on('change', function () {
+                var id = $(this).data('asignacion');
+                $('.chk-asignacion[value="' + id + '"]').prop('checked', $(this).is(':checked'));
+            });
+
+            $('#formCheckIn').on('submit', function (e) {
+                if ($('.chk-asignacion:checked').length === 0) {
+                    e.preventDefault();
+                    $('#errorSeleccion').removeClass('d-none');
+                    return;
+                }
+                $('#btnConfirmar').attr('disabled', 'disabled').text('Registrando check-in…');
+            });
+        });
+    </script>
+}

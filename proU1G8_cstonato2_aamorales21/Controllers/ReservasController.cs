@@ -702,6 +702,183 @@ namespace Con_Autenticacion.Controllers
             TempData["Exito"] = "Reserva " + reserva.CodigoReserva + " cancelada. Los asientos fueron liberados." + detalle;
             return RedirectToAction("Gestionar", new { id = id });
         }
+        // =========================================================================
+        // PANTALLA 15: CHECK-IN (/Reservas/CheckIn)
+        // =========================================================================
+
+        // Lee un parámetro entero de Web.config (appSettings) o usa el valor por defecto
+        private int LeerParametro(string clave, int valorPorDefecto)
+        {
+            int valor;
+            if (int.TryParse(System.Configuration.ConfigurationManager.AppSettings[clave], out valor))
+            {
+                return valor;
+            }
+            return valorPorDefecto;
+        }
+
+        // Devuelve la elegibilidad de una asignación para el check-in.
+        // Retorna "ELEGIBLE" o el texto que explica por qué no es elegible.
+        private string EvaluarCheckIn(ReservaPasajeroVuelo a)
+        {
+            int aperturaHoras = LeerParametro("CheckInAperturaHoras", 48);
+            int cierreMin = LeerParametro("CheckInCierreMin", 90);
+
+            DateTime salida = a.Vuelo.FechaOperacion.Add(a.Vuelo.Frecuencia.HoraSalida);
+            DateTime apertura = salida.AddHours(-aperturaHoras);
+            DateTime cierre = salida.AddMinutes(-cierreMin);
+            DateTime ahora = DateTime.Now;
+
+            var checkInVigente = a.CheckIn.FirstOrDefault(c => c.EstadoCheckInCodigo == "COMPLETADO");
+            if (checkInVigente != null)
+                return "Registrado el " + checkInVigente.FechaRegistro.ToString("dd/MM/yyyy HH:mm");
+
+            if (a.Vuelo.EstadoVueloCodigo == "CANCELADO")
+                return "Vuelo cancelado";
+
+            if (a.EstadoAsignacionCodigo != "CONFIRMADA")
+                return "Requiere compra pagada";
+
+            if (ahora < apertura)
+                return "Aún no habilitado (abre el " + apertura.ToString("dd/MM/yyyy HH:mm") + ")";
+
+            if (ahora > cierre)
+                return "Check-in cerrado";
+
+            return "ELEGIBLE";
+        }
+
+        // Usa PuedeGestionar(...) de la pantalla 14: titular o Counter / Administrador / SuperUsuario.
+
+        // GET: /Reservas/CheckIn?codigo=RV00000006&documento=1710000015
+        [HttpGet]
+        public ActionResult CheckIn(string codigo, string documento)
+        {
+            codigo = (codigo ?? "").Trim().ToUpper();
+            documento = (documento ?? "").Trim().ToUpper();
+            ViewBag.Codigo = codigo;
+            ViewBag.Documento = documento;
+
+            // Paso 1: sin datos todavía, solo se muestra el formulario
+            if (codigo == "" && documento == "")
+            {
+                return View((Reserva)null);
+            }
+
+            // Validación de formato en el servidor
+            if (!System.Text.RegularExpressions.Regex.IsMatch(codigo, @"^RV\d{8}$"))
+            {
+                ViewBag.ErrorBusqueda = "El código de reserva debe tener el formato RV seguido de 8 dígitos.";
+                return View((Reserva)null);
+            }
+            if (documento.Length < 5 || documento.Length > 20)
+            {
+                ViewBag.ErrorBusqueda = "El número de documento debe tener entre 5 y 20 caracteres.";
+                return View((Reserva)null);
+            }
+
+            // RG-37: el código y el documento deben corresponder a la misma reserva
+            var reserva = db.Reserva.FirstOrDefault(r => r.CodigoReserva == codigo);
+            bool documentoCoincide = reserva != null &&
+                reserva.ReservaPasajeroVuelo.Any(a => a.Pasajero.NumeroDocumento.ToUpper() == documento);
+
+            if (reserva == null || !documentoCoincide || !PuedeGestionar(reserva))
+            {
+                // Mensaje neutral: no se revela si la reserva existe
+                ViewBag.ErrorBusqueda = "No se encontró una reserva con esos datos.";
+                return View((Reserva)null);
+            }
+
+            // Elegibilidad y código de asiento por asignación
+            var elegibilidad = new Dictionary<int, string>();
+            var codigosAsiento = new Dictionary<int, string>();
+            var asientos = db.Asiento.ToList();
+
+            foreach (var a in reserva.ReservaPasajeroVuelo)
+            {
+                elegibilidad[a.AsignacionId] = EvaluarCheckIn(a);
+
+                int modeloId = a.Vuelo.Aeronave != null ? a.Vuelo.Aeronave.ModeloAeronaveId : 0;
+                var asiento = asientos.FirstOrDefault(s => s.NumeroAsiento == a.NumeroAsiento && (modeloId == 0 || s.ModeloAeronaveId == modeloId));
+                codigosAsiento[a.AsignacionId] = asiento != null ? asiento.Codigo : a.NumeroAsiento.ToString();
+            }
+
+            ViewBag.Elegibilidad = elegibilidad;
+            ViewBag.CodigosAsiento = codigosAsiento;
+            return View(reserva);
+        }
+
+        // POST: /Reservas/CheckIn  (Confirmar check-in de las asignaciones marcadas)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult CheckIn(string codigo, string documento, List<int> asignaciones)
+        {
+            codigo = (codigo ?? "").Trim().ToUpper();
+            documento = (documento ?? "").Trim().ToUpper();
+
+            var reserva = db.Reserva.FirstOrDefault(r => r.CodigoReserva == codigo);
+            bool documentoCoincide = reserva != null &&
+                reserva.ReservaPasajeroVuelo.Any(a => a.Pasajero.NumeroDocumento.ToUpper() == documento);
+
+            if (reserva == null || !documentoCoincide || !PuedeGestionar(reserva))
+            {
+                TempData["Error"] = "No se encontró una reserva con esos datos.";
+                return RedirectToAction("CheckIn");
+            }
+
+            if (asignaciones == null || asignaciones.Count == 0)
+            {
+                TempData["Error"] = "Seleccione al menos un pasajero para registrar el check-in.";
+                return RedirectToAction("CheckIn", new { codigo = codigo, documento = documento });
+            }
+
+            var registrados = new List<string>();
+            var rechazados = new List<string>();
+
+            foreach (int asignacionId in asignaciones.Distinct())
+            {
+                // Solo asignaciones que pertenecen a esta reserva
+                var a = reserva.ReservaPasajeroVuelo.FirstOrDefault(x => x.AsignacionId == asignacionId);
+                if (a == null) continue;
+
+                string nombre = a.Pasajero.Nombres + " " + a.Pasajero.Apellidos + " en VIP" + a.VueloId.ToString("D5");
+
+                // Se vuelve a validar en el servidor (la ventana pudo cerrarse)
+                if (EvaluarCheckIn(a) != "ELEGIBLE")
+                {
+                    rechazados.Add(nombre);
+                    continue;
+                }
+
+                db.CheckIn.Add(new Con_Autenticacion.Models.CheckIn   // nombre completo: la acción también se llama CheckIn
+                {
+                    AsignacionId = a.AsignacionId,
+                    FechaRegistro = DateTime.Now,
+                    EstadoCheckInCodigo = "COMPLETADO"
+                });
+                registrados.Add(nombre);
+            }
+
+            try
+            {
+                db.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                Exception inner = ex;
+                while (inner.InnerException != null) inner = inner.InnerException;
+                TempData["Error"] = "No se pudo registrar el check-in: " + inner.Message;
+                return RedirectToAction("CheckIn", new { codigo = codigo, documento = documento });
+            }
+
+            if (registrados.Any())
+                TempData["Exito"] = "Check-in completado para " + string.Join(", ", registrados) + ".";
+            if (rechazados.Any())
+                TempData["Error"] = "No se pudo registrar el check-in de " + string.Join(", ", rechazados) + " porque ya no es elegible.";
+
+            return RedirectToAction("CheckIn", new { codigo = codigo, documento = documento });
+        }
+
         // GET: Reservas/Details/5
         public ActionResult Details(int? id)
         {
