@@ -489,7 +489,219 @@ namespace Con_Autenticacion.Controllers
 
             return View(paginaActual);
         }
+        // =========================================================================
+        // PANTALLA 14: GESTIÓN DE RESERVAS Y CANCELACIONES (/Reservas/Gestionar/{id})
+        // =========================================================================
 
+        // Revisa si la reserva se puede cancelar y con qué tratamiento.
+        // Devuelve null si se puede cancelar, o el motivo por el que no se puede.
+        private string EvaluarCancelacion(Reserva reserva, out bool conReembolso, out double horasRestantes)
+        {
+            conReembolso = false;
+            horasRestantes = 0;
+
+            int limiteHoras = 48;
+            int valorConfig;
+            if (int.TryParse(System.Configuration.ConfigurationManager.AppSettings["LimiteReembolsoHoras"], out valorConfig))
+            {
+                limiteHoras = valorConfig;
+            }
+
+            var primerVuelo = reserva.ReservaPasajeroVuelo
+                .Select(a => a.Vuelo)
+                .OrderBy(v => v.FechaOperacion).ThenBy(v => v.Frecuencia.HoraSalida)
+                .FirstOrDefault();
+
+            if (primerVuelo == null)
+                return "La reserva no tiene tramos asociados.";
+
+            DateTime salida = primerVuelo.FechaOperacion.Add(primerVuelo.Frecuencia.HoraSalida);
+            horasRestantes = (salida - DateTime.Now).TotalHours;
+
+            if (reserva.EstadoReservaCodigo == "CANCELADA")
+                return "La reserva ya se encuentra cancelada.";
+
+            if (reserva.EstadoReservaCodigo == "EXPIRADA" ||
+                (reserva.EstadoReservaCodigo == "PENDIENTE" && reserva.FechaExpiracion.HasValue && reserva.FechaExpiracion.Value < DateTime.Now))
+                return "La reserva expiró; sus asientos ya fueron liberados.";
+
+            if (horasRestantes <= 0)
+                return "El vuelo ya salió; la reserva no puede cancelarse.";
+
+            bool tieneCheckIn = reserva.ReservaPasajeroVuelo
+                .Any(a => a.CheckIn.Any(c => c.EstadoCheckInCodigo == "COMPLETADO"));
+            if (tieneCheckIn)
+                return "La reserva tiene check-in completado; ya no puede cancelarse.";
+
+            if (reserva.EstadoReservaCodigo == "CONFIRMADA")
+                conReembolso = horasRestantes >= limiteHoras;
+
+            return null;
+        }
+
+        // Verifica que el usuario sea el titular o un rol autorizado
+        private bool PuedeGestionar(Reserva reserva)
+        {
+            string currentUserId = User.Identity.GetUserId() ?? User.Identity.Name;
+            return reserva.UsuarioId == currentUserId
+                || User.IsInRole("Counter")
+                || User.IsInRole("Administrador")
+                || User.IsInRole("SuperUsuario");
+        }
+
+        // GET: /Reservas/Gestionar/5
+        [HttpGet]
+        public ActionResult Gestionar(int? id)
+        {
+            if (!id.HasValue)
+            {
+                TempData["Error"] = "Identificador de reserva no válido.";
+                return RedirectToAction("MisReservas");
+            }
+
+            var reserva = db.Reserva.Find(id.Value);
+            if (reserva == null || !PuedeGestionar(reserva))
+            {
+                // Mensaje neutral: no se revela si la reserva existe
+                TempData["Error"] = "No se encontró la reserva solicitada.";
+                return RedirectToAction("MisReservas");
+            }
+
+            // Estado efectivo (una pendiente vencida se muestra como expirada - DP-07)
+            bool vencida = reserva.EstadoReservaCodigo == "PENDIENTE" && reserva.FechaExpiracion.HasValue && reserva.FechaExpiracion.Value < DateTime.Now;
+            ViewBag.EstadoReserva = vencida ? "EXPIRADA" : reserva.EstadoReservaCodigo;
+
+            var compra = reserva.Compra.OrderByDescending(c => c.FechaCompra).FirstOrDefault();
+            ViewBag.EstadoCompra = compra != null ? compra.EstadoCompraCodigo : "";
+            ViewBag.ImporteTotal = reserva.ReservaPasajeroVuelo.Sum(a => (decimal?)a.ImporteTramo) ?? 0m;
+
+            // Códigos de asiento leídos de la tabla Asiento (DP-11)
+            var asientos = db.Asiento.ToList();
+            var codigos = new Dictionary<int, string>();
+            foreach (var a in reserva.ReservaPasajeroVuelo)
+            {
+                int modeloId = a.Vuelo.Aeronave != null ? a.Vuelo.Aeronave.ModeloAeronaveId : 0;
+                var asiento = asientos.FirstOrDefault(s => s.NumeroAsiento == a.NumeroAsiento && (modeloId == 0 || s.ModeloAeronaveId == modeloId));
+                codigos[a.AsignacionId] = asiento != null ? asiento.Codigo : a.NumeroAsiento.ToString();
+            }
+            ViewBag.CodigosAsiento = codigos;
+
+            // Evaluación de la política DP-08
+            bool conReembolso;
+            double horasRestantes;
+            string motivoNoCancelable = EvaluarCancelacion(reserva, out conReembolso, out horasRestantes);
+            ViewBag.PuedeCancelar = motivoNoCancelable == null;
+            ViewBag.MotivoNoCancelable = motivoNoCancelable;
+            ViewBag.ConReembolso = conReembolso;
+            ViewBag.HorasRestantes = horasRestantes;
+
+            return View(reserva);
+        }
+
+        // POST: /Reservas/Gestionar/5  (Confirmar solicitud de cancelación)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Gestionar(int id, string motivo)
+        {
+            var reserva = db.Reserva.Find(id);
+            if (reserva == null || !PuedeGestionar(reserva))
+            {
+                TempData["Error"] = "No se encontró la reserva solicitada.";
+                return RedirectToAction("MisReservas");
+            }
+
+            // Se vuelve a evaluar en el servidor: el estado pudo cambiar mientras se revisaba
+            bool conReembolso;
+            double horasRestantes;
+            string motivoNoCancelable = EvaluarCancelacion(reserva, out conReembolso, out horasRestantes);
+            if (motivoNoCancelable != null)
+            {
+                TempData["Error"] = motivoNoCancelable;
+                return RedirectToAction("Gestionar", new { id = id });
+            }
+
+            // Motivo obligatorio (10-300 caracteres) para reservas pagadas
+            motivo = (motivo ?? "").Trim();
+            if (reserva.EstadoReservaCodigo == "CONFIRMADA" && (motivo.Length < 10 || motivo.Length > 300))
+            {
+                TempData["Error"] = "Describa el motivo de la cancelación (entre 10 y 300 caracteres).";
+                return RedirectToAction("Gestionar", new { id = id });
+            }
+
+            var compra = reserva.Compra.OrderByDescending(c => c.FechaCompra).FirstOrDefault();
+            bool estabaPagada = compra != null && compra.EstadoCompraCodigo == "PAGADA";
+
+            using (var transaccion = db.Database.BeginTransaction())
+            {
+                try
+                {
+                    // 1. Liberar asientos (vuelven a verde)
+                    foreach (var a in reserva.ReservaPasajeroVuelo)
+                    {
+                        if (a.EstadoAsignacionCodigo == "PENDIENTE" || a.EstadoAsignacionCodigo == "CONFIRMADA")
+                        {
+                            a.EstadoAsignacionCodigo = "CANCELADA";
+                        }
+                    }
+
+                    // 2. Tratamiento de la compra y el pago simulado
+                    if (compra != null)
+                    {
+                        if (compra.EstadoCompraCodigo == "PENDIENTE")
+                        {
+                            compra.EstadoCompraCodigo = "ANULADA";
+                        }
+                        else if (compra.EstadoCompraCodigo == "PAGADA" && conReembolso)
+                        {
+                            var pagoAprobado = compra.Pago.FirstOrDefault(p => p.EstadoPagoCodigo == "APROBADO");
+                            if (pagoAprobado != null)
+                            {
+                                pagoAprobado.EstadoPagoCodigo = "REVERSADO";
+                                string mensaje = "Reembolso simulado por cancelación: " + motivo;
+                                pagoAprobado.MensajeResultado = mensaje.Length > 200 ? mensaje.Substring(0, 200) : mensaje;
+                            }
+                            compra.EstadoCompraCodigo = "ANULADA";
+
+                            // Nota de crédito académica (DP-05)
+                            int siguiente = db.Comprobante.Count(c => c.TipoComprobanteCodigo == "NOTA_CREDITO") + 1;
+                            db.Comprobante.Add(new Comprobante
+                            {
+                                CompraId = compra.CompraId,
+                                TipoComprobanteCodigo = "NOTA_CREDITO",
+                                NumeroComprobante = "NC-ACAD-" + siguiente.ToString("D6"),
+                                FechaEmision = DateTime.Now,
+                                EstadoComprobanteCodigo = "EMITIDO"
+                            });
+                        }
+                        // PAGADA sin reembolso (< 48 h): la compra se mantiene PAGADA como penalidad
+                    }
+
+                    // 3. Reserva cancelada
+                    reserva.EstadoReservaCodigo = "CANCELADA";
+
+                    db.SaveChanges();
+                    transaccion.Commit();
+                }
+                catch (Exception ex)
+                {
+                    transaccion.Rollback();
+                    Exception inner = ex;
+                    while (inner.InnerException != null) inner = inner.InnerException;
+                    TempData["Error"] = "No se pudo cancelar la reserva: " + inner.Message;
+                    return RedirectToAction("Gestionar", new { id = id });
+                }
+            }
+
+            string detalle = "";
+            if (estabaPagada)
+            {
+                detalle = conReembolso
+                    ? " Se registró un reembolso simulado total y una nota de crédito académica."
+                    : " Por la cercanía del vuelo, la cancelación no genera reembolso.";
+            }
+            TempData["Exito"] = "Reserva " + reserva.CodigoReserva + " cancelada. Los asientos fueron liberados." + detalle;
+            return RedirectToAction("Gestionar", new { id = id });
+        }
         // GET: Reservas/Details/5
         public ActionResult Details(int? id)
         {
