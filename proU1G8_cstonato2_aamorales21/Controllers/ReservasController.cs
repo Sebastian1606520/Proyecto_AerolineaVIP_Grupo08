@@ -406,7 +406,89 @@ namespace Con_Autenticacion.Controllers
             return RedirectToAction("Pagar", "Compras", new { id = reservaIdGenerada });
         }
 
+        // =========================================================================
+        // PANTALLA 13: CONSULTA DE RESERVAS (GET /Reservas/MisReservas)
+        // =========================================================================
+        [HttpGet]
+        public ActionResult MisReservas(DateTime? desde, DateTime? hasta, string estado, int pagina = 1)
+        {
+            // Siempre se filtra por el usuario autenticado, nunca por un parámetro de la URL
+            string currentUserId = User.Identity.GetUserId() ?? User.Identity.Name;
 
+            // Rango de fechas inválido: se avisa junto al filtro y no se aplica el "hasta"
+            if (desde.HasValue && hasta.HasValue && hasta.Value.Date < desde.Value.Date)
+            {
+                ViewBag.ErrorFiltro = "La fecha «Hasta» no puede ser anterior a la fecha «Desde».";
+                hasta = null;
+            }
+
+            // Estados válidos del filtro
+            var estadosValidos = new List<string> { "PENDIENTE", "CONFIRMADA", "CANCELADA", "EXPIRADA" };
+            if (!string.IsNullOrEmpty(estado) && !estadosValidos.Contains(estado))
+            {
+                estado = null;
+            }
+
+            var reservas = db.Reserva
+                .Include(r => r.Compra)
+                .Include(r => r.ReservaPasajeroVuelo.Select(a => a.Vuelo.Frecuencia.Ruta.Aeropuerto))
+                .Include(r => r.ReservaPasajeroVuelo.Select(a => a.Vuelo.Frecuencia.Ruta.Aeropuerto1))
+                .Where(r => r.UsuarioId == currentUserId)
+                .OrderByDescending(r => r.FechaCreacion)
+                .ToList();
+
+            DateTime ahora = DateTime.Now;
+
+            // Filtro por fecha de viaje (fecha del primer tramo de la reserva)
+            if (desde.HasValue)
+            {
+                reservas = reservas
+                    .Where(r => r.ReservaPasajeroVuelo.Any() && r.ReservaPasajeroVuelo.Min(a => a.Vuelo.FechaOperacion) >= desde.Value.Date)
+                    .ToList();
+            }
+            if (hasta.HasValue)
+            {
+                reservas = reservas
+                    .Where(r => r.ReservaPasajeroVuelo.Any() && r.ReservaPasajeroVuelo.Min(a => a.Vuelo.FechaOperacion) <= hasta.Value.Date)
+                    .ToList();
+            }
+
+            // Filtro por estado (una reserva PENDIENTE con el plazo vencido se considera EXPIRADA - DP-07)
+            if (!string.IsNullOrEmpty(estado))
+            {
+                reservas = reservas.Where(r =>
+                {
+                    bool vencida = r.EstadoReservaCodigo == "PENDIENTE" && r.FechaExpiracion.HasValue && r.FechaExpiracion.Value < ahora;
+                    string estadoEfectivo = vencida ? "EXPIRADA" : r.EstadoReservaCodigo;
+                    return estadoEfectivo == estado;
+                }).ToList();
+            }
+
+            // Paginación simple (8 reservas por página)
+            int tamanoPagina = 8;
+            int totalRegistros = reservas.Count;
+            int totalPaginas = (int)Math.Ceiling(totalRegistros / (double)tamanoPagina);
+            if (totalPaginas < 1) totalPaginas = 1;
+            if (pagina < 1) pagina = 1;
+            if (pagina > totalPaginas) pagina = totalPaginas;
+
+            var paginaActual = reservas
+                .Skip((pagina - 1) * tamanoPagina)
+                .Take(tamanoPagina)
+                .ToList();
+
+            // Datos para conservar los filtros en la vista
+            ViewBag.Desde = desde.HasValue ? desde.Value.ToString("yyyy-MM-dd") : "";
+            ViewBag.Hasta = hasta.HasValue ? hasta.Value.ToString("yyyy-MM-dd") : "";
+            ViewBag.Estado = estado ?? "";
+            ViewBag.Pagina = pagina;
+            ViewBag.TotalPaginas = totalPaginas;
+            ViewBag.TotalRegistros = totalRegistros;
+            ViewBag.HayFiltros = desde.HasValue || hasta.HasValue || !string.IsNullOrEmpty(estado);
+            ViewBag.Ahora = ahora;
+
+            return View(paginaActual);
+        }
 
         // GET: Reservas/Details/5
         public ActionResult Details(int? id)

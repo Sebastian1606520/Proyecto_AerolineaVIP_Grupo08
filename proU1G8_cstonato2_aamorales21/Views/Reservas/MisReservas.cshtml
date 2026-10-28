@@ -1,0 +1,417 @@
+﻿@model IEnumerable<Con_Autenticacion.Models.Reserva>
+@{
+    ViewBag.Title = "Mis reservas";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    DateTime ahora = (DateTime)ViewBag.Ahora;
+    int pagina = (int)ViewBag.Pagina;
+    int totalPaginas = (int)ViewBag.TotalPaginas;
+    string fDesde = ViewBag.Desde;
+    string fHasta = ViewBag.Hasta;
+    string fEstado = ViewBag.Estado;
+}
+
+<style>
+    .reservas-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        background: #ffffff;
+    }
+
+    .reservas-card-header {
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        border-top-left-radius: 0.75rem;
+        border-top-right-radius: 0.75rem;
+        padding: 0.85rem 1.25rem;
+    }
+
+    .estado-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.35rem 0.6rem;
+        border-radius: 0.4rem;
+        white-space: nowrap;
+    }
+
+    .estado-pendiente {
+        background-color: #581c87;
+        color: #ffffff;
+    }
+
+    .estado-confirmada {
+        background-color: #065f46;
+        color: #ffffff;
+    }
+
+    .estado-cancelada {
+        background-color: #e2e8f0;
+        color: #334155;
+    }
+
+    .estado-expirada {
+        background-color: #fef3c7;
+        color: #78350f;
+        border: 1px solid #fcd34d;
+    }
+
+    .compra-pagada {
+        background-color: #d1fae5;
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+    }
+
+    .compra-pendiente {
+        background-color: #fef3c7;
+        color: #78350f;
+        border: 1px solid #fcd34d;
+    }
+
+    .compra-anulada {
+        background-color: #fee2e2;
+        color: #881337;
+        border: 1px solid #fca5a5;
+    }
+
+    .compra-ninguna {
+        background-color: #f1f5f9;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+    }
+
+    .reserva-movil {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        background: #ffffff;
+    }
+</style>
+
+<main class="container py-5">
+
+    <!-- Encabezado corporativo -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3">
+        <div>
+            <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
+                Aerolínea VIP &middot; Pantalla 13
+            </span>
+            <h2 class="h3 fw-bold text-dark mb-1">Mis reservas</h2>
+            <p class="text-secondary small mb-0">
+                Revise el estado de sus reservas, pague las pendientes o gestione una cancelación.
+            </p>
+        </div>
+        <a href="@Url.Action("Buscar", "Vuelos")" class="btn btn-dark btn-sm px-3 py-2 fw-semibold">
+            Buscar vuelos &rarr;
+        </a>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
+            <span>&#9888;</span>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
+    @if (TempData["Exito"] != null)
+    {
+        <div class="alert alert-success py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
+            <span>&#10003;</span>
+            <span>@TempData["Exito"]</span>
+        </div>
+    }
+
+    <!-- Filtros (en móvil se pliegan) -->
+    <div class="reservas-card shadow-sm mb-4">
+        <div class="reservas-card-header d-flex justify-content-between align-items-center">
+            <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Filtros</span>
+            <button class="btn btn-outline-secondary btn-sm d-md-none" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#panelFiltros" aria-expanded="false" aria-controls="panelFiltros">
+                Mostrar filtros
+            </button>
+        </div>
+        <div class="collapse d-md-block" id="panelFiltros">
+            <form id="formFiltros" action="@Url.Action("MisReservas", "Reservas")" method="get" class="p-4" novalidate>
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-3">
+                        <label for="desde" class="form-label small fw-semibold text-secondary mb-1">Fecha de viaje desde (opcional)</label>
+                        <input type="date" id="desde" name="desde" class="form-control form-control-sm py-2" value="@fDesde" />
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label for="hasta" class="form-label small fw-semibold text-secondary mb-1">Hasta (opcional)</label>
+                        <input type="date" id="hasta" name="hasta" class="form-control form-control-sm py-2" value="@fHasta" aria-describedby="errorRango" />
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label for="estado" class="form-label small fw-semibold text-secondary mb-1">Estado (opcional)</label>
+                        <select id="estado" name="estado" class="form-select form-select-sm py-2">
+                            <option value="" @(fEstado == "" ? "selected" : "")>Todos</option>
+                            <option value="PENDIENTE" @(fEstado == "PENDIENTE" ? "selected" : "")>Pendiente</option>
+                            <option value="CONFIRMADA" @(fEstado == "CONFIRMADA" ? "selected" : "")>Confirmada</option>
+                            <option value="CANCELADA" @(fEstado == "CANCELADA" ? "selected" : "")>Cancelada</option>
+                            <option value="EXPIRADA" @(fEstado == "EXPIRADA" ? "selected" : "")>Expirada</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3 d-flex gap-2">
+                        <button type="submit" class="btn btn-dark btn-sm px-4 py-2 fw-semibold flex-grow-1">Filtrar</button>
+                        <a href="@Url.Action("MisReservas", "Reservas")" class="btn btn-outline-secondary btn-sm px-3 py-2">Limpiar</a>
+                    </div>
+                </div>
+
+                <small id="errorRango" class="text-danger mt-2 @(ViewBag.ErrorFiltro == null ? "d-none" : "d-block")" role="alert" style="font-size: 0.8rem;">
+                    &#9888; @(ViewBag.ErrorFiltro ?? "La fecha «Hasta» no puede ser anterior a la fecha «Desde».")
+                </small>
+            </form>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        @* Estado vacío *@
+        <div class="reservas-card shadow-sm p-5 text-center my-4">
+            <span class="display-6 text-muted">&#9992;</span>
+            @if ((bool)ViewBag.HayFiltros)
+            {
+                <h3 class="h5 fw-bold text-dark mt-3 mb-2">No tiene reservas que coincidan con los filtros.</h3>
+                <p class="text-secondary small mb-4">Pruebe con otro rango de fechas u otro estado.</p>
+                <a href="@Url.Action("MisReservas", "Reservas")" class="btn btn-outline-dark fw-semibold px-4 py-2">Quitar filtros</a>
+            }
+            else
+            {
+                <h3 class="h5 fw-bold text-dark mt-3 mb-2">Aún no tiene reservas</h3>
+                <p class="text-secondary small mb-4">Cuando reserve un vuelo, aparecerá aquí con su estado.</p>
+                <a href="@Url.Action("Buscar", "Vuelos")" class="btn btn-dark fw-semibold px-4 py-2">Buscar vuelos</a>
+            }
+        </div>
+    }
+    else
+    {
+        @* Avisos de reservas pendientes próximas a expirar *@
+        foreach (var r in Model.Where(x => x.EstadoReservaCodigo == "PENDIENTE" && x.FechaExpiracion.HasValue && x.FechaExpiracion.Value >= ahora))
+        {
+            <div class="alert alert-warning py-2 px-3 mb-2 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
+                <span>&#9888;</span>
+                <span>La reserva <strong>@r.CodigoReserva</strong> expira el <strong>@r.FechaExpiracion.Value.ToString("dd/MM/yyyy HH:mm")</strong>. Pague antes de esa hora para conservar sus asientos.</span>
+            </div>
+        }
+
+        <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+            <small class="text-muted">
+                <strong class="text-dark">@ViewBag.TotalRegistros</strong> @((int)ViewBag.TotalRegistros == 1 ? "reserva encontrada" : "reservas encontradas")
+            </small>
+        </div>
+
+        @* Tabla (escritorio y tableta) *@
+        <div class="reservas-card shadow-sm d-none d-md-block mb-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                    <thead class="table-light small text-secondary">
+                        <tr>
+                            <th class="ps-4">Código</th>
+                            <th>Fecha de viaje</th>
+                            <th>Ruta</th>
+                            <th class="text-center">Pasajeros</th>
+                            <th>Reserva</th>
+                            <th>Compra</th>
+                            <th class="text-end pe-4">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model)
+                        {
+                            // ---- Datos calculados de la reserva ----
+                            var tramos = r.ReservaPasajeroVuelo
+                                .Select(a => a.Vuelo).Distinct()
+                                .OrderBy(v => v.FechaOperacion).ThenBy(v => v.Frecuencia.HoraSalida)
+                                .ToList();
+                            var primerTramo = tramos.FirstOrDefault();
+                            var ultimoTramo = tramos.LastOrDefault();
+
+                            string fechaViaje = primerTramo != null ? primerTramo.FechaOperacion.ToString("dd/MM/yyyy") : "—";
+                            string ruta = primerTramo != null
+                                ? primerTramo.Frecuencia.Ruta.Aeropuerto.Localidad + " → " + ultimoTramo.Frecuencia.Ruta.Aeropuerto1.Localidad
+                                : "—";
+                            string escala = tramos.Count > 1 ? "Con escala en " + primerTramo.Frecuencia.Ruta.Aeropuerto1.Localidad : "Vuelo directo";
+                            int numPasajeros = r.ReservaPasajeroVuelo.Select(a => a.PasajeroId).Distinct().Count();
+
+                            bool vencida = r.EstadoReservaCodigo == "PENDIENTE" && r.FechaExpiracion.HasValue && r.FechaExpiracion.Value < ahora;
+                            string estadoReserva = vencida ? "EXPIRADA" : r.EstadoReservaCodigo;
+
+                            var compra = r.Compra.OrderByDescending(c => c.FechaCompra).FirstOrDefault();
+                            string estadoCompra = compra != null ? compra.EstadoCompraCodigo : "";
+
+                            bool tieneCheckIn = r.ReservaPasajeroVuelo.Any(a => a.CheckIn.Any(c => c.EstadoCheckInCodigo == "COMPLETADO"));
+                            bool vueloFuturo = primerTramo != null && primerTramo.FechaOperacion.Add(primerTramo.Frecuencia.HoraSalida) > ahora;
+
+                            bool puedePagar = estadoReserva == "PENDIENTE";
+                            // DP-08: se puede cancelar una reserva pendiente vigente o una confirmada sin check-in y con vuelo futuro
+                            bool puedeCancelar = puedePagar || (estadoReserva == "CONFIRMADA" && !tieneCheckIn && vueloFuturo);
+
+                            <tr>
+                                <td class="ps-4 fw-bold text-dark">@r.CodigoReserva</td>
+                                <td>@fechaViaje</td>
+                                <td>
+                                    <span class="fw-semibold text-dark">@ruta</span>
+                                    <small class="d-block text-muted" style="font-size: 0.75rem;">@escala</small>
+                                </td>
+                                <td class="text-center">@numPasajeros</td>
+                                <td>
+                                    @switch (estadoReserva)
+                                    {
+                                        case "PENDIENTE":<span class="estado-badge estado-pendiente">Pendiente</span> break;
+                                        case "CONFIRMADA": <span class="estado-badge estado-confirmada">Confirmada</span> break;
+                                        case "CANCELADA": <span class="estado-badge estado-cancelada">Cancelada</span> break;
+                                        default: <span class="estado-badge estado-expirada">Expirada</span>break;
+                                    }
+                                </td>
+                                <td>
+                                    @switch (estadoCompra)
+                                    {
+                                        case "PAGADA":<span class="estado-badge compra-pagada">Pagada</span> break;
+                                        case "PENDIENTE": <span class="estado-badge compra-pendiente">Pendiente de pago</span> break;
+                                        case "ANULADA": <span class="estado-badge compra-anulada">Anulada</span> break;
+                                        default: <span class="estado-badge compra-ninguna">Sin compra</span>break;
+                                    }
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="d-flex flex-wrap justify-content-end gap-1">
+                                        <a href="@Url.Action("Gestionar", "Reservas", new { id = r.ReservaId })" class="btn btn-outline-secondary btn-sm px-2 py-1">
+                                            Ver detalle
+                                        </a>
+                                        @if (puedePagar)
+                                        {
+                                            <a href="@Url.Action("Pagar", "Compras", new { id = r.ReservaId })" class="btn btn-dark btn-sm px-2 py-1 fw-semibold">
+                                                Pagar
+                                            </a>
+                                        }
+                                        @if (puedeCancelar)
+                                        {
+                                            <a href="@Url.Action("Gestionar", "Reservas", new { id = r.ReservaId })" class="btn btn-outline-danger btn-sm px-2 py-1">
+                                                Solicitar cancelación
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* Tarjetas apiladas (móvil) *@
+        <div class="d-flex flex-column gap-3 d-md-none mb-4">
+            @foreach (var r in Model)
+            {
+                var tramos = r.ReservaPasajeroVuelo
+                    .Select(a => a.Vuelo).Distinct()
+                    .OrderBy(v => v.FechaOperacion).ThenBy(v => v.Frecuencia.HoraSalida)
+                    .ToList();
+                var primerTramo = tramos.FirstOrDefault();
+                var ultimoTramo = tramos.LastOrDefault();
+
+                string fechaViaje = primerTramo != null ? primerTramo.FechaOperacion.ToString("dd/MM/yyyy") : "—";
+                string ruta = primerTramo != null
+                    ? primerTramo.Frecuencia.Ruta.Aeropuerto.Localidad + " → " + ultimoTramo.Frecuencia.Ruta.Aeropuerto1.Localidad
+                    : "—";
+                int numPasajeros = r.ReservaPasajeroVuelo.Select(a => a.PasajeroId).Distinct().Count();
+
+                bool vencida = r.EstadoReservaCodigo == "PENDIENTE" && r.FechaExpiracion.HasValue && r.FechaExpiracion.Value < ahora;
+                string estadoReserva = vencida ? "EXPIRADA" : r.EstadoReservaCodigo;
+
+                var compra = r.Compra.OrderByDescending(c => c.FechaCompra).FirstOrDefault();
+                string estadoCompra = compra != null ? compra.EstadoCompraCodigo : "";
+
+                bool tieneCheckIn = r.ReservaPasajeroVuelo.Any(a => a.CheckIn.Any(c => c.EstadoCheckInCodigo == "COMPLETADO"));
+                bool vueloFuturo = primerTramo != null && primerTramo.FechaOperacion.Add(primerTramo.Frecuencia.HoraSalida) > ahora;
+                bool puedePagar = estadoReserva == "PENDIENTE";
+                bool puedeCancelar = puedePagar || (estadoReserva == "CONFIRMADA" && !tieneCheckIn && vueloFuturo);
+
+                <div class="reserva-movil shadow-sm p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <div class="fw-bold text-dark">@r.CodigoReserva</div>
+                            <small class="text-muted">@fechaViaje &middot; @numPasajeros @(numPasajeros == 1 ? "pasajero" : "pasajeros")</small>
+                        </div>
+                        @switch (estadoReserva)
+                        {
+                            case "PENDIENTE":<span class="estado-badge estado-pendiente">Pendiente</span> break;
+                            case "CONFIRMADA": <span class="estado-badge estado-confirmada">Confirmada</span> break;
+                            case "CANCELADA": <span class="estado-badge estado-cancelada">Cancelada</span> break;
+                            default: <span class="estado-badge estado-expirada">Expirada</span>break;
+                        }
+                    </div>
+                    <div class="small text-dark fw-semibold mb-2">@ruta</div>
+                    <div class="small mb-3">
+                        <span class="text-secondary">Compra:</span>
+                        @switch (estadoCompra)
+                        {
+                            case "PAGADA":<span class="estado-badge compra-pagada">Pagada</span> break;
+                            case "PENDIENTE": <span class="estado-badge compra-pendiente">Pendiente de pago</span> break;
+                            case "ANULADA": <span class="estado-badge compra-anulada">Anulada</span> break;
+                            default: <span class="estado-badge compra-ninguna">Sin compra</span>break;
+                        }
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="@Url.Action("Gestionar", "Reservas", new { id = r.ReservaId })" class="btn btn-outline-secondary btn-sm">Ver detalle</a>
+                        @if (puedePagar)
+                        {
+                            <a href="@Url.Action("Pagar", "Compras", new { id = r.ReservaId })" class="btn btn-dark btn-sm fw-semibold">Pagar</a>
+                        }
+                        @if (puedeCancelar)
+                        {
+                            <a href="@Url.Action("Gestionar", "Reservas", new { id = r.ReservaId })" class="btn btn-outline-danger btn-sm">Solicitar cancelación</a>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* Paginación *@
+        if (totalPaginas > 1)
+        {
+            <nav aria-label="Paginación de reservas">
+                <ul class="pagination pagination-sm justify-content-center">
+                    <li class="page-item @(pagina <= 1 ? "disabled" : "")">
+                        <a class="page-link text-dark" href="@Url.Action("MisReservas", "Reservas", new { desde = fDesde, hasta = fHasta, estado = fEstado, pagina = pagina - 1 })">&laquo; Anterior</a>
+                    </li>
+                    @for (int p = 1; p <= totalPaginas; p++)
+                    {
+                        <li class="page-item @(p == pagina ? "active" : "")">
+                            <a class="page-link @(p == pagina ? "bg-dark border-dark text-white" : "text-dark")"
+                               href="@Url.Action("MisReservas", "Reservas", new { desde = fDesde, hasta = fHasta, estado = fEstado, pagina = p })">@p</a>
+                        </li>
+                    }
+                    <li class="page-item @(pagina >= totalPaginas ? "disabled" : "")">
+                        <a class="page-link text-dark" href="@Url.Action("MisReservas", "Reservas", new { desde = fDesde, hasta = fHasta, estado = fEstado, pagina = pagina + 1 })">Siguiente &raquo;</a>
+                    </li>
+                </ul>
+            </nav>
+        }
+    }
+</main>
+
+@section scripts {
+    <script>
+        $(function () {
+            // Validación del rango de fechas: "Hasta" no puede ser anterior a "Desde"
+            function rangoValido() {
+                var desde = $('#desde').val();
+                var hasta = $('#hasta').val();
+                return !(desde && hasta && hasta < desde);
+            }
+
+            $('#desde, #hasta').on('change', function () {
+                if (rangoValido()) {
+                    $('#errorRango').addClass('d-none').removeClass('d-block');
+                    $('#hasta').removeClass('is-invalid');
+                }
+            });
+
+            $('#formFiltros').on('submit', function (e) {
+                if (!rangoValido()) {
+                    e.preventDefault();
+                    $('#errorRango').removeClass('d-none').addClass('d-block');
+                    $('#hasta').addClass('is-invalid').focus();
+                }
+            });
+        });
+    </script>
+}
