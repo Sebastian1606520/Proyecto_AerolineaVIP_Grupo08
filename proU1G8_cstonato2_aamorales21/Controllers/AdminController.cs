@@ -512,6 +512,391 @@ namespace Con_Autenticacion.Controllers
             return RedirectToAction("Aeronaves", new { id = aeronaveId });
         }
 
+        // =========================================================================
+        // PANTALLA 20: GESTIÓN DE USUARIOS, PASAJEROS Y RESERVAS (/Admin/Gestion)
+        // =========================================================================
+
+        private static readonly string[] RolesPrincipales = { "SuperUsuario", "Administrador", "Counter", "Cliente" };
+
+        private UserManager<ApplicationUser> CrearUserManager(ApplicationDbContext identity)
+        {
+            return new UserManager<ApplicationUser>(new Microsoft.AspNet.Identity.EntityFramework.UserStore<ApplicationUser>(identity));
+        }
+
+        // GET: /Admin/Gestion
+        [HttpGet]
+        public ActionResult Gestion(string tab, string buscar, string filtro, int pagina = 1,
+                                    string verUsuario = null, string editarUsuario = null,
+                                    int? editarPasajero = null, bool nuevoPasajero = false)
+        {
+            bool esAdmin = EsAdministrativo();
+            bool esCounter = User.IsInRole("Counter");
+
+            if (!esAdmin && !esCounter)
+            {
+                TempData["Error"] = "No tiene permisos para acceder a esta sección.";
+                return RedirectToAction("Index");
+            }
+
+            // El Counter no ve la pestaña de usuarios
+            tab = (tab == "pasajeros" || tab == "reservas") ? tab : (esAdmin ? "usuarios" : "reservas");
+            if (tab == "usuarios" && !esAdmin) tab = "reservas";
+
+            buscar = (buscar ?? "").Trim();
+            filtro = filtro ?? "";
+            int tamanoPagina = 15;
+            if (pagina < 1) pagina = 1;
+
+            ViewBag.Tab = tab;
+            ViewBag.Buscar = buscar;
+            ViewBag.Filtro = filtro;
+            ViewBag.EsAdmin = esAdmin;
+            ViewBag.EsSuperUsuario = User.IsInRole("SuperUsuario");
+
+            using (var identity = new ApplicationDbContext())
+            {
+                // Nombres de rol por Id (para mostrar el rol de cada usuario)
+                var roles = identity.Roles.ToList();
+                var nombreRol = roles.ToDictionary(r => r.Id, r => r.Name);
+
+                // Nombre de usuario por Id (para la pestaña de reservas)
+                var usuarios = identity.Users.ToList();
+                ViewBag.NombreUsuario = usuarios.ToDictionary(u => u.Id, u => u.UserName);
+
+                // ---------------- PESTAÑA USUARIOS ----------------
+                if (tab == "usuarios")
+                {
+                    var lista = usuarios.AsEnumerable();
+                    if (buscar != "")
+                    {
+                        string b = buscar.ToLower();
+                        lista = lista.Where(u => u.UserName.ToLower().Contains(b) || (u.Email ?? "").ToLower().Contains(b));
+                    }
+
+                    // Rol principal de cada usuario
+                    var rolesUsuario = new Dictionary<string, string>();
+                    foreach (var u in usuarios)
+                    {
+                        var nombres = u.Roles.Select(r => nombreRol[r.RoleId]).ToList();
+                        string principal = RolesPrincipales.FirstOrDefault(rp => nombres.Contains(rp)) ?? "Sin rol";
+                        rolesUsuario[u.Id] = principal;
+                    }
+                    if (filtro != "")
+                    {
+                        lista = lista.Where(u => rolesUsuario[u.Id] == filtro);
+                    }
+
+                    var filtrados = lista.OrderBy(u => u.UserName).ToList();
+                    ViewBag.TotalPaginas = Math.Max(1, (int)Math.Ceiling(filtrados.Count / (double)tamanoPagina));
+                    ViewBag.Usuarios = filtrados.Skip((pagina - 1) * tamanoPagina).Take(tamanoPagina).ToList();
+                    ViewBag.RolesUsuario = rolesUsuario;
+
+                    // Historial de un usuario
+                    if (!string.IsNullOrEmpty(verUsuario))
+                    {
+                        var usuarioVer = usuarios.FirstOrDefault(u => u.Id == verUsuario);
+                        if (usuarioVer != null)
+                        {
+                            ViewBag.UsuarioVer = usuarioVer;
+                            ViewBag.HistorialReservas = db.Reserva
+                                .Where(r => r.UsuarioId == usuarioVer.Id)
+                                .OrderByDescending(r => r.FechaCreacion)
+                                .ToList();
+                        }
+                    }
+
+                    // Edición de un usuario
+                    if (!string.IsNullOrEmpty(editarUsuario))
+                    {
+                        var usuarioEditar = usuarios.FirstOrDefault(u => u.Id == editarUsuario);
+                        if (usuarioEditar != null)
+                        {
+                            ViewBag.UsuarioEditar = usuarioEditar;
+                            ViewBag.RolActual = rolesUsuario[usuarioEditar.Id];
+                        }
+                    }
+                }
+            }
+
+            // ---------------- PESTAÑA PASAJEROS ----------------
+            if (tab == "pasajeros")
+            {
+                var consulta = db.Pasajero.AsQueryable();
+                if (buscar != "")
+                {
+                    consulta = consulta.Where(p => p.NumeroDocumento.Contains(buscar) || p.Nombres.Contains(buscar)
+                                                || p.Apellidos.Contains(buscar) || p.Correo.Contains(buscar));
+                }
+                if (filtro == "CEDULA" || filtro == "PASAPORTE")
+                {
+                    consulta = consulta.Where(p => p.TipoDocumentoCodigo == filtro);
+                }
+
+                int total = consulta.Count();
+                ViewBag.TotalPaginas = Math.Max(1, (int)Math.Ceiling(total / (double)tamanoPagina));
+                ViewBag.Pasajeros = consulta
+                    .OrderBy(p => p.Apellidos).ThenBy(p => p.Nombres)
+                    .Skip((pagina - 1) * tamanoPagina).Take(tamanoPagina)
+                    .ToList();
+
+                // Número de asignaciones de cada pasajero (para saber si se puede eliminar)
+                ViewBag.AsignacionesPasajero = db.ReservaPasajeroVuelo
+                    .GroupBy(a => a.PasajeroId)
+                    .ToDictionary(g => g.Key, g => g.Count());
+
+                // Formulario de creación / edición (solo administrativos)
+                if (esAdmin && (nuevoPasajero || editarPasajero.HasValue))
+                {
+                    var pasajero = editarPasajero.HasValue ? db.Pasajero.Find(editarPasajero.Value) : new Pasajero { TipoDocumentoCodigo = "CEDULA" };
+                    if (pasajero != null)
+                    {
+                        ViewBag.PasajeroForm = pasajero;
+                        ViewBag.TiposDocumento = new SelectList(db.TipoDocumentoIdentidad.ToList(), "Codigo", "Descripcion", pasajero.TipoDocumentoCodigo);
+                    }
+                }
+            }
+
+            // ---------------- PESTAÑA RESERVAS ----------------
+            if (tab == "reservas")
+            {
+                var consulta = db.Reserva.Include(r => r.Compra).AsQueryable();
+                if (buscar != "")
+                {
+                    string b = buscar.ToUpper();
+                    consulta = consulta.Where(r => r.CodigoReserva.Contains(b)
+                        || r.ReservaPasajeroVuelo.Any(a => a.Pasajero.NumeroDocumento.Contains(b)));
+                }
+                if (filtro != "")
+                {
+                    consulta = consulta.Where(r => r.EstadoReservaCodigo == filtro);
+                }
+
+                int total = consulta.Count();
+                ViewBag.TotalPaginas = Math.Max(1, (int)Math.Ceiling(total / (double)tamanoPagina));
+                ViewBag.Reservas = consulta
+                    .OrderByDescending(r => r.FechaCreacion)
+                    .Skip((pagina - 1) * tamanoPagina).Take(tamanoPagina)
+                    .ToList();
+            }
+
+            ViewBag.Pagina = pagina;
+            return View();
+        }
+
+        // POST: /Admin/EditarUsuario  (correo electrónico)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult EditarUsuario(string userId, string email)
+        {
+            if (!EsAdministrativo())
+            {
+                TempData["Error"] = "No tiene permisos para acceder a esta sección.";
+                return RedirectToAction("Index");
+            }
+
+            email = (email ?? "").Trim();
+            if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            {
+                TempData["Error"] = "Ingrese un correo electrónico válido.";
+                return RedirectToAction("Gestion", new { tab = "usuarios", editarUsuario = userId });
+            }
+
+            using (var identity = new ApplicationDbContext())
+            {
+                var userManager = CrearUserManager(identity);
+                var usuario = userManager.FindById(userId);
+                if (usuario == null)
+                {
+                    TempData["Error"] = "El usuario no existe.";
+                    return RedirectToAction("Gestion", new { tab = "usuarios" });
+                }
+
+                // Un Administrador solo edita cuentas de Cliente o Counter
+                bool cuentaElevada = userManager.IsInRole(userId, "SuperUsuario") || userManager.IsInRole(userId, "Administrador");
+                if (cuentaElevada && !User.IsInRole("SuperUsuario"))
+                {
+                    TempData["Error"] = "Solo el SuperUsuario puede modificar cuentas administrativas.";
+                    return RedirectToAction("Gestion", new { tab = "usuarios" });
+                }
+
+                usuario.Email = email;
+                var resultado = userManager.Update(usuario);   // valida correo único (RequireUniqueEmail)
+                if (!resultado.Succeeded)
+                {
+                    TempData["Error"] = "No se guardaron los cambios: " + string.Join(" ", resultado.Errors);
+                    return RedirectToAction("Gestion", new { tab = "usuarios", editarUsuario = userId });
+                }
+
+                TempData["Exito"] = "Cambios guardados para " + usuario.UserName + ".";
+            }
+            return RedirectToAction("Gestion", new { tab = "usuarios" });
+        }
+
+        // POST: /Admin/AsignarRol  (solo SuperUsuario)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult AsignarRol(string userId, string rol)
+        {
+            if (!User.IsInRole("SuperUsuario"))
+            {
+                TempData["Error"] = "Solo el SuperUsuario puede asignar roles.";
+                return RedirectToAction("Gestion", new { tab = "usuarios" });
+            }
+
+            if (!RolesPrincipales.Contains(rol))
+            {
+                TempData["Error"] = "Seleccione un rol válido.";
+                return RedirectToAction("Gestion", new { tab = "usuarios", editarUsuario = userId });
+            }
+
+            // El SuperUsuario no puede quitarse su propio rol (evita quedar sin acceso)
+            if (userId == User.Identity.GetUserId() && rol != "SuperUsuario")
+            {
+                TempData["Error"] = "No puede quitarse su propio rol de SuperUsuario.";
+                return RedirectToAction("Gestion", new { tab = "usuarios", editarUsuario = userId });
+            }
+
+            using (var identity = new ApplicationDbContext())
+            {
+                var userManager = CrearUserManager(identity);
+                var usuario = userManager.FindById(userId);
+                if (usuario == null)
+                {
+                    TempData["Error"] = "El usuario no existe.";
+                    return RedirectToAction("Gestion", new { tab = "usuarios" });
+                }
+
+                // Quita los otros roles principales y asigna el nuevo (los roles CRUD no se tocan)
+                foreach (var r in RolesPrincipales)
+                {
+                    if (r != rol && userManager.IsInRole(userId, r))
+                        userManager.RemoveFromRole(userId, r);
+                }
+                if (!userManager.IsInRole(userId, rol))
+                    userManager.AddToRole(userId, rol);
+
+                TempData["Exito"] = "Rol de " + usuario.UserName + " actualizado a " + rol + ". El cambio se aplica en su próximo inicio de sesión.";
+            }
+            return RedirectToAction("Gestion", new { tab = "usuarios" });
+        }
+
+        // POST: /Admin/GuardarPasajero  (crear o editar)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult GuardarPasajero(int? pasajeroId, string tipoDocumentoCodigo, string numeroDocumento, string nombres,
+                                            string apellidos, DateTime? fechaNacimiento, string correo, string telefono)
+        {
+            if (!EsAdministrativo())
+            {
+                TempData["Error"] = "No tiene permisos para modificar pasajeros.";
+                return RedirectToAction("Gestion", new { tab = "pasajeros" });
+            }
+
+            numeroDocumento = (numeroDocumento ?? "").Trim().ToUpper();
+            nombres = (nombres ?? "").Trim();
+            apellidos = (apellidos ?? "").Trim();
+            correo = string.IsNullOrWhiteSpace(correo) ? null : correo.Trim();
+            telefono = string.IsNullOrWhiteSpace(telefono) ? null : telefono.Trim();
+
+            // Validaciones del servidor (coinciden con las restricciones CHECK de la tabla Pasajero)
+            string error = null;
+            if (tipoDocumentoCodigo != "CEDULA" && tipoDocumentoCodigo != "PASAPORTE")
+                error = "Seleccione el tipo de documento.";
+            else if (tipoDocumentoCodigo == "CEDULA" && !System.Text.RegularExpressions.Regex.IsMatch(numeroDocumento, @"^\d{10}$"))
+                error = "La cédula debe contener exactamente 10 dígitos numéricos.";
+            else if (numeroDocumento.Length < 5 || numeroDocumento.Length > 20)
+                error = "El número de documento debe tener entre 5 y 20 caracteres.";
+            else if (nombres.Length == 0 || nombres.Length > 100 || apellidos.Length == 0 || apellidos.Length > 100)
+                error = "Nombres y apellidos son obligatorios (máximo 100 caracteres).";
+            else if (correo != null && !System.Text.RegularExpressions.Regex.IsMatch(correo, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                error = "El correo electrónico no tiene un formato válido.";
+            else if (telefono != null && !System.Text.RegularExpressions.Regex.IsMatch(telefono, @"^[0-9+ ]{7,20}$"))
+                error = "El teléfono solo admite dígitos, espacios y el signo + (7 a 20 caracteres).";
+            else if (fechaNacimiento.HasValue && (fechaNacimiento.Value.Year <= 1900 || fechaNacimiento.Value.Date > DateTime.Today))
+                error = "La fecha de nacimiento no es válida.";
+            else if (db.Pasajero.Any(p => p.TipoDocumentoCodigo == tipoDocumentoCodigo && p.NumeroDocumento == numeroDocumento
+                                       && (!pasajeroId.HasValue || p.PasajeroId != pasajeroId.Value)))
+                error = "Ya existe un pasajero con ese documento.";
+
+            if (error != null)
+            {
+                TempData["Error"] = error;
+                return pasajeroId.HasValue
+                    ? RedirectToAction("Gestion", new { tab = "pasajeros", editarPasajero = pasajeroId })
+                    : RedirectToAction("Gestion", new { tab = "pasajeros", nuevoPasajero = true });
+            }
+
+            Pasajero pasajero;
+            if (pasajeroId.HasValue)
+            {
+                pasajero = db.Pasajero.Find(pasajeroId.Value);
+                if (pasajero == null)
+                {
+                    TempData["Error"] = "El pasajero no existe.";
+                    return RedirectToAction("Gestion", new { tab = "pasajeros" });
+                }
+            }
+            else
+            {
+                pasajero = new Pasajero { FechaRegistro = DateTime.Now };
+                db.Pasajero.Add(pasajero);
+            }
+
+            pasajero.TipoDocumentoCodigo = tipoDocumentoCodigo;
+            pasajero.NumeroDocumento = numeroDocumento;
+            pasajero.Nombres = nombres;
+            pasajero.Apellidos = apellidos;
+            pasajero.FechaNacimiento = fechaNacimiento;
+            pasajero.Correo = correo;
+            pasajero.Telefono = telefono;
+
+            try
+            {
+                db.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                Exception inner = ex;
+                while (inner.InnerException != null) inner = inner.InnerException;
+                TempData["Error"] = "No se guardó el pasajero: " + inner.Message;
+                return RedirectToAction("Gestion", new { tab = "pasajeros" });
+            }
+
+            TempData["Exito"] = "Cambios guardados.";
+            return RedirectToAction("Gestion", new { tab = "pasajeros", buscar = numeroDocumento });
+        }
+
+        // POST: /Admin/EliminarPasajero
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult EliminarPasajero(int pasajeroId)
+        {
+            if (!EsAdministrativo())
+            {
+                TempData["Error"] = "No tiene permisos para modificar pasajeros.";
+                return RedirectToAction("Gestion", new { tab = "pasajeros" });
+            }
+
+            var pasajero = db.Pasajero.Find(pasajeroId);
+            if (pasajero == null)
+            {
+                TempData["Error"] = "El pasajero no existe.";
+                return RedirectToAction("Gestion", new { tab = "pasajeros" });
+            }
+
+            // Integridad referencial: no se elimina un pasajero con reservas
+            if (db.ReservaPasajeroVuelo.Any(a => a.PasajeroId == pasajeroId))
+            {
+                TempData["Error"] = "No se puede eliminar: el pasajero tiene reservas asociadas.";
+                return RedirectToAction("Gestion", new { tab = "pasajeros" });
+            }
+
+            db.Pasajero.Remove(pasajero);
+            db.SaveChanges();
+            TempData["Exito"] = "Pasajero " + pasajero.Nombres + " " + pasajero.Apellidos + " eliminado.";
+            return RedirectToAction("Gestion", new { tab = "pasajeros" });
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)

@@ -1,0 +1,624 @@
+﻿@using Con_Autenticacion.Models
+@{
+    ViewBag.Title = "Usuarios, pasajeros y reservas";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    string tab = ViewBag.Tab;
+    string fBuscar = ViewBag.Buscar;
+    string fFiltro = ViewBag.Filtro;
+    bool esAdmin = (bool)ViewBag.EsAdmin;
+    bool esSuperUsuario = (bool)ViewBag.EsSuperUsuario;
+    int pagina = (int)ViewBag.Pagina;
+    int totalPaginas = (int)ViewBag.TotalPaginas;
+
+    var nombreUsuario = (Dictionary<string, string>)ViewBag.NombreUsuario;
+
+    // Pestaña usuarios
+    var usuarios = ViewBag.Usuarios as List<ApplicationUser>;
+    var rolesUsuario = ViewBag.RolesUsuario as Dictionary<string, string>;
+    var usuarioVer = ViewBag.UsuarioVer as ApplicationUser;
+    var historial = ViewBag.HistorialReservas as List<Reserva>;
+    var usuarioEditar = ViewBag.UsuarioEditar as ApplicationUser;
+    string rolActual = ViewBag.RolActual;
+
+    // Pestaña pasajeros
+    var pasajeros = ViewBag.Pasajeros as List<Pasajero>;
+    var asignacionesPasajero = ViewBag.AsignacionesPasajero as Dictionary<int, int>;
+    var pasajeroForm = ViewBag.PasajeroForm as Pasajero;
+
+    // Pestaña reservas
+    var reservas = ViewBag.Reservas as List<Reserva>;
+
+    string[] rolesPrincipales = { "SuperUsuario", "Administrador", "Counter", "Cliente" };
+}
+
+<style>
+    .admin-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        background: #ffffff;
+    }
+
+    .admin-card-header {
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        border-top-left-radius: 0.75rem;
+        border-top-right-radius: 0.75rem;
+        padding: 0.85rem 1.25rem;
+    }
+
+    .nav-tabs .nav-link {
+        color: #475569;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+        .nav-tabs .nav-link.active {
+            color: #0f172a;
+            border-bottom: 3px solid #f59e0b;
+        }
+
+    .estado-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.3rem 0.6rem;
+        border-radius: 0.4rem;
+        white-space: nowrap;
+    }
+
+    .b-verde {
+        background-color: #d1fae5;
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+    }
+
+    .b-rojo {
+        background-color: #fee2e2;
+        color: #881337;
+        border: 1px solid #fca5a5;
+    }
+
+    .b-ambar {
+        background-color: #fef3c7;
+        color: #78350f;
+        border: 1px solid #fcd34d;
+    }
+
+    .b-gris {
+        background-color: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+    }
+
+    .b-morado {
+        background-color: #581c87;
+        color: #ffffff;
+    }
+
+    .b-oscuro {
+        background-color: #0f172a;
+        color: #ffffff;
+    }
+
+    .fila-activa {
+        background-color: #fffbeb !important;
+    }
+</style>
+
+<main class="container py-5">
+
+    <!-- Encabezado corporativo -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3">
+        <div>
+            <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
+                Aerolínea VIP &middot; Pantalla 20
+            </span>
+            <h2 class="h3 fw-bold text-dark mb-1">Usuarios, pasajeros y reservas</h2>
+            <p class="text-secondary small mb-0">
+                @if (esAdmin)
+                {
+                    <span>Consulte y administre usuarios, pasajeros y reservas según su rol.</span>
+                }
+                else
+                {
+                    <span>Consulta de pasajeros y reservas (Counter: solo lectura).</span>
+                }
+            </p>
+        </div>
+        <a href="@Url.Action("Index", esAdmin ? "Admin" : "Home")" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+            &larr; @(esAdmin ? "Administración" : "Inicio")
+        </a>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
+            <span>&#9888;</span>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
+    @if (TempData["Exito"] != null)
+    {
+        <div class="alert alert-success py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
+            <span>&#10003;</span>
+            <span>@TempData["Exito"]</span>
+        </div>
+    }
+
+    <!-- Pestañas -->
+    <ul class="nav nav-tabs mb-4">
+        @if (esAdmin)
+        {
+            <li class="nav-item">
+                <a class="nav-link @(tab == "usuarios" ? "active" : "")" href="@Url.Action("Gestion", "Admin", new { tab = "usuarios" })">Usuarios</a>
+            </li>
+        }
+        <li class="nav-item">
+            <a class="nav-link @(tab == "pasajeros" ? "active" : "")" href="@Url.Action("Gestion", "Admin", new { tab = "pasajeros" })">Pasajeros</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(tab == "reservas" ? "active" : "")" href="@Url.Action("Gestion", "Admin", new { tab = "reservas" })">Reservas</a>
+        </li>
+    </ul>
+
+    <!-- Filtros -->
+    <div class="admin-card shadow-sm mb-4">
+        <form action="@Url.Action("Gestion", "Admin")" method="get" class="p-4">
+            <input type="hidden" name="tab" value="@tab" />
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-5">
+                    <label for="buscar" class="form-label small fw-semibold text-secondary mb-1">Buscar (opcional)</label>
+                    <input type="text" id="buscar" name="buscar" class="form-control form-control-sm py-2" value="@fBuscar" maxlength="60"
+                           placeholder="@(tab == "usuarios" ? "Usuario o correo…" : (tab == "pasajeros" ? "Documento, nombre o correo…" : "Código de reserva o documento…"))" />
+                </div>
+                <div class="col-12 col-md-4">
+                    <label for="filtro" class="form-label small fw-semibold text-secondary mb-1">
+                        @(tab == "usuarios" ? "Rol" : (tab == "pasajeros" ? "Tipo de documento" : "Estado")) (opcional)
+                    </label>
+                    <select id="filtro" name="filtro" class="form-select form-select-sm py-2">
+                        <option value="">Todos</option>
+                        @if (tab == "usuarios")
+                        {
+                            foreach (var r in rolesPrincipales)
+                            {
+                                <option value="@r" @(fFiltro == r ? "selected" : "")>@r</option>
+                            }
+                        }
+                        else if (tab == "pasajeros")
+                        {
+                            <option value="CEDULA" @(fFiltro == "CEDULA" ? "selected" : "")>Cédula</option>
+                            <option value="PASAPORTE" @(fFiltro == "PASAPORTE" ? "selected" : "")>Pasaporte</option>
+                        }
+                        else
+                        {
+                            <option value="PENDIENTE" @(fFiltro == "PENDIENTE" ? "selected" : "")>Pendiente</option>
+                            <option value="CONFIRMADA" @(fFiltro == "CONFIRMADA" ? "selected" : "")>Confirmada</option>
+                            <option value="CANCELADA" @(fFiltro == "CANCELADA" ? "selected" : "")>Cancelada</option>
+                            <option value="EXPIRADA" @(fFiltro == "EXPIRADA" ? "selected" : "")>Expirada</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-dark btn-sm px-4 py-2 fw-semibold flex-grow-1">Consultar</button>
+                    @if (tab == "usuarios" && esSuperUsuario)
+                    {
+                        <a href="@Url.Action("Register", "Account")" class="btn btn-outline-dark btn-sm px-3 py-2 fw-semibold">Crear</a>
+                    }
+                    @if (tab == "pasajeros" && esAdmin)
+                    {
+                        <a href="@Url.Action("Gestion", "Admin", new { tab = "pasajeros", nuevoPasajero = true })#formPasajero" class="btn btn-outline-dark btn-sm px-3 py-2 fw-semibold">Crear</a>
+                    }
+                </div>
+            </div>
+        </form>
+    </div>
+
+    @* ===================== PESTAÑA USUARIOS ===================== *@
+    @if (tab == "usuarios" && usuarios != null)
+    {
+        @* Edición de usuario / asignación de rol *@
+        if (usuarioEditar != null)
+        {
+            <div class="admin-card shadow-sm mb-4" id="formUsuario" style="border-color: #f59e0b;">
+                <div class="admin-card-header">
+                    <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Editar usuario @usuarioEditar.UserName</span>
+                </div>
+                <div class="p-4">
+                    <div class="row g-4">
+                        <div class="col-12 col-md-6">
+                            <form action="@Url.Action("EditarUsuario", "Admin")" method="post" novalidate>
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="userId" value="@usuarioEditar.Id" />
+                                <label for="email" class="form-label small fw-semibold text-secondary mb-1">Correo electrónico <span class="text-danger">*</span></label>
+                                <input type="email" id="email" name="email" class="form-control py-2 mb-2" value="@usuarioEditar.Email" maxlength="256" required />
+                                <button type="submit" class="btn btn-dark btn-sm px-4 py-2 fw-semibold">Guardar</button>
+                                <a href="@Url.Action("Gestion", "Admin", new { tab = "usuarios" })" class="btn btn-outline-secondary btn-sm px-3 py-2">Cancelar</a>
+                            </form>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="rol" class="form-label small fw-semibold text-secondary mb-1">Rol <span class="text-danger">*</span></label>
+                            @if (esSuperUsuario)
+                            {
+                                <form action="@Url.Action("AsignarRol", "Admin")" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="userId" value="@usuarioEditar.Id" />
+                                    <select id="rol" name="rol" class="form-select py-2 mb-2">
+                                        @foreach (var r in rolesPrincipales)
+                                        {
+                                            <option value="@r" @(rolActual == r ? "selected" : "")>@r</option>
+                                        }
+                                    </select>
+                                    <button type="submit" class="btn btn-outline-dark btn-sm px-4 py-2 fw-semibold">Asignar rol</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <input type="text" id="rol" class="form-control py-2 mb-2" value="@rolActual" readonly />
+                                <small class="text-danger"><strong>Error de acceso:</strong> Solo el SuperUsuario puede asignar roles.</small>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* Historial del usuario *@
+        if (usuarioVer != null && historial != null)
+        {
+            <div class="admin-card shadow-sm mb-4" id="historial">
+                <div class="admin-card-header d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Historial de @usuarioVer.UserName</span>
+                    <a href="@Url.Action("Gestion", "Admin", new { tab = "usuarios" })" class="btn-close" aria-label="Cerrar"></a>
+                </div>
+                <div class="p-4 small">
+                    <p class="mb-3">
+                        <span class="text-secondary">Correo:</span> <strong>@usuarioVer.Email</strong>
+                        &middot; <span class="text-secondary">Rol:</span> <strong>@rolesUsuario[usuarioVer.Id]</strong>
+                        &middot; <span class="text-secondary">Reservas:</span> <strong>@historial.Count</strong>
+                    </p>
+                    @if (!historial.Any())
+                    {
+                        <p class="text-secondary mb-0">El usuario no tiene reservas registradas.</p>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var r in historial)
+                            {
+                                <a href="@Url.Action("Gestionar", "Reservas", new { id = r.ReservaId })" class="btn btn-outline-secondary btn-sm">
+                                    @r.CodigoReserva &middot; @r.EstadoReservaCodigo
+                                </a>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        if (!usuarios.Any())
+        {
+            <div class="admin-card shadow-sm p-5 text-center"><h3 class="h6 fw-bold text-dark mb-0">No se encontraron registros.</h3></div>
+        }
+        else
+        {
+            <div class="admin-card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                        <thead class="table-light small text-secondary">
+                            <tr>
+                                <th class="ps-4">Usuario</th>
+                                <th>Correo</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th class="text-end pe-4">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var u in usuarios)
+                            {
+                                string rol = rolesUsuario[u.Id];
+                                bool elevado = rol == "SuperUsuario" || rol == "Administrador";
+                                bool bloqueado = u.LockoutEndDateUtc.HasValue && u.LockoutEndDateUtc.Value > DateTime.UtcNow;
+                                bool activa = (usuarioEditar != null && usuarioEditar.Id == u.Id) || (usuarioVer != null && usuarioVer.Id == u.Id);
+                                <tr class="@(activa ? "fila-activa" : "")">
+                                    <td class="ps-4 fw-bold text-dark">@u.UserName</td>
+                                    <td>@u.Email</td>
+                                    <td><span class="estado-badge @(elevado ? "b-oscuro" : "b-gris")">@rol</span></td>
+                                    <td>
+                                        @if (bloqueado)
+                                        {
+                                            <span class="estado-badge b-rojo">Bloqueado</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="estado-badge b-verde">Activo</span>
+                                        }
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <div class="d-flex flex-wrap justify-content-end gap-1">
+                                            <a href="@Url.Action("Gestion", "Admin", new { tab = "usuarios", verUsuario = u.Id })#historial" class="btn btn-outline-secondary btn-sm px-2 py-1">Revisar historial</a>
+                                            @if (esSuperUsuario || !elevado)
+                                            {
+                                                <a href="@Url.Action("Gestion", "Admin", new { tab = "usuarios", editarUsuario = u.Id })#formUsuario" class="btn btn-outline-dark btn-sm px-2 py-1">
+                                                    @(esSuperUsuario ? "Editar / Asignar rol" : "Editar")
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    }
+
+    @* ===================== PESTAÑA PASAJEROS ===================== *@
+    @if (tab == "pasajeros" && pasajeros != null)
+    {
+        @* Formulario de creación / edición *@
+        if (pasajeroForm != null)
+        {
+            bool esNuevo = pasajeroForm.PasajeroId == 0;
+            <div class="admin-card shadow-sm mb-4" id="formPasajero" style="border-color: #f59e0b;">
+                <div class="admin-card-header">
+                    <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">
+                        @(esNuevo ? "Nuevo pasajero" : "Editar pasajero " + pasajeroForm.Nombres + " " + pasajeroForm.Apellidos)
+                    </span>
+                </div>
+                <form id="formGuardarPasajero" action="@Url.Action("GuardarPasajero", "Admin")" method="post" class="p-4" novalidate>
+                    @Html.AntiForgeryToken()
+                    @if (!esNuevo)
+                    {
+                        <input type="hidden" name="pasajeroId" value="@pasajeroForm.PasajeroId" />
+                    }
+                    <div class="row g-3">
+                        <div class="col-12 col-md-4">
+                            <label for="tipoDocumentoCodigo" class="form-label small fw-semibold text-secondary mb-1">Tipo de documento <span class="text-danger">*</span></label>
+                            @Html.DropDownList("tipoDocumentoCodigo", (SelectList)ViewBag.TiposDocumento, new { @class = "form-select py-2", id = "tipoDocumentoCodigo" })
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="numeroDocumento" class="form-label small fw-semibold text-secondary mb-1">Número de documento <span class="text-danger">*</span></label>
+                            <input type="text" id="numeroDocumento" name="numeroDocumento" class="form-control py-2" value="@pasajeroForm.NumeroDocumento" maxlength="20" />
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="fechaNacimiento" class="form-label small fw-semibold text-secondary mb-1">Fecha de nacimiento (opcional)</label>
+                            <input type="date" id="fechaNacimiento" name="fechaNacimiento" class="form-control py-2"
+                                   value="@(pasajeroForm.FechaNacimiento.HasValue ? pasajeroForm.FechaNacimiento.Value.ToString("yyyy-MM-dd") : "")" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="nombres" class="form-label small fw-semibold text-secondary mb-1">Nombres <span class="text-danger">*</span></label>
+                            <input type="text" id="nombres" name="nombres" class="form-control py-2" value="@pasajeroForm.Nombres" maxlength="100" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="apellidos" class="form-label small fw-semibold text-secondary mb-1">Apellidos <span class="text-danger">*</span></label>
+                            <input type="text" id="apellidos" name="apellidos" class="form-control py-2" value="@pasajeroForm.Apellidos" maxlength="100" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="correo" class="form-label small fw-semibold text-secondary mb-1">Correo (opcional)</label>
+                            <input type="email" id="correo" name="correo" class="form-control py-2" value="@pasajeroForm.Correo" maxlength="256" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="telefono" class="form-label small fw-semibold text-secondary mb-1">Teléfono (opcional)</label>
+                            <input type="text" id="telefono" name="telefono" class="form-control py-2" value="@pasajeroForm.Telefono" maxlength="20" />
+                        </div>
+                    </div>
+                    <small id="errorPasajero" class="text-danger d-none d-block mt-2" role="alert" style="font-size: 0.8rem;"></small>
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-dark px-4 py-2 fw-semibold">Guardar</button>
+                        <a href="@Url.Action("Gestion", "Admin", new { tab = "pasajeros" })" class="btn btn-outline-secondary px-4 py-2">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        }
+
+        if (!pasajeros.Any())
+        {
+            <div class="admin-card shadow-sm p-5 text-center"><h3 class="h6 fw-bold text-dark mb-0">No se encontraron registros.</h3></div>
+        }
+        else
+        {
+            <div class="admin-card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                        <thead class="table-light small text-secondary">
+                            <tr>
+                                <th class="ps-4">Documento</th>
+                                <th>Nombre</th>
+                                <th>Correo</th>
+                                <th class="text-center">Asignaciones</th>
+                                @if (esAdmin)
+                                {
+                                    <th class="text-end pe-4">Acciones</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in pasajeros)
+                            {
+                                int numAsig = asignacionesPasajero.ContainsKey(p.PasajeroId) ? asignacionesPasajero[p.PasajeroId] : 0;
+                                string nombreCompleto = p.Nombres + " " + p.Apellidos;
+                                <tr>
+                                    <td class="ps-4">
+                                        <span class="estado-badge b-gris me-1">@p.TipoDocumentoCodigo</span>
+                                        <span class="fw-semibold">@p.NumeroDocumento</span>
+                                    </td>
+                                    <td>@nombreCompleto</td>
+                                    <td class="small">@(p.Correo ?? "—")</td>
+                                    <td class="text-center">@numAsig</td>
+                                    @if (esAdmin)
+                                    {
+                                        <td class="text-end pe-4">
+                                            <div class="d-flex flex-wrap justify-content-end gap-1">
+                                                <a href="@Url.Action("Gestion", "Admin", new { tab = "pasajeros", editarPasajero = p.PasajeroId })#formPasajero" class="btn btn-outline-dark btn-sm px-2 py-1">Editar</a>
+                                                <button type="button" class="btn btn-outline-danger btn-sm px-2 py-1 btn-eliminar"
+                                                        data-id="@p.PasajeroId" data-nombre="@nombreCompleto" data-asignaciones="@numAsig">
+                                                    Eliminar
+                                                </button>
+                                            </div>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    }
+
+    @* ===================== PESTAÑA RESERVAS ===================== *@
+    @if (tab == "reservas" && reservas != null)
+    {
+        if (!reservas.Any())
+        {
+            <div class="admin-card shadow-sm p-5 text-center"><h3 class="h6 fw-bold text-dark mb-0">No se encontraron registros.</h3></div>
+        }
+        else
+        {
+            <div class="admin-card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                        <thead class="table-light small text-secondary">
+                            <tr>
+                                <th class="ps-4">Código</th>
+                                <th>Usuario</th>
+                                <th>Creada</th>
+                                <th class="text-center">Pasajeros</th>
+                                <th>Reserva</th>
+                                <th>Compra</th>
+                                <th class="text-end pe-4">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in reservas)
+                            {
+                                var compra = r.Compra.OrderByDescending(c => c.FechaCompra).FirstOrDefault();
+                                string estadoCompra = compra != null ? compra.EstadoCompraCodigo : "";
+                                string claseReserva = r.EstadoReservaCodigo == "PENDIENTE" ? "b-morado"
+                                    : (r.EstadoReservaCodigo == "CONFIRMADA" ? "b-verde"
+                                    : (r.EstadoReservaCodigo == "EXPIRADA" ? "b-ambar" : "b-gris"));
+                                <tr>
+                                    <td class="ps-4 fw-bold text-dark">@r.CodigoReserva</td>
+                                    <td>@(nombreUsuario.ContainsKey(r.UsuarioId) ? nombreUsuario[r.UsuarioId] : "(usuario de demostración)")</td>
+                                    <td>@r.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td class="text-center">@r.ReservaPasajeroVuelo.Select(a => a.PasajeroId).Distinct().Count()</td>
+                                    <td><span class="estado-badge @claseReserva">@r.EstadoReservaCodigo</span></td>
+                                    <td>
+                                        @if (estadoCompra == "")
+                                        {
+                                            <span class="estado-badge b-gris">Sin compra</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="estado-badge @(estadoCompra == "PAGADA" ? "b-verde" : (estadoCompra == "ANULADA" ? "b-rojo" : "b-ambar"))">@estadoCompra</span>
+                                        }
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <a href="@Url.Action("Gestionar", "Reservas", new { id = r.ReservaId })" class="btn btn-outline-secondary btn-sm px-2 py-1">Ver detalle</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    }
+
+    <!-- Paginación -->
+    @if (totalPaginas > 1)
+    {
+        <nav aria-label="Paginación" class="mt-4">
+            <ul class="pagination pagination-sm justify-content-center">
+                <li class="page-item @(pagina <= 1 ? "disabled" : "")">
+                    <a class="page-link text-dark" href="@Url.Action("Gestion", "Admin", new { tab = tab, buscar = fBuscar, filtro = fFiltro, pagina = pagina - 1 })">&laquo; Anterior</a>
+                </li>
+                @for (int p = 1; p <= totalPaginas; p++)
+                {
+                    <li class="page-item @(p == pagina ? "active" : "")">
+                        <a class="page-link @(p == pagina ? "bg-dark border-dark text-white" : "text-dark")"
+                           href="@Url.Action("Gestion", "Admin", new { tab = tab, buscar = fBuscar, filtro = fFiltro, pagina = p })">@p</a>
+                    </li>
+                }
+                <li class="page-item @(pagina >= totalPaginas ? "disabled" : "")">
+                    <a class="page-link text-dark" href="@Url.Action("Gestion", "Admin", new { tab = tab, buscar = fBuscar, filtro = fFiltro, pagina = pagina + 1 })">Siguiente &raquo;</a>
+                </li>
+            </ul>
+        </nav>
+    }
+</main>
+
+<!-- Modal de confirmación para eliminar pasajero -->
+@if (tab == "pasajeros" && esAdmin)
+{
+    <div class="modal fade" id="modalEliminar" tabindex="-1" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-3 shadow">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold text-dark fs-6" id="modalEliminarLabel">Eliminar pasajero</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body py-4 small">
+                    <p class="mb-2">¿Desea eliminar a <strong id="nombreEliminar"></strong>?</p>
+                    <div id="avisoEliminar" class="alert alert-warning py-2 px-3 mb-0 border-0 d-none" role="alert">
+                        Este pasajero tiene reservas asociadas; el sistema no permitirá eliminarlo.
+                    </div>
+                </div>
+                <div class="modal-footer border-top bg-light">
+                    <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-semibold" data-bs-dismiss="modal">Cancelar</button>
+                    <form action="@Url.Action("EliminarPasajero", "Admin")" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="pasajeroId" id="idEliminar" value="" />
+                        <button type="submit" class="btn btn-danger btn-sm px-3 fw-semibold">Eliminar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section scripts {
+    <script>
+        $(function () {
+            // Modal de eliminación: carga los datos del pasajero elegido
+            $('.btn-eliminar').on('click', function () {
+                $('#idEliminar').val($(this).data('id'));
+                $('#nombreEliminar').text($(this).data('nombre'));
+                if (parseInt($(this).data('asignaciones'), 10) > 0) {
+                    $('#avisoEliminar').removeClass('d-none');
+                } else {
+                    $('#avisoEliminar').addClass('d-none');
+                }
+                var modal = new bootstrap.Modal(document.getElementById('modalEliminar'));
+                modal.show();
+            });
+
+            // Validación del formulario de pasajero
+            $('#formGuardarPasajero').on('submit', function (e) {
+                var tipo = $('#tipoDocumentoCodigo').val();
+                var numero = $.trim($('#numeroDocumento').val());
+                var nombres = $.trim($('#nombres').val());
+                var apellidos = $.trim($('#apellidos').val());
+                var correo = $.trim($('#correo').val());
+                var mensaje = '';
+
+                if (tipo === 'CEDULA' && !/^\d{10}$/.test(numero)) {
+                    mensaje = 'La cédula debe contener exactamente 10 dígitos numéricos.';
+                } else if (numero.length < 5 || numero.length > 20) {
+                    mensaje = 'El número de documento debe tener entre 5 y 20 caracteres.';
+                } else if (nombres.length === 0 || apellidos.length === 0) {
+                    mensaje = 'Nombres y apellidos son obligatorios.';
+                } else if (correo.length > 0 && !/^[^\x40\s]+\x40[^\x40\s]+\.[^\x40\s]+$/.test(correo)) {
+                    mensaje = 'El correo electrónico no tiene un formato válido.';
+                }
+
+                if (mensaje !== '') {
+                    e.preventDefault();
+                    $('#errorPasajero').text('⚠ ' + mensaje).removeClass('d-none');
+                }
+            });
+        });
+    </script>
+}
