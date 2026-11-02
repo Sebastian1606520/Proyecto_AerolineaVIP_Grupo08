@@ -486,6 +486,8 @@ namespace Con_Autenticacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult Create([Bind(Include = "CompraId,ReservaId,FechaCompra,Importe,MonedaCodigo,EstadoCompraCodigo,ClaveIdempotencia")] Compra compra)
         {
+            ModelState.Remove("ClaveIdempotencia");
+            compra.ClaveIdempotencia = Guid.NewGuid();
             if (ModelState.IsValid)
             {
                 db.Compra.Add(compra);

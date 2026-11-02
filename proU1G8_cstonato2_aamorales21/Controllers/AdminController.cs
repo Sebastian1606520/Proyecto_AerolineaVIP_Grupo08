@@ -30,7 +30,7 @@ namespace Con_Autenticacion.Controllers
         [HttpGet]
         public ActionResult Index()
         {
-            if (!EsAdministrativo())
+            if (!User.IsInRole("Delete"))
             {
                 ViewBag.SinPermiso = true;
                 return View();

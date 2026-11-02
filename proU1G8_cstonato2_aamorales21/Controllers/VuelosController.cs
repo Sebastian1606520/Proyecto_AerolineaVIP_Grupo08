@@ -164,7 +164,18 @@ namespace Con_Autenticacion.Controllers
         }
 
 
-
+        // GET: Vuelos  (CRUD de scaffolding)
+        [Authorize(Roles = "Details")]
+        public ActionResult Index()
+        {
+            var vuelos = db.Vuelo
+                .Include(v => v.Aeronave)
+                .Include(v => v.EstadoVuelo)
+                .Include(v => v.Frecuencia)
+                .OrderByDescending(v => v.FechaOperacion)
+                .ToList();
+            return View(vuelos);
+        }
 
         // GET: Vuelos/Details/5
         public ActionResult Details(int? id)
@@ -263,13 +274,23 @@ namespace Con_Autenticacion.Controllers
         }
 
         // POST: Vuelos/Delete/5
+        // POST: Vuelos/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Delete")]
         public ActionResult DeleteConfirmed(int id)
         {
             Vuelo vuelo = db.Vuelo.Find(id);
-            db.Vuelo.Remove(vuelo);
-            db.SaveChanges();
+            try
+            {
+                db.Vuelo.Remove(vuelo);
+                db.SaveChanges();
+                TempData["Exito"] = "Vuelo eliminado.";
+            }
+            catch (Exception)
+            {
+                TempData["Error"] = "No se puede eliminar: el vuelo tiene reservas o tramos asociados (integridad referencial).";
+            }
             return RedirectToAction("Index");
         }
 
