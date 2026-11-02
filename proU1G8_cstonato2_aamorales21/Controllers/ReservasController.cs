@@ -23,6 +23,35 @@ namespace Con_Autenticacion.Controllers
             return View(reserva.ToList());
         }
 
+        private List<Vuelo> ObtenerTramos(Vuelo vuelo)
+        {
+            if (vuelo.Frecuencia.DiaSemana != 7)
+            {
+                return new List<Vuelo> { vuelo };
+            }
+
+            string origen = vuelo.Frecuencia.Ruta.Aeropuerto.CodigoIATA;
+            string destino = vuelo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA;
+            bool esIda = origen == "UIO" || destino == "GPS";
+            string[] rutasItinerario = esIda
+                ? new[] { "UIO-GYE", "GYE-GPS" }
+                : new[] { "GPS-GYE", "GYE-UIO" };
+
+            DateTime fecha = vuelo.FechaOperacion;
+            var tramos = db.Vuelo
+                .Where(v => v.FechaOperacion == fecha)
+                .ToList()
+                .Where(v => rutasItinerario.Contains(v.Frecuencia.Ruta.Aeropuerto.CodigoIATA + "-" + v.Frecuencia.Ruta.Aeropuerto1.CodigoIATA))
+                .OrderBy(v => v.Frecuencia.HoraSalida)
+                .ToList();
+
+            return tramos.Count == 2 ? tramos : null;
+        }
+
+        private int LibresEnVuelo(Vuelo v)
+        {
+            return 7 - v.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA");
+        }
 
         [HttpGet]
         public ActionResult SeleccionAsiento(int? id, int pasajeros = 1)
@@ -34,32 +63,45 @@ namespace Con_Autenticacion.Controllers
             }
 
             var vuelo = db.Vuelo.Find(id.Value);
-            if (vuelo == null || vuelo.EstadoVueloCodigo == "CANCELADO")
+            if (vuelo == null)
             {
                 TempData["Error"] = "El vuelo seleccionado no está disponible o ha sido cancelado.";
                 return RedirectToAction("Buscar", "Vuelos");
             }
 
-            if (vuelo.AeronaveId == null)
+            var tramos = ObtenerTramos(vuelo);
+            if (tramos == null)
             {
-                TempData["Error"] = "El vuelo no tiene aeronave asignada; sus asientos no pueden reservarse.";
+                TempData["Error"] = "El itinerario de este vuelo no está completo; no puede reservarse.";
                 return RedirectToAction("Buscar", "Vuelos");
+            }
+
+            // Cada tramo debe estar operativo y con aeronave (RNP-01)
+            foreach (var t in tramos)
+            {
+                if (t.EstadoVueloCodigo == "CANCELADO")
+                {
+                    TempData["Error"] = "El vuelo seleccionado no está disponible o ha sido cancelado.";
+                    return RedirectToAction("Buscar", "Vuelos");
+                }
+                if (t.AeronaveId == null)
+                {
+                    TempData["Error"] = "El vuelo no tiene aeronave asignada; sus asientos no pueden reservarse.";
+                    return RedirectToAction("Buscar", "Vuelos");
+                }
             }
 
             int cantidadPasajeros = (pasajeros >= 1 && pasajeros <= 7) ? pasajeros : 1;
 
-            // Verificar si hay cupo suficiente
-            int ocupados = vuelo.ReservaPasajeroVuelo
-                .Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA");
-            int disponibles = 7 - ocupados;
-
+            // Cupo suficiente en TODOS los tramos (mínimo entre tramos, DP-09)
+            int disponibles = tramos.Min(t => LibresEnVuelo(t));
             if (disponibles < cantidadPasajeros)
             {
                 TempData["Error"] = "No quedan suficientes asientos disponibles para la cantidad de pasajeros requerida.";
                 return RedirectToAction("Resultados", "Vuelos", new
                 {
-                    origenId = vuelo.Frecuencia.Ruta.AeropuertoOrigenId,
-                    destinoId = vuelo.Frecuencia.Ruta.AeropuertoDestinoId,
+                    origenId = tramos.First().Frecuencia.Ruta.AeropuertoOrigenId,
+                    destinoId = tramos.Last().Frecuencia.Ruta.AeropuertoDestinoId,
                     fecha = vuelo.FechaOperacion.ToString("yyyy-MM-dd"),
                     pasajeros = cantidadPasajeros
                 });
@@ -67,48 +109,65 @@ namespace Con_Autenticacion.Controllers
 
             ViewBag.Pasajeros = cantidadPasajeros;
             ViewBag.HoraCorte = DateTime.Now.ToString("HH:mm");
+            ViewBag.Tramos = tramos;
 
-            return View(vuelo);
+            // El modelo es siempre el primer tramo
+            return View(tramos.First());
         }
 
         // POST: /Reservas/SeleccionAsiento
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult SeleccionAsiento(int vueloId, int pasajeros, List<int> asientosSeleccionados)
+        public ActionResult SeleccionAsiento(int vueloId, int pasajeros, List<int> asientosSeleccionados, List<int> asientosTramo2)
         {
-            if (asientosSeleccionados == null || asientosSeleccionados.Count != pasajeros)
+            var vuelo = db.Vuelo.Find(vueloId);
+            var tramos = vuelo != null ? ObtenerTramos(vuelo) : null;
+            if (tramos == null)
             {
-                TempData["Error"] = "Debe asignar un asiento a cada pasajero antes de continuar.";
-                return RedirectToAction("SeleccionAsiento", new { id = vueloId, pasajeros = pasajeros });
+                TempData["Error"] = "Debe seleccionar un vuelo válido para continuar.";
+                return RedirectToAction("Buscar", "Vuelos");
             }
 
-            if (asientosSeleccionados.Distinct().Count() != pasajeros)
-            {
-                TempData["Error"] = "No puede asignar el mismo asiento a más de un pasajero.";
-                return RedirectToAction("SeleccionAsiento", new { id = vueloId, pasajeros = pasajeros });
-            }
+            var seleccionPorTramo = new List<List<int>> { asientosSeleccionados, asientosTramo2 };
 
-            // Revalidar disponibilidad
-            var ocupados = db.ReservaPasajeroVuelo
-                .Where(r => r.VueloId == vueloId && (r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA"))
-                .Select(r => (int)r.NumeroAsiento)
-                .ToList();
-
-            foreach (var numAsiento in asientosSeleccionados)
+            // Se valida cada tramo en el servidor (RNP-04)
+            for (int k = 0; k < tramos.Count; k++)
             {
-                if (ocupados.Contains(numAsiento))
+                var seleccion = seleccionPorTramo[k];
+                string tramoTexto = tramos.Count > 1 ? " en el tramo " + (k + 1) : "";
+
+                if (seleccion == null || seleccion.Count != pasajeros)
                 {
-                    TempData["Error"] = "Uno de los asientos elegidos acaba de ser reservado. Por favor seleccione otro.";
+                    TempData["Error"] = "Debe asignar un asiento a cada pasajero" + tramoTexto + " antes de continuar.";
+                    return RedirectToAction("SeleccionAsiento", new { id = vueloId, pasajeros = pasajeros });
+                }
+
+                if (seleccion.Distinct().Count() != pasajeros)
+                {
+                    TempData["Error"] = "No puede asignar el mismo asiento a más de un pasajero" + tramoTexto + ".";
+                    return RedirectToAction("SeleccionAsiento", new { id = vueloId, pasajeros = pasajeros });
+                }
+
+                int idTramo = tramos[k].VueloId;
+                var ocupados = db.ReservaPasajeroVuelo
+                    .Where(r => r.VueloId == idTramo && (r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA"))
+                    .Select(r => (int)r.NumeroAsiento)
+                    .ToList();
+
+                if (seleccion.Any(n => ocupados.Contains(n)))
+                {
+                    TempData["Error"] = "Uno de los asientos elegidos" + tramoTexto + " acaba de ser reservado. Por favor seleccione otro.";
                     return RedirectToAction("SeleccionAsiento", new { id = vueloId, pasajeros = pasajeros });
                 }
             }
 
-            // Guardar en sesión
-            Session["Reserva_VueloId"] = vueloId;
+            // Selección temporal en sesión (no es una reserva hasta el paso 3)
+            Session["Reserva_VueloId"] = tramos[0].VueloId;          // tramo 1 (compatibilidad con pantallas 9 y 10)
             Session["Reserva_PasajerosCount"] = pasajeros;
-            Session["Reserva_Asientos"] = asientosSeleccionados;
+            Session["Reserva_Asientos"] = asientosSeleccionados;     // asientos del tramo 1
+            Session["Reserva_Tramos"] = tramos.Select(t => t.VueloId).ToList();
+            Session["Reserva_AsientosTramo2"] = tramos.Count > 1 ? asientosTramo2 : null;
 
-            // Redirige a la Pantalla 9: /Reservas/Pasajeros
             return RedirectToAction("Pasajeros", "Reservas");
         }
 

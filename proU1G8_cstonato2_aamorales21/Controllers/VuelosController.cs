@@ -57,28 +57,41 @@ namespace Con_Autenticacion.Controllers
 
             List<Vuelo> vuelosResultado = new List<Vuelo>();
 
-            // Caso Quito -> Galápagos (Itinerario dominical con escala de ida)
-            if (iataOrigen == "UIO" && iataDestino == "GPS")
+            // Ida UIO→GYE→GPS o regreso GPS→GYE→UIO
+            bool esItinerario = (iataOrigen == "UIO" && iataDestino == "GPS")
+                             || (iataOrigen == "GPS" && iataDestino == "UIO");
+
+            if (esItinerario)
             {
                 ViewBag.EsItinerarioEscala = true;
 
-                // Filtramos ÚNICAMENTE los 2 tramos de ida:
-                // 1) UIO -> GYE (09:00) y 2) GYE -> GPS (11:00)
-                vuelosResultado = db.TramoItinerario
-                    .Where(t => t.Itinerario.EstadoItinerarioCodigo == "ACTIVO"
-                             && t.Vuelo.FechaOperacion == fechaBusqueda
-                             && (t.Vuelo.Frecuencia.HoraSalida.Hours == 9 || t.Vuelo.Frecuencia.HoraSalida.Hours == 11))
-                    .OrderBy(t => t.Vuelo.Frecuencia.HoraSalida)
-                    .Select(t => t.Vuelo)
+                var gye = db.Aeropuerto.FirstOrDefault(a => a.CodigoIATA == "GYE");
+                int gyeId = gye != null ? gye.AeropuertoId : 0;
+                int oId = origenId.Value;
+                int dId = destinoId.Value;
+
+                // Tramo 1: origen → GYE   ·   Tramo 2: GYE → destino   (mismo día)
+                vuelosResultado = db.Vuelo
+                    .Where(v => v.FechaOperacion == fechaBusqueda
+                             && ((v.Frecuencia.Ruta.AeropuertoOrigenId == oId && v.Frecuencia.Ruta.AeropuertoDestinoId == gyeId)
+                              || (v.Frecuencia.Ruta.AeropuertoOrigenId == gyeId && v.Frecuencia.Ruta.AeropuertoDestinoId == dId)))
+                    .OrderBy(v => v.Frecuencia.HoraSalida)
                     .ToList();
+
+                // El itinerario solo se ofrece completo (los dos tramos); si no es domingo, no hay resultado
+                if (vuelosResultado.Count != 2)
+                {
+                    vuelosResultado = new List<Vuelo>();
+                }
             }
             else
             {
                 ViewBag.EsItinerarioEscala = false;
 
-                // Vuelos directos estándar
+                // Vuelos directos de lunes a sábado. Los tramos del domingo no se venden sueltos (DP-09)
                 vuelosResultado = db.Vuelo
                     .Where(v => v.FechaOperacion == fechaBusqueda
+                             && v.Frecuencia.DiaSemana != 7
                              && v.Frecuencia.Ruta.AeropuertoOrigenId == origenId.Value
                              && v.Frecuencia.Ruta.AeropuertoDestinoId == destinoId.Value)
                     .OrderBy(v => v.Frecuencia.HoraSalida)
@@ -99,7 +112,7 @@ namespace Con_Autenticacion.Controllers
 
         [HttpGet]
         [AllowAnonymous]
-        public ActionResult Disponibilidad(int? id)
+        public ActionResult Disponibilidad(int? id, int pasajeros = 1)
         {
             if (!id.HasValue)
             {
@@ -122,6 +135,30 @@ namespace Con_Autenticacion.Controllers
             }
 
             ViewBag.HoraCorte = DateTime.Now.ToString("HH:mm");
+
+            // se conserva la cantidad de pasajeros de la búsqueda
+            ViewBag.Pasajeros = (pasajeros >= 1 && pasajeros <= 7) ? pasajeros : 1;
+
+            // del itinerario completo (DP-09: los tramos del domingo no se venden sueltos)
+            int origenBusqueda = vuelo.Frecuencia.Ruta.AeropuertoOrigenId;
+            int destinoBusqueda = vuelo.Frecuencia.Ruta.AeropuertoDestinoId;
+
+            if (vuelo.Frecuencia.DiaSemana == 7)
+            {
+                var uio = db.Aeropuerto.FirstOrDefault(a => a.CodigoIATA == "UIO");
+                var gps = db.Aeropuerto.FirstOrDefault(a => a.CodigoIATA == "GPS");
+                if (uio != null && gps != null)
+                {
+                    // Ida: UIO→GYE o GYE→GPS   ·   Regreso: GPS→GYE o GYE→UIO
+                    bool esIda = vuelo.Frecuencia.Ruta.Aeropuerto.CodigoIATA == "UIO"
+                              || vuelo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA == "GPS";
+                    origenBusqueda = esIda ? uio.AeropuertoId : gps.AeropuertoId;
+                    destinoBusqueda = esIda ? gps.AeropuertoId : uio.AeropuertoId;
+                }
+            }
+
+            ViewBag.OrigenBusqueda = origenBusqueda;
+            ViewBag.DestinoBusqueda = destinoBusqueda;
 
             return View(vuelo);
         }
