@@ -52,12 +52,12 @@ namespace Con_Autenticacion.Controllers
             var aeroOrigen = db.Aeropuerto.Find(origenId.Value);
             var aeroDestino = db.Aeropuerto.Find(destinoId.Value);
 
-            string iataOrigen = aeroOrigen != null ? aeroOrigen.CodigoIATA : "";
-            string iataDestino = aeroDestino != null ? aeroDestino.CodigoIATA : "";
+            string iataOrigen = aeroOrigen?.CodigoIATA ?? "";
+            string iataDestino = aeroDestino?.CodigoIATA ?? "";
 
             List<Vuelo> vuelosResultado = new List<Vuelo>();
 
-            // Ida UIO→GYE→GPS o regreso GPS→GYE→UIO
+            // Ruta con escala obligatoria en GYE: UIO -> GPS o GPS -> UIO
             bool esItinerario = (iataOrigen == "UIO" && iataDestino == "GPS")
                              || (iataOrigen == "GPS" && iataDestino == "UIO");
 
@@ -70,15 +70,19 @@ namespace Con_Autenticacion.Controllers
                 int oId = origenId.Value;
                 int dId = destinoId.Value;
 
-                // Tramo 1: origen → GYE   ·   Tramo 2: GYE → destino   (mismo día)
+                // Cargar los 2 tramos del mismo día domingo
                 vuelosResultado = db.Vuelo
+                    .Include(v => v.Frecuencia.Ruta.Aeropuerto)
+                    .Include(v => v.Frecuencia.Ruta.Aeropuerto1)
+                    .Include(v => v.Aeronave)
+                    .Include(v => v.ReservaPasajeroVuelo)
                     .Where(v => v.FechaOperacion == fechaBusqueda
                              && ((v.Frecuencia.Ruta.AeropuertoOrigenId == oId && v.Frecuencia.Ruta.AeropuertoDestinoId == gyeId)
                               || (v.Frecuencia.Ruta.AeropuertoOrigenId == gyeId && v.Frecuencia.Ruta.AeropuertoDestinoId == dId)))
                     .OrderBy(v => v.Frecuencia.HoraSalida)
                     .ToList();
 
-                // El itinerario solo se ofrece completo (los dos tramos); si no es domingo, no hay resultado
+                // Si no tiene los dos tramos coordinados no se comercializa
                 if (vuelosResultado.Count != 2)
                 {
                     vuelosResultado = new List<Vuelo>();
@@ -88,8 +92,12 @@ namespace Con_Autenticacion.Controllers
             {
                 ViewBag.EsItinerarioEscala = false;
 
-                // Vuelos directos de lunes a sábado. Los tramos del domingo no se venden sueltos (DP-09)
+                // Vuelos directos ordinarios (no domingos)
                 vuelosResultado = db.Vuelo
+                    .Include(v => v.Frecuencia.Ruta.Aeropuerto)
+                    .Include(v => v.Frecuencia.Ruta.Aeropuerto1)
+                    .Include(v => v.Aeronave)
+                    .Include(v => v.ReservaPasajeroVuelo)
                     .Where(v => v.FechaOperacion == fechaBusqueda
                              && v.Frecuencia.DiaSemana != 7
                              && v.Frecuencia.Ruta.AeropuertoOrigenId == origenId.Value
@@ -100,8 +108,8 @@ namespace Con_Autenticacion.Controllers
 
             ViewBag.OrigenId = origenId.Value;
             ViewBag.DestinoId = destinoId.Value;
-            ViewBag.CiudadOrigen = aeroOrigen != null ? aeroOrigen.Localidad + " (" + aeroOrigen.CodigoIATA + ")" : "Origen";
-            ViewBag.CiudadDestino = aeroDestino != null ? aeroDestino.Localidad + " (" + aeroDestino.CodigoIATA + ")" : "Destino";
+            ViewBag.CiudadOrigen = aeroOrigen != null ? $"{aeroOrigen.Localidad} ({aeroOrigen.CodigoIATA})" : "Origen";
+            ViewBag.CiudadDestino = aeroDestino != null ? $"{aeroDestino.Localidad} ({aeroDestino.CodigoIATA})" : "Destino";
             ViewBag.Fecha = fechaBusqueda;
             ViewBag.Pasajeros = (pasajeros >= 1 && pasajeros <= 7) ? pasajeros : 1;
 

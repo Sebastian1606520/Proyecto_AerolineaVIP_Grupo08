@@ -291,6 +291,7 @@
     <Compile Include="Models\Vuelo.cs">
       <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
     </Compile>
+    <Compile Include="Models\VueloNegocio.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Startup.cs" />
   </ItemGroup>
