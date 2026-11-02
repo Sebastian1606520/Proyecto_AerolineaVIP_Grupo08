@@ -3,113 +3,144 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<main class="container py-5">
+<main class="container py-4 py-lg-5">
 
-    <!-- Encabezado corporativo -->
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-2 border-bottom border-light-subtle gap-2">
-        <div>
-            <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
-                Aerolínea VIP &middot; Pantalla 5
-            </span>
-            <h2 class="h3 fw-bold text-dark mb-1">Buscar vuelos</h2>
-            <p class="text-secondary small mb-0">Seleccione su ruta, fecha de salida y cantidad de pasajeros.</p>
-        </div>
-        <div class="text-end d-none d-md-block">
-            <span class="badge bg-light text-secondary border px-3 py-2 small fw-normal">
-                Flota Embraer Phenom 300E
-            </span>
+    <!-- Hero / Encabezado Corporativo VIP -->
+    <div class="card border border-light-subtle shadow-sm rounded-3 bg-white mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-dark text-warning px-3 py-1 text-uppercase fw-semibold" style="letter-spacing: 1px; font-size: 0.72rem;">
+                            Aerolínea VIP &middot; Reservas
+                        </span>
+                        <span class="badge bg-light text-secondary border fw-normal" style="font-size: 0.75rem;">
+                            Flota Embraer Phenom 300E
+                        </span>
+                    </div>
+                    <h1 class="h3 fw-bold text-dark mb-1">Buscar vuelos</h1>
+                    <p class="text-secondary small mb-0">
+                        Seleccione origen, destino, fecha y cantidad de pasajeros para consultar disponibilidad[cite: 2].
+                    </p>
+                </div>
+
+                <div class="d-none d-md-flex align-items-center gap-3 p-2 px-3 rounded-3 bg-light border border-light-subtle">
+                    <span class="fs-4 text-warning">&#9992;</span>
+                    <div>
+                        <span class="fw-semibold text-dark small d-block">Cabina Ejecutiva</span>
+                        <span class="text-muted" style="font-size: 0.75rem;">7 asientos exclusivos[cite: 2]</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     @if (TempData["Error"] != null)
     {
-        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2">
-            <span>&#9888;</span>
-            <span>@TempData["Error"]</span>
+        <div class="alert alert-danger py-3 px-4 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-3" role="alert">
+            <span class="fs-5">&#9888;</span>
+            <div class="fw-semibold">@TempData["Error"]</div>
         </div>
     }
 
     <div class="row g-4 align-items-start">
 
-        <!-- Formulario principal -->
+        <!-- Formulario Principal -->
         <div class="col-12 col-lg-8">
-            <div class="card border border-light-subtle shadow-sm rounded-3 bg-white">
+            <div class="card border border-light-subtle shadow-sm rounded-4 bg-white overflow-hidden">
 
-                <div class="card-header bg-light bg-opacity-50 py-3 px-4 border-bottom border-light-subtle">
-                    <h3 class="h6 fw-bold text-dark mb-0">Criterios de viaje</h3>
+                <div class="card-header bg-white py-3 px-4 border-bottom border-light-subtle d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="p-2 rounded-3 bg-light text-dark fw-bold" style="font-size: 0.85rem;">01</span>
+                        <h2 class="h6 fw-bold text-dark mb-0">Criterios de viaje</h2>
+                    </div>
+                    <span class="badge bg-light text-secondary border fw-normal small px-2 py-1">Vuelos Directos y con Escala</span>
                 </div>
 
-                <div class="card-body p-4">
+                <div class="card-body p-4 p-md-5">
                     <form action="@Url.Action("Resultados", "Vuelos")" method="get">
 
                         <!-- Fila 1: Origen y Destino -->
-                        <div class="row g-3 mb-3">
+                        <div class="row g-4 mb-4">
                             <div class="col-12 col-md-6">
-                                <label class="form-label small fw-semibold text-secondary mb-1">
-                                    Origen <span class="text-danger">*</span>
+                                <label class="form-label small fw-bold text-secondary text-uppercase mb-2" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                    Aeropuerto de Origen <span class="text-danger">*</span>
                                 </label>
-                                @Html.DropDownList("origenId", (SelectList)ViewBag.Aeropuertos, "-- Seleccione origen --", new
-                                {
-                                    @class = "form-select py-2",
-                                    required = "required"
-                                })
-                            </div>
-
-                            <div class="col-12 col-md-6">
-                                <label class="form-label small fw-semibold text-secondary mb-1">
-                                    Destino <span class="text-danger">*</span>
-                                </label>
-                                @Html.DropDownList("destinoId", (SelectList)(ViewBag.AeropuertosDestino ?? ViewBag.Aeropuertos), "-- Seleccione destino --", new
-                                {
-                                    @class = "form-select py-2",
-                                    required = "required"
-                                })
-                            </div>
-                        </div>
-
-                        <!-- Fila 2: Fecha y Pasajeros -->
-                        <div class="row g-3 mb-4">
-                            <div class="col-12 col-md-6">
-                                <label class="form-label small fw-semibold text-secondary mb-1">
-                                    Fecha de salida <span class="text-danger">*</span>
-                                </label>
-                                <input type="date"
-                                       class="form-control py-2"
-                                       name="fecha"
-                                       value="@ViewBag.FechaSeleccionada"
-                                       min="@DateTime.Today.ToString("yyyy-MM-dd")"
-                                       required />
-                                <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">
-                                    Disponible desde hoy en adelante.
-                                </small>
-                            </div>
-
-                            <div class="col-12 col-md-6">
-                                <label class="form-label small fw-semibold text-secondary mb-1">
-                                    Pasajeros <span class="text-danger">*</span>
-                                </label>
-                                <select class="form-select py-2" name="pasajeros" required>
-                                    @for (int p = 1; p <= 7; p++)
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-light-subtle text-muted">&#128205;</span>
+                                    @Html.DropDownList("origenId", (SelectList)ViewBag.Aeropuertos, "-- Seleccione origen --", new
                                     {
-                                        <option value="@p" @(p == (int)(ViewBag.PasajerosSeleccionados ?? 1) ? "selected" : "")>
-                                            @(p == 1 ? "1 pasajero" : p + " pasajeros")
-                                        </option>
-                                    }
-                                </select>
-                                <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">
-                                    Capacidad máxima: 7 asientos por vuelo.
-                                </small>
+                                        @class = "form-select py-2 border-light-subtle",
+                                        required = "required"
+                                    })
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small fw-bold text-secondary text-uppercase mb-2" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                    Aeropuerto de Destino <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-light-subtle text-muted">&#9992;</span>
+                                    @Html.DropDownList("destinoId", (SelectList)(ViewBag.AeropuertosDestino ?? ViewBag.Aeropuertos), "-- Seleccione destino --", new
+                                    {
+                                        @class = "form-select py-2 border-light-subtle",
+                                        required = "required"
+                                    })
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Botones -->
-                        <div class="d-flex flex-wrap gap-2 pt-2 border-top border-light-subtle">
-                            <button type="submit" class="btn btn-dark fw-semibold px-4 py-2">
-                                Buscar vuelos &rarr;
-                            </button>
-                            <a href="@Url.Action("Buscar", "Vuelos")" class="btn btn-outline-secondary px-3 py-2">
-                                Limpiar filtros
+                        <!-- Fila 2: Fecha y Cantidad de Pasajeros -->
+                        <div class="row g-4 mb-4">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small fw-bold text-secondary text-uppercase mb-2" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                    Fecha de Salida <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-light-subtle text-muted">&#128197;</span>
+                                    <input type="date"
+                                           class="form-control py-2 border-light-subtle"
+                                           name="fecha"
+                                           value="@ViewBag.FechaSeleccionada"
+                                           min="@DateTime.Today.ToString("yyyy-MM-dd")"
+                                           required />
+                                </div>
+                                <div class="form-text text-muted mt-1" style="font-size: 0.73rem;">
+                                    Seleccione a partir de la fecha de hoy.
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small fw-bold text-secondary text-uppercase mb-2" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                    Pasajeros Ejecutivos <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-light-subtle text-muted">&#128100;</span>
+                                    <select class="form-select py-2 border-light-subtle" name="pasajeros" required>
+                                        @for (int p = 1; p <= 7; p++)
+                                        {
+                                            <option value="@p" @(p == (int)(ViewBag.PasajerosSeleccionados ?? 1) ? "selected" : "")>
+                                                @(p == 1 ? "1 Pasajero" : p + " Pasajeros")
+                                            </option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="form-text text-muted mt-1" style="font-size: 0.73rem;">
+                                    Límite por vuelo: 7 asientos tipo ejecutivos.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Acciones del Formulario -->
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 pt-3 border-top border-light-subtle">
+                            <a href="@Url.Action("Buscar", "Vuelos")" class="btn btn-outline-secondary px-3 py-2 small fw-semibold text-decoration-none">
+                                &#8635; Restablecer filtros
                             </a>
+                            <button type="submit" class="btn btn-dark fw-bold px-4 py-2 shadow-sm d-flex align-items-center gap-2">
+                                <span>Buscar disponibilidad</span>
+                                <span>&rarr;</span>
+                            </button>
                         </div>
 
                     </form>
@@ -117,51 +148,56 @@
             </div>
         </div>
 
-        <!-- Panel lateral informativo -->
+        <!-- Panel Lateral Informativo: Frecuencias y Flota -->
         <div class="col-12 col-lg-4">
-            <div class="card border border-light-subtle shadow-sm rounded-3 bg-white overflow-hidden">
+            <div class="card border border-light-subtle shadow-sm rounded-4 bg-white overflow-hidden mb-4">
 
-                <div class="card-header bg-light bg-opacity-50 py-3 px-3 border-bottom border-light-subtle">
-                    <h3 class="h6 fw-bold text-dark mb-0">Frecuencias autorizadas</h3>
+                <div class="card-header bg-white py-3 px-4 border-bottom border-light-subtle">
+                    <h3 class="h6 fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                        <span class="badge bg-warning text-dark p-1 rounded-circle" style="font-size: 0.65rem;">&bull;</span>
+                        Frecuencias autorizadas
+                    </h3>
                 </div>
 
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle small mb-0">
-                            <thead class="table-light text-secondary text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                            <thead class="bg-light text-secondary text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">
                                 <tr>
-                                    <th class="ps-3 py-2">Ruta</th>
-                                    <th class="pe-3 py-2 text-end">Días de salida</th>
+                                    <th class="ps-4 py-2">Ruta</th>
+                                    <th class="pe-4 py-2 text-end">Salidas</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td class="ps-3 py-3 fw-semibold text-dark">
-                                        Quito &ndash; Guayaquil
+                                    <td class="ps-4 py-3">
+                                        <div class="fw-bold text-dark">UIO &ndash; GYE</div>
+                                        <small class="text-muted" style="font-size: 0.72rem;">Quito &rarr; Guayaquil</small>
                                     </td>
-                                    <td class="pe-3 py-3 text-end">
-                                        <span class="badge bg-light text-dark border">Mar</span>
-                                        <span class="badge bg-light text-dark border">Jue</span>
-                                        <span class="badge bg-light text-dark border">Sáb</span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="ps-3 py-3 fw-semibold text-dark">
-                                        Quito &ndash; Manta
-                                    </td>
-                                    <td class="pe-3 py-3 text-end">
-                                        <span class="badge bg-light text-dark border">Lun</span>
-                                        <span class="badge bg-light text-dark border">Mié</span>
-                                        <span class="badge bg-light text-dark border">Vie</span>
+                                    <td class="pe-4 py-3 text-end">
+                                        <span class="badge bg-dark text-white me-1">Mar</span>
+                                        <span class="badge bg-dark text-white me-1">Jue</span>
+                                        <span class="badge bg-dark text-white">Sáb</span>
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td class="ps-3 py-3 fw-semibold text-dark">
-                                        Quito &ndash; Galápagos
-                                        <small class="text-muted d-block fw-normal">(escala en GYE)</small>
+                                    <td class="ps-4 py-3">
+                                        <div class="fw-bold text-dark">UIO &ndash; MEC</div>
+                                        <small class="text-muted" style="font-size: 0.72rem;">Quito &rarr; Manta</small>
                                     </td>
-                                    <td class="pe-3 py-3 text-end align-middle">
-                                        <span class="badge bg-light text-dark border">Domingo</span>
+                                    <td class="pe-4 py-3 text-end">
+                                        <span class="badge bg-dark text-white me-1">Lun</span>
+                                        <span class="badge bg-dark text-white me-1">Mié</span>
+                                        <span class="badge bg-dark text-white">Vie</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="ps-4 py-3">
+                                        <div class="fw-bold text-dark">UIO &ndash; GPS</div>
+                                        <small class="text-muted d-block" style="font-size: 0.72rem;">Quito &rarr; Galápagos (Escala GYE)</small>
+                                    </td>
+                                    <td class="pe-4 py-3 text-end align-middle">
+                                        <span class="badge bg-warning text-dark fw-bold px-2 py-1">Domingo</span>
                                     </td>
                                 </tr>
                             </tbody>
@@ -169,13 +205,25 @@
                     </div>
                 </div>
 
-                <div class="card-footer bg-white border-top border-light-subtle p-3">
-                    <small class="text-muted d-block" style="font-size: 0.78rem;">
-                        <em>Recuerde verificar los días en que opera la ruta deseada antes de fijar su itinerario.</em>
-                    </small>
+                <div class="card-footer bg-light bg-opacity-50 border-top border-light-subtle p-3 px-4">
+                    <p class="text-muted small mb-0" style="font-size: 0.75rem; line-height: 1.4;">
+                        <strong>Nota de operación:</strong> Los vuelos operan según el calendario semanal establecido. Para rutas hacia Galápagos, seleccione siempre el día domingo.
+                    </p>
                 </div>
 
             </div>
+
+            <!-- Resumen de Beneficios VIP -->
+            <div class="card border border-light-subtle shadow-sm rounded-4 bg-light p-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="p-2 bg-white rounded-3 border text-dark fs-5">&#9733;</div>
+                    <div>
+                        <div class="fw-bold small text-dark">Servicio Ejecutivo VIP</div>
+                        <small class="text-muted d-block" style="font-size: 0.72rem;">Check-in preferencial, equipaje prioritario y atención personalizada.</small>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
     </div>
