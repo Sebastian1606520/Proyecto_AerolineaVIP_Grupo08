@@ -2,7 +2,6 @@
 @{
     ViewBag.Title = "Resultados de vuelos";
     Layout = "~/Views/Shared/_Layout.cshtml";
-    int pasajerosBusqueda = ViewBag.Pasajeros != null ? (int)ViewBag.Pasajeros : 1;
 }
 
 <style>
@@ -94,35 +93,25 @@
     }
     else if (ViewBag.EsItinerarioEscala == true)
     {
-        <!-- CASO ITINERARIO CON ESCALA EN GYE (domingo: ida o regreso de Galápagos, DP-09) -->
-        var tramos = Model.ToList();
-        var primero = tramos.First();
-        var ultimo = tramos.Last();
-        int pasajerosBuscados = pasajerosBusqueda;
-        var libresPorTramo = tramos
-    .Select(t => 7 - t.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA"))
-    .ToList();
-        int libresConexion = libresPorTramo.Min();
-        bool itinerarioVendible = tramos.All(t => t.EstadoVueloCodigo != "CANCELADO" && t.AeronaveId != null)
-                                  && libresConexion >= pasajerosBuscados;
-
+        <!-- CASO ITINERARIO CON ESCALA (Quito - Galápagos: 2 tramos de ida) -->
         <div class="d-flex flex-column gap-3 mb-4">
             <div class="card card-vuelo-custom shadow-sm p-4">
                 <div class="row align-items-center g-3">
 
-                    <!-- Ruta con escala y línea de tiempo -->
+                    <!-- Información de Ruta con Escala y Trayecto Visual -->
                     <div class="col-12 col-lg-5">
                         <div class="d-flex align-items-center justify-content-between mb-2">
                             <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle fw-semibold rounded-pill px-3 py-1" style="font-size: 0.72rem;">
                                 Itinerario dominical con escala
                             </span>
-                            <span class="badge bg-light text-secondary border small">1 escala en GYE</span>
+                            <span class="badge bg-light text-secondary border small">1 escala en GYE (1h de espera)</span>
                         </div>
 
+                        <!-- Línea de tiempo UIO -> GPS -->
                         <div class="row align-items-center text-center g-1 my-2">
                             <div class="col-4 text-start">
-                                <div class="h5 fw-bold text-dark mb-0">@primero.Frecuencia.HoraSalida.ToString(@"hh\:mm")</div>
-                                <div class="text-muted small">@primero.Frecuencia.Ruta.Aeropuerto.CodigoIATA &middot; @primero.Frecuencia.Ruta.Aeropuerto.Localidad</div>
+                                <div class="h5 fw-bold text-dark mb-0">09:00</div>
+                                <div class="text-muted small">UIO &middot; Quito</div>
                             </div>
                             <div class="col-4 position-relative">
                                 <div class="d-flex align-items-center">
@@ -135,67 +124,54 @@
                                 <span class="text-muted d-block mt-1 fw-semibold" style="font-size: 0.65rem;">ESCALA GYE</span>
                             </div>
                             <div class="col-4 text-end">
-                                <div class="h5 fw-bold text-dark mb-0">@ultimo.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</div>
-                                <div class="text-muted small">@ultimo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA &middot; @ultimo.Frecuencia.Ruta.Aeropuerto1.Localidad</div>
+                                <div class="h5 fw-bold text-dark mb-0">13:00</div>
+                                <div class="text-muted small">GPS &middot; Galápagos</div>
                             </div>
                         </div>
 
-                        <!-- Detalle por tramo (wireframe: «Tramo 1: … · Tramo 2: …» con disponibles) -->
+                        <!-- Detalle puntual de los 2 tramos de ida -->
                         <div class="bg-light bg-opacity-50 border rounded-3 p-2 small mt-2">
-                            @for (int i = 0; i < tramos.Count; i++)
+                            @foreach (var tramo in Model)
                             {
-                                var t = tramos[i];
-                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 py-1 text-secondary" style="font-size: 0.75rem;">
+                                <div class="d-flex align-items-center justify-content-between py-1 text-secondary" style="font-size: 0.75rem;">
                                     <span>
-                                        <strong>Tramo @(i + 1):</strong>
-                                        VIP@(t.VueloId.ToString("D5")) &middot;
-                                        @t.Frecuencia.HoraSalida.ToString(@"hh\:mm")&ndash;@t.Frecuencia.HoraLlegada.ToString(@"hh\:mm")
-                                        (@t.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @t.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)
+                                        <strong>@tramo.Frecuencia.HoraSalida.ToString(@"hh\:mm") &ndash; @tramo.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</strong>
+                                        (@tramo.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @tramo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)
                                     </span>
-                                    <span class="d-flex align-items-center gap-2">
-                                        <span class="badge bg-white text-success border">@libresPorTramo[i] disp.</span>
-                                        <a href="@Url.Action("Disponibilidad", "Vuelos", new { id = t.VueloId, pasajeros = pasajerosBuscados })">Consultar disponibilidad</a>
+                                    <span class="badge bg-white text-success border">
+                                        @(7 - tramo.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA")) 
                                     </span>
                                 </div>
                             }
                         </div>
                     </div>
 
-                    <!-- Disponibilidad de la conexión (mínimo entre tramos, DP-09) -->
+                    <!-- Estado de Disponibilidad de la Conexión -->
                     <div class="col-12 col-lg-3 text-lg-center">
-                        @if (libresConexion <= 0)
-                        {
-                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle px-3 py-2 small fw-semibold">
-                                Sin asientos disponibles
-                            </span>
-                        }
-                        else
-                        {
-                            <div class="text-success fw-bold fs-5 mb-0">
-                                @libresConexion <span class="text-muted fs-6 fw-normal">/ 7</span>
-                            </div>
-                            <small class="text-muted d-block" style="font-size: 0.75rem;">asientos libres en ambos tramos</small>
-                        }
+                        <div class="text-success fw-bold fs-5 mb-0">
+                            @(7 - Model.Max(t => t.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA")))
+                            <span class="text-muted fs-6 fw-normal">/ 7</span>
+                        </div>
+                        <small class="text-muted d-block" style="font-size: 0.75rem;">asientos libres garantizados</small>
+                        <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">(Capacidad mínima en la conexión)</small>
                     </div>
 
-                    <!-- Acciones -->
+                    <!-- Botones de Acción -->
                     <div class="col-12 col-lg-4 text-lg-end d-flex flex-wrap justify-content-lg-end gap-2 align-items-center">
                         <button type="button" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold"
                                 data-bs-toggle="modal" data-bs-target="#modal-itinerario-galapagos">
                             Ver detalles
                         </button>
 
-                        @if (itinerarioVendible)
-                        {
-                            <a href="@Url.Action("SeleccionAsiento", "Reservas", new { id = primero.VueloId, pasajeros = pasajerosBuscados })"
-                               class="btn btn-dark btn-sm px-3 py-2 fw-semibold">
-                                Seleccionar vuelo &rarr;
-                            </a>
-                        }
-                        else
-                        {
-                            <button class="btn btn-secondary btn-sm px-3 py-2 fw-semibold" disabled>No disponible</button>
-                        }
+                        <a href="@Url.Action("Disponibilidad", "Vuelos", new { id = Model.First().VueloId })"
+                           class="btn btn-outline-dark btn-sm px-3 py-2 fw-semibold">
+                            Consultar mapa
+                        </a>
+
+                        <a href="@Url.Action("SeleccionAsiento", "Reservas", new { vueloId = Model.First().VueloId, pasajeros = (ViewBag.Pasajeros ?? 1) })"
+                           class="btn btn-dark btn-sm px-3 py-2 fw-semibold">
+                            Seleccionar vuelo &rarr;
+                        </a>
                     </div>
 
                 </div>
@@ -331,13 +307,13 @@
                                 Ver detalles
                             </button>
 
-                            <a href="@Url.Action("Disponibilidad", "Vuelos", new { id = vuelo.VueloId, pasajeros = pasajerosBusqueda })" class="btn btn-outline-dark btn-sm px-3 py-2">
-                                Consultar disponibilidad
+                            <a href="@Url.Action("Disponibilidad", "Vuelos", new { id = vuelo.VueloId })" class="btn btn-outline-dark btn-sm px-3 py-2">
+                                Disponibilidad
                             </a>
 
-                            @if (vuelo.EstadoVueloCodigo != "CANCELADO" && vuelo.AeronaveId != null && (7 - vuelo.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA")) >= pasajerosBusqueda)
+                            @if (vuelo.EstadoVueloCodigo != "CANCELADO" && vuelo.AeronaveId != null && (7 - vuelo.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA")) >= (ViewBag.Pasajeros ?? 1))
                             {
-                                <a href="@Url.Action("SeleccionAsiento", "Reservas", new { id = vuelo.VueloId, pasajeros = pasajerosBusqueda })"
+                                <a href="@Url.Action("SeleccionAsiento", "Reservas", new { id = vuelo.VueloId, pasajeros = (ViewBag.Pasajeros ?? 1) })"
                                    class="btn btn-dark btn-sm px-3 py-2 fw-semibold">
                                     Seleccionar vuelo &rarr;
                                 </a>
@@ -413,26 +389,26 @@
 
 @section Scripts {
     <script>
-                $(document).ready(function () {
-                    $('.btn-filtro').on('click', function () {
-                        $('.btn-filtro').removeClass('active');
-                        $(this).addClass('active');
+        $(document).ready(function () {
+            $('.btn-filtro').on('click', function () {
+                $('.btn-filtro').removeClass('active');
+                $(this).addClass('active');
 
-                        var filtro = $(this).data('filtro');
-                        var count = 0;
+                var filtro = $(this).data('filtro');
+                var count = 0;
 
-                        $('.tarjeta-vuelo').each(function () {
-                            var jornada = $(this).data('jornada');
-                            if (filtro === 'todos' || jornada === filtro) {
-                                $(this).show();
-                                count++;
-                            } else {
-                                $(this).hide();
-                            }
-                        });
-
-                        $('#conteoVuelos').text(count);
-                    });
+                $('.tarjeta-vuelo').each(function () {
+                    var jornada = $(this).data('jornada');
+                    if (filtro === 'todos' || jornada === filtro) {
+                        $(this).show();
+                        count++;
+                    } else {
+                        $(this).hide();
+                    }
                 });
+
+                $('#conteoVuelos').text(count);
+            });
+        });
     </script>
 }
