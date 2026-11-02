@@ -11,176 +11,237 @@ using System.Web.Mvc;
 
 namespace Con_Autenticacion.Controllers
 {
+    [Authorize]   // todo el controlador exige sesión (antes solo Index)
     public class ComprasController : Controller
     {
-        
         private AerolineaVIP_Context db = new AerolineaVIP_Context();
-        [Authorize]
-        // GET: Compras
+
+        // GET: Compras  (CRUD de scaffolding)
         public ActionResult Index()
         {
             var compra = db.Compra.Include(c => c.EstadoCompra).Include(c => c.Moneda).Include(c => c.Reserva);
             return View(compra.ToList());
         }
 
+        // =========================================================================
+        // Ayudantes comunes de las pantallas 11 y 12
+        // =========================================================================
 
-        [HttpGet]
-        public ActionResult Pagar(int? id)
+        // Código del asiento (DP-11)
+        private static readonly Dictionary<int, string> CodigosAsiento = new Dictionary<int, string>
         {
-            if (!id.HasValue)
-            {
-                TempData["Error"] = "Identificador de reserva no válido.";
-                return RedirectToAction("Buscar", "Vuelos");
-            }
+            { 1, "1D" }, { 2, "2D" }, { 3, "2I" }, { 4, "3D" }, { 5, "3I" }, { 6, "4D" }, { 7, "4I" }
+        };
 
-            var reserva = db.Reserva.Find(id.Value);
-            if (reserva == null)
-            {
-                TempData["Error"] = "La reserva solicitada no existe.";
-                return RedirectToAction("Buscar", "Vuelos");
-            }
+        // RG-16: paga el titular de la reserva o un Counter
+        private bool PuedePagar(Reserva r)
+        {
+            return r.UsuarioId == User.Identity.GetUserId() || User.IsInRole("Counter");
+        }
 
-            // Validación de titularidad: Solo el titular o personal autorizado
-            string currentUserId = User.Identity.GetUserId() ?? User.Identity.Name;
-            if (reserva.UsuarioId != currentUserId && !User.IsInRole("Empleado"))
-            {
-                TempData["Error"] = "No tiene permisos para procesar esta reserva.";
-                return RedirectToAction("Buscar", "Vuelos");
-            }
+        // Ver el resultado: titular, Counter o personal administrativo
+        private bool PuedeVer(Reserva r)
+        {
+            return PuedePagar(r) || User.IsInRole("Administrador") || User.IsInRole("SuperUsuario");
+        }
 
-            // Estado no elegible: solo reservas pendientes pueden pagarse
-            if (reserva.EstadoReservaCodigo != "PENDIENTE")
-            {
-                TempData["Error"] = "Esta reserva ya fue procesada o no se encuentra pendiente de pago.";
-                return RedirectToAction("Buscar", "Vuelos");
-            }
+        // Devuelve null si la reserva puede pagarse, o el motivo por el que no
+        private string MotivoNoPagable(Reserva r)
+        {
+            if (r.EstadoReservaCodigo == "CONFIRMADA")
+                return "Esta reserva ya fue pagada.";
+            if (r.EstadoReservaCodigo != "PENDIENTE")
+                return "Esta reserva no se encuentra pendiente de pago.";
+            if (r.FechaExpiracion.HasValue && r.FechaExpiracion.Value < DateTime.Now)
+                return "La reserva expiró y sus asientos fueron liberados. Realice una nueva reserva.";
+            if (!r.ReservaPasajeroVuelo.Any())
+                return "La reserva no tiene pasajeros asignados.";
+            return null;
+        }
 
-            // Cálculo del importe total estrictamente en servidor
-            decimal totalCalculado = reserva.ReservaPasajeroVuelo.Sum(r => (decimal?)r.ImporteTramo) ?? 0m;
-            ViewBag.TotalPagar = totalCalculado;
+        private decimal TotalReserva(Reserva r)
+        {
+            return r.ReservaPasajeroVuelo.Sum(a => (decimal?)a.ImporteTramo) ?? 0m;
+        }
 
-            // Datos formateados del itinerario para la vista
-            var primerDetalle = reserva.ReservaPasajeroVuelo.FirstOrDefault();
-            if (primerDetalle != null && primerDetalle.Vuelo != null)
+        // Datos del itinerario completo (uno o varios tramos) para las vistas
+        private void CargarResumen(Reserva r)
+        {
+            var tramos = r.ReservaPasajeroVuelo
+                .Select(a => a.Vuelo)
+                .Distinct()
+                .OrderBy(v => v.FechaOperacion).ThenBy(v => v.Frecuencia.HoraSalida)
+                .ToList();
+
+            if (tramos.Any())
             {
-                var v = primerDetalle.Vuelo;
-                ViewBag.CodigoRuta = v.Frecuencia.Ruta.Aeropuerto.CodigoIATA + " → " + v.Frecuencia.Ruta.Aeropuerto1.CodigoIATA;
-                ViewBag.FechaVuelo = v.FechaOperacion.ToString("dd/MM/yyyy");
+                var primero = tramos.First();
+                var ultimo = tramos.Last();
+                ViewBag.CodigoRuta = primero.Frecuencia.Ruta.Aeropuerto.CodigoIATA + " → " + ultimo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA;
+                ViewBag.RutaStr = primero.Frecuencia.Ruta.Aeropuerto.Localidad + " (" + primero.Frecuencia.Ruta.Aeropuerto.CodigoIATA + ") → "
+                                + ultimo.Frecuencia.Ruta.Aeropuerto1.Localidad + " (" + ultimo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA + ")";
+                ViewBag.FechaVuelo = primero.FechaOperacion.ToString("dd/MM/yyyy");
+                ViewBag.HorarioStr = primero.Frecuencia.HoraSalida.ToString(@"hh\:mm") + " – " + ultimo.Frecuencia.HoraLlegada.ToString(@"hh\:mm")
+                                   + (tramos.Count > 1 ? " (" + tramos.Count + " tramos, escala en GYE)" : "");
             }
             else
             {
-                ViewBag.CodigoRuta = "Ruta directa";
-                ViewBag.FechaVuelo = DateTime.Today.ToString("dd/MM/yyyy");
+                ViewBag.CodigoRuta = "—";
+                ViewBag.RutaStr = "—";
+                ViewBag.FechaVuelo = "—";
+                ViewBag.HorarioStr = "—";
             }
 
-            return View(reserva);
+            ViewBag.TramosIds = tramos.Select(t => t.VueloId).ToList();
+            ViewBag.NumTramos = tramos.Count;
+            ViewBag.NumPasajeros = r.ReservaPasajeroVuelo.Select(a => a.PasajeroId).Distinct().Count();
+            ViewBag.TotalPagar = TotalReserva(r);
+        }
+
+        // Vuelve a la pantalla 11 con un mensaje (los datos de tarjeta nunca se reenvían)
+        private ActionResult VolverAPagar(int reservaId, string mensaje)
+        {
+            TempData["Error"] = mensaje;
+            return RedirectToAction("Pagar", new { id = reservaId });
         }
 
         // =========================================================================
-        // PANTALLA 11: PROCESO DE COMPRA Y PAGO (POST)
-        // Persistencia atómica de Compra, Pago simulado y actualización de estados
+        // PANTALLA 11: PROCESO DE COMPRA Y PAGO (/Compras/Pagar/{id})
         // =========================================================================
+        [HttpGet]
+        public ActionResult Pagar(int? id)
+        {
+            var reserva = id.HasValue ? db.Reserva.Find(id.Value) : null;
+            if (reserva == null || !PuedePagar(reserva))
+            {
+                TempData["Error"] = "No se encontró la reserva solicitada.";
+                return RedirectToAction("MisReservas", "Reservas");
+            }
+
+            string motivo = MotivoNoPagable(reserva);
+            if (motivo != null)
+            {
+                TempData["Error"] = motivo;
+                return reserva.EstadoReservaCodigo == "CONFIRMADA"
+                    ? RedirectToAction("Confirmacion", new { id = reserva.ReservaId })
+                    : RedirectToAction("MisReservas", "Reservas");
+            }
+
+            CargarResumen(reserva);
+            return View(reserva);
+        }
+
+        // POST: /Compras/Pagar  (pago SIMULADO, DP-06)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Pagar(int reservaId, string metodoPago, string marcaTarjeta, string numeroTarjeta, string titularTarjeta, string vencimiento, string codigoSeguridad)
+        public ActionResult Pagar(int reservaId, string metodoPago, string marcaTarjeta, string numeroTarjeta,
+                                  string titularTarjeta, string vencimiento, string codigoSeguridad)
         {
             var reserva = db.Reserva.Find(reservaId);
-            if (reserva == null)
+            if (reserva == null || !PuedePagar(reserva))
             {
-                TempData["Error"] = "La reserva no existe.";
-                return RedirectToAction("Buscar", "Vuelos");
+                TempData["Error"] = "No se encontró la reserva solicitada.";
+                return RedirectToAction("MisReservas", "Reservas");
             }
 
-            // 1. Revalidar vigencia de la reserva
-            if (reserva.EstadoReservaCodigo != "PENDIENTE")
+            // 1. Revalidar la reserva (RG-16 y RG-17: no se paga dos veces ni una reserva expirada)
+            string motivo = MotivoNoPagable(reserva);
+            if (motivo != null)
             {
-                TempData["Error"] = "La reserva ya no se encuentra en estado pendiente de pago.";
-                return RedirectToAction("Buscar", "Vuelos");
+                TempData["Error"] = motivo;
+                return reserva.EstadoReservaCodigo == "CONFIRMADA"
+                    ? RedirectToAction("Confirmacion", new { id = reservaId })
+                    : RedirectToAction("MisReservas", "Reservas");
             }
 
-            // 2. Validación de formato de campos de la tarjeta
+            // 2. Validación del formulario en el servidor (DP-06)
+            var metodo = db.MetodoPago.Find(metodoPago ?? "");
+            if (metodo == null || !metodo.Activo)
+                return VolverAPagar(reservaId, "Seleccione el método de pago.");
+
+            var marca = db.MarcaTarjeta.Find(marcaTarjeta ?? "");
+            if (marca == null || !marca.Activa)
+                return VolverAPagar(reservaId, "Seleccione la marca de la tarjeta.");
+
             string numLimpio = (numeroTarjeta ?? "").Replace(" ", "").Trim();
-            if (string.IsNullOrWhiteSpace(titularTarjeta) || string.IsNullOrWhiteSpace(numLimpio) || numLimpio.Length < 14)
-            {
-                TempData["Error"] = "Por favor ingrese datos válidos de la tarjeta.";
-                return RedirectToAction("Pagar", new { id = reservaId });
-            }
+            if (numLimpio.Length != marca.LongitudNumero || !numLimpio.All(char.IsDigit))
+                return VolverAPagar(reservaId, "El número de tarjeta debe tener " + marca.LongitudNumero + " dígitos para " + marca.Nombre + ".");
 
-            int longitudEsperada = 16;
-            if (marcaTarjeta == "AMEX") longitudEsperada = 15;
-            else if (marcaTarjeta == "DINERS") longitudEsperada = 14;
+            string titular = (titularTarjeta ?? "").Trim();
+            if (!System.Text.RegularExpressions.Regex.IsMatch(titular, @"^[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]{2,100}$"))
+                return VolverAPagar(reservaId, "Ingrese el nombre del titular (solo letras y espacios).");
 
-            if (numLimpio.Length != longitudEsperada)
-            {
-                TempData["Error"] = "El número debe tener " + longitudEsperada + " dígitos para " + marcaTarjeta + ".";
-                return RedirectToAction("Pagar", new { id = reservaId });
-            }
+            var mVence = System.Text.RegularExpressions.Regex.Match((vencimiento ?? "").Trim(), @"^(0[1-9]|1[0-2])/(\d{2})$");
+            if (!mVence.Success)
+                return VolverAPagar(reservaId, "El vencimiento debe tener el formato MM/AA.");
 
-            // Simulación de rechazo: terminación en 0000
+            var primerDiaMesSiguiente = new DateTime(2000 + int.Parse(mVence.Groups[2].Value), int.Parse(mVence.Groups[1].Value), 1).AddMonths(1);
+            if (primerDiaMesSiguiente <= DateTime.Today)
+                return VolverAPagar(reservaId, "La tarjeta está vencida.");
+
+            if (!System.Text.RegularExpressions.Regex.IsMatch((codigoSeguridad ?? "").Trim(), @"^\d{" + marca.LongitudCodigoSeguridad + "}$"))
+                return VolverAPagar(reservaId, "El código de seguridad debe tener " + marca.LongitudCodigoSeguridad + " dígitos.");
+
+            // 3. Rechazo simulado (DP-06): termina en 0000. La reserva sigue PENDIENTE para reintentar
             if (numLimpio.EndsWith("0000"))
-            {
-                TempData["Error"] = "Pago simulado rechazado. Puede intentar con otra tarjeta.";
-                return RedirectToAction("Pagar", new { id = reservaId });
-            }
+                return VolverAPagar(reservaId, "Pago simulado rechazado. La reserva sigue pendiente; puede intentar con otra tarjeta.");
 
-            // 3. Importe y metadatos de la transacción
-            decimal totalServidor = reserva.ReservaPasajeroVuelo.Sum(r => (decimal?)r.ImporteTramo) ?? 0m;
+            // 4. Pago aprobado: todo en UNA transacción (RG-18)
+            decimal total = TotalReserva(reserva);
             string ultimos4 = numLimpio.Substring(numLimpio.Length - 4);
             string opSimulada = "SIM-" + (DateTime.Now.Ticks % 100000000).ToString("D8");
 
-            // 4. Transacción atómica en SQL Server
             using (var transaccion = db.Database.BeginTransaction())
             {
                 try
                 {
-                    // A. Registrar o actualizar Compra (requiere MonedaCodigo = 'USD')
-                    var compra = db.Compra.FirstOrDefault(c => c.ReservaId == reservaId);
+                    // A. Compra (se reutiliza si ya existía una PENDIENTE)
+                    var compra = reserva.Compra.FirstOrDefault(c => c.EstadoCompraCodigo == "PENDIENTE");
                     if (compra == null)
                     {
                         compra = new Compra
                         {
-                            ReservaId = reservaId,
+                            ReservaId = reserva.ReservaId,
                             FechaCompra = DateTime.Now,
-                            Importe = totalServidor,
+                            Importe = total,
                             MonedaCodigo = "USD",
-                            EstadoCompraCodigo = "PAGADA"
+                            EstadoCompraCodigo = "PAGADA",
+                            ClaveIdempotencia = Guid.NewGuid()
                         };
                         db.Compra.Add(compra);
                     }
                     else
                     {
-                        compra.Importe = totalServidor;
+                        compra.Importe = total;
                         compra.MonedaCodigo = "USD";
                         compra.EstadoCompraCodigo = "PAGADA";
                     }
-                    db.SaveChanges();
+                    db.SaveChanges();   // genera CompraId
 
-                    // B. Registrar Pago simulado (sin almacenar datos sensibles PAN ni CVV)
-                    var nuevoPago = new Pago
+                    // B. Pago simulado (sin número completo, vencimiento ni código de seguridad)
+                    db.Pago.Add(new Pago
                     {
                         CompraId = compra.CompraId,
-                        MetodoPagoCodigo = metodoPago ?? "TARJETA_CREDITO",
-                        MarcaTarjetaCodigo = marcaTarjeta ?? "VISA",
+                        MetodoPagoCodigo = metodo.Codigo,
+                        MarcaTarjetaCodigo = marca.Codigo,
                         UltimosCuatroDigitos = ultimos4,
-                        NombreTitular = titularTarjeta.Trim().ToUpper(),
+                        NombreTitular = titular.ToUpper(),
                         CodigoOperacion = opSimulada,
-                        Importe = totalServidor,
+                        Importe = total,
                         FechaPago = DateTime.Now,
                         EsSimulado = true,
-                        EstadoPagoCodigo = "APROBADO"
-                    };
-                    db.Pago.Add(nuevoPago);
+                        EstadoPagoCodigo = "APROBADO",
+                        MensajeResultado = "Pago simulado aprobado."
+                    });
 
-                    // C. Actualizar estado de Reserva a CONFIRMADA
+                    // C. Reserva y asientos confirmados (asientos en rojo)
                     reserva.EstadoReservaCodigo = "CONFIRMADA";
-
-                    // D. Actualizar asignación de asientos de PENDIENTE a CONFIRMADA
-                    foreach (var rp in reserva.ReservaPasajeroVuelo)
+                    foreach (var rp in reserva.ReservaPasajeroVuelo.Where(a => a.EstadoAsignacionCodigo == "PENDIENTE"))
                     {
                         rp.EstadoAsignacionCodigo = "CONFIRMADA";
                     }
 
-                    // E. Comprobantes académicos al aprobarse el pago (DP-05, RG-14)
+                    // D. Comprobantes académicos (DP-05)
                     int numConfirmacion = db.Comprobante.Count(c => c.TipoComprobanteCodigo == "CONFIRMACION") + 1;
                     int numVenta = db.Comprobante.Count(c => c.TipoComprobanteCodigo == "FACTURA") + 1;
 
@@ -202,130 +263,71 @@ namespace Con_Autenticacion.Controllers
                     });
 
                     db.SaveChanges();
-                    transaccion.Commit();
-
-                    db.SaveChanges();
-                    transaccion.Commit();
+                    transaccion.Commit();   // UN solo Commit (antes había dos y fallaba)
                 }
                 catch (Exception ex)
                 {
                     transaccion.Rollback();
                     Exception inner = ex;
                     while (inner.InnerException != null) inner = inner.InnerException;
-                    TempData["Error"] = "Error al procesar el pago: " + inner.Message;
-                    return RedirectToAction("Pagar", new { id = reservaId });
+                    return VolverAPagar(reservaId, "No se pudo procesar el pago: " + inner.Message);
                 }
             }
 
-            // 5. Redirección a la Pantalla 12 (Confirmación / Resultado)
-            return RedirectToAction("Confirmacion", "Compras", new { id = reservaId });
+            return RedirectToAction("Confirmacion", new { id = reservaId });
         }
 
         // =========================================================================
-        // PANTALLA 12: RESULTADO DE LA COMPRA / CONFIRMACIÓN (GET)
+        // PANTALLA 12: CONFIRMACIÓN DE COMPRA O RESERVA (/Compras/Confirmacion/{id})
         // =========================================================================
         [HttpGet]
-        public ActionResult Resultado(int? id)
-        {
-            if (!id.HasValue)
-            {
-                return RedirectToAction("Buscar", "Vuelos");
-            }
-
-            var compra = db.Compra.Find(id.Value);
-            if (compra == null)
-            {
-                TempData["Error"] = "El comprobante de compra no fue encontrado.";
-                return RedirectToAction("Buscar", "Vuelos");
-            }
-
-            return View(compra);
-        }
-
-
-        [HttpGet]
-        [Authorize]
         public ActionResult Confirmacion(int? id)
         {
-            if (!id.HasValue)
-            {
-                TempData["Error"] = "Identificador de operación no válido.";
-                return RedirectToAction("Buscar", "Vuelos");
-            }
-
-            var reserva = db.Reserva.Find(id.Value);
-            if (reserva == null)
+            var reserva = id.HasValue ? db.Reserva.Find(id.Value) : null;
+            if (reserva == null || !PuedeVer(reserva))
             {
                 TempData["Error"] = "No se encontró la operación solicitada.";
-                return RedirectToAction("Buscar", "Vuelos");
+                return RedirectToAction("MisReservas", "Reservas");
             }
 
-            string currentUserId = User.Identity.GetUserId() ?? User.Identity.Name;
-            if (reserva.UsuarioId != currentUserId && !User.IsInRole("Empleado"))
-            {
-                TempData["Error"] = "No tiene permisos para acceder a esta información.";
-                return RedirectToAction("Buscar", "Vuelos");
-            }
+            var compra = reserva.Compra.OrderByDescending(c => c.FechaCompra).FirstOrDefault();
+            Pago ultimoPago = compra != null ? compra.Pago.OrderByDescending(p => p.FechaPago).FirstOrDefault() : null;
 
-            // 1. Obtener Compra y Pago
-            var compra = db.Compra.FirstOrDefault(c => c.ReservaId == reserva.ReservaId);
-            Pago ultimoPago = null;
-            if (compra != null)
-            {
-                ultimoPago = db.Pago
-                    .Where(p => p.CompraId == compra.CompraId)
-                    .OrderByDescending(p => p.FechaPago)
-                    .FirstOrDefault();
-            }
-
-            // 2. Determinar estados booleanos y de texto en el controlador
-            bool esPagada = (compra != null && compra.EstadoCompraCodigo == "PAGADA" && ultimoPago != null && ultimoPago.EstadoPagoCodigo == "APROBADO");
-            bool esSoloReserva = (compra == null);
-            bool esRechazada = (ultimoPago != null && ultimoPago.EstadoPagoCodigo == "RECHAZADO");
+            bool vencida = reserva.EstadoReservaCodigo == "PENDIENTE" && reserva.FechaExpiracion.HasValue && reserva.FechaExpiracion.Value < DateTime.Now;
+            bool esPagada = compra != null && compra.EstadoCompraCodigo == "PAGADA" && ultimoPago != null && ultimoPago.EstadoPagoCodigo == "APROBADO";
+            bool esRechazada = !esPagada && ultimoPago != null && ultimoPago.EstadoPagoCodigo == "RECHAZADO";
 
             ViewBag.EsPagada = esPagada;
-            ViewBag.EsSoloReserva = esSoloReserva;
             ViewBag.EsRechazada = esRechazada;
+            ViewBag.EsSoloReserva = !esPagada && !esRechazada && reserva.EstadoReservaCodigo == "PENDIENTE" && !vencida;
+            ViewBag.PuedePagar = MotivoNoPagable(reserva) == null && PuedePagar(reserva);
 
-            ViewBag.EstadoReservaTexto = reserva.EstadoReservaCodigo ?? "PENDIENTE";
-            ViewBag.EstadoCompraTexto = compra != null ? compra.EstadoCompraCodigo : "NO GENERADA";
-            ViewBag.EstadoPagoTexto = ultimoPago != null ? ultimoPago.EstadoPagoCodigo : "NO INTENTADO";
+            ViewBag.EstadoReservaTexto = vencida ? "EXPIRADA" : reserva.EstadoReservaCodigo;
+            ViewBag.EstadoCompraTexto = compra != null ? compra.EstadoCompraCodigo : "SIN COMPRA";
+            ViewBag.EstadoPagoTexto = ultimoPago != null ? ultimoPago.EstadoPagoCodigo : "SIN PAGO";
 
-            ViewBag.TienePago = (ultimoPago != null);
-            if (ultimoPago != null)
-            {
-                ViewBag.CodigoOperacion = ultimoPago.CodigoOperacion;
-                ViewBag.MetodoPagoTexto = ultimoPago.MetodoPagoCodigo;
-                ViewBag.TarjetaTexto = ultimoPago.MarcaTarjetaCodigo + " **** " + ultimoPago.UltimosCuatroDigitos;
-            }
-            else
-            {
-                ViewBag.CodigoOperacion = "";
-                ViewBag.MetodoPagoTexto = "";
-                ViewBag.TarjetaTexto = "";
-            }
+            ViewBag.TienePago = ultimoPago != null;
+            ViewBag.CodigoOperacion = ultimoPago != null ? ultimoPago.CodigoOperacion : "";
+            ViewBag.MetodoPagoTexto = ultimoPago != null ? (ultimoPago.MetodoPagoCodigo == "TARJETA_DEBITO" ? "Tarjeta de débito" : "Tarjeta de crédito") : "";
+            ViewBag.TarjetaTexto = ultimoPago != null ? ultimoPago.MarcaTarjetaCodigo + " **** " + ultimoPago.UltimosCuatroDigitos : "";
 
-            // 3. Importe total
-            decimal totalCalculado = reserva.ReservaPasajeroVuelo.Sum(r => (decimal?)r.ImporteTramo) ?? 0m;
-            ViewBag.TotalPagar = totalCalculado;
+            // Comprobante de venta para el botón «Consultar comprobante»
+            var comprobante = compra != null
+                ? compra.Comprobante.Where(c => c.TipoComprobanteCodigo == "FACTURA").OrderByDescending(c => c.FechaEmision).FirstOrDefault()
+                : null;
+            ViewBag.ComprobanteId = comprobante != null ? (int?)comprobante.ComprobanteId : null;
 
-            // 4. Datos del itinerario listos
-            var primerTramo = reserva.ReservaPasajeroVuelo.FirstOrDefault();
-            if (primerTramo != null && primerTramo.Vuelo != null)
-            {
-                var v = primerTramo.Vuelo;
-                ViewBag.RutaStr = v.Frecuencia.Ruta.Aeropuerto.Localidad + " (" + v.Frecuencia.Ruta.Aeropuerto.CodigoIATA + ") → " +
-                                  v.Frecuencia.Ruta.Aeropuerto1.Localidad + " (" + v.Frecuencia.Ruta.Aeropuerto1.CodigoIATA + ")";
-                ViewBag.FechaVueloStr = v.FechaOperacion.ToString("dd/MM/yyyy");
-                ViewBag.HorarioStr = v.Frecuencia.HoraSalida.ToString(@"hh\:mm") + " – " + v.Frecuencia.HoraLlegada.ToString(@"hh\:mm");
-            }
-            else
-            {
-                ViewBag.RutaStr = "Ruta directa";
-                ViewBag.FechaVueloStr = "-";
-                ViewBag.HorarioStr = "-";
-            }
+            // Detalle por tramo y pasajero, con el código del asiento
+            var detalle = reserva.ReservaPasajeroVuelo
+                .OrderBy(a => a.Vuelo.FechaOperacion).ThenBy(a => a.Vuelo.Frecuencia.HoraSalida)
+                .ThenBy(a => a.Pasajero.Apellidos)
+                .ToList();
+            ViewBag.Detalle = detalle;
+            ViewBag.CodigosAsiento = detalle.ToDictionary(
+                a => a.AsignacionId,
+                a => CodigosAsiento.ContainsKey(a.NumeroAsiento) ? CodigosAsiento[a.NumeroAsiento] : a.NumeroAsiento.ToString());
 
+            CargarResumen(reserva);
             return View(reserva);
         }
         // =========================================================================

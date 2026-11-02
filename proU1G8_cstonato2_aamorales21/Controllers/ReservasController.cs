@@ -171,8 +171,26 @@ namespace Con_Autenticacion.Controllers
             return RedirectToAction("Pasajeros", "Reservas");
         }
 
+        // Código del asiento (DP-11): número en BD → 1D, 2D, 2I, 3D, 3I, 4D, 4I
+        private static readonly Dictionary<int, string> CodigosAsiento = new Dictionary<int, string>
+{
+    { 1, "1D" }, { 2, "2D" }, { 3, "2I" }, { 4, "3D" }, { 5, "3I" }, { 6, "4D" }, { 7, "4I" }
+};
+
+        private static string CodigoAsiento(int numero)
+        {
+            return CodigosAsiento.ContainsKey(numero) ? CodigosAsiento[numero] : numero.ToString();
+        }
+
+        // Vuelve a la pantalla 9 conservando lo que el usuario escribió (wireframe, punto 17)
+        private ActionResult VolverAPasajeros(List<Pasajero> pasajeros, string mensaje)
+        {
+            TempData["Error"] = mensaje;
+            TempData["PasajerosIngresados"] = pasajeros;
+            return RedirectToAction("Pasajeros");
+        }
+
         [HttpGet]
-        [Authorize]
         public ActionResult Pasajeros()
         {
             if (Session["Reserva_VueloId"] == null || Session["Reserva_Asientos"] == null)
@@ -181,30 +199,38 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("Buscar", "Vuelos");
             }
 
-            int vueloId = (int)Session["Reserva_VueloId"];
-            List<int> asientosIds = Session["Reserva_Asientos"] as List<int>;
+            var tramosIds = Session["Reserva_Tramos"] as List<int> ?? new List<int> { (int)Session["Reserva_VueloId"] };
+            var asientosTramo1 = Session["Reserva_Asientos"] as List<int>;
+            var asientosTramo2 = Session["Reserva_AsientosTramo2"] as List<int>;
 
-            var vuelo = db.Vuelo.Find(vueloId);
-            if (vuelo == null)
+            var tramos = tramosIds.Select(id => db.Vuelo.Find(id)).ToList();
+            if (tramos.Any(t => t == null))
             {
                 TempData["Error"] = "El vuelo seleccionado no está disponible.";
                 return RedirectToAction("Buscar", "Vuelos");
             }
 
-            var mapaCodigos = new Dictionary<int, string>
-    {
-        { 1, "1D" }, { 2, "2D" }, { 3, "2I" }, { 4, "3D" }, { 5, "3I" }, { 6, "4D" }, { 7, "4I" }
-    };
+            // Códigos de asiento por pasajero: [pasajero][tramo]
+            var codigosPorPasajero = new List<List<string>>();
+            for (int i = 0; i < asientosTramo1.Count; i++)
+            {
+                var fila = new List<string> { CodigoAsiento(asientosTramo1[i]) };
+                if (tramos.Count > 1 && asientosTramo2 != null && i < asientosTramo2.Count)
+                {
+                    fila.Add(CodigoAsiento(asientosTramo2[i]));
+                }
+                codigosPorPasajero.Add(fila);
+            }
 
-            ViewBag.CodigosAsientos = asientosIds.Select(id => mapaCodigos.ContainsKey(id) ? mapaCodigos[id] : id.ToString()).ToList();
-            ViewBag.AsientosNumeros = asientosIds;
+            ViewBag.Tramos = tramos;
+            ViewBag.CodigosPorPasajero = codigosPorPasajero;
+            ViewBag.PasajerosIngresados = TempData["PasajerosIngresados"] as List<Pasajero>;
 
-            return View(vuelo);
+            return View(tramos.First());
         }
 
         // POST: /Reservas/Pasajeros
         [HttpPost]
-        [Authorize]
         [ValidateAntiForgeryToken]
         public ActionResult Pasajeros(List<Pasajero> pasajeros)
         {
@@ -218,37 +244,56 @@ namespace Con_Autenticacion.Controllers
 
             if (pasajeros == null || pasajeros.Count != asientosIds.Count)
             {
-                TempData["Error"] = "Debe completar la información de todos los pasajeros.";
-                return RedirectToAction("Pasajeros");
+                return VolverAPasajeros(pasajeros, "Debe completar la información de todos los pasajeros.");
             }
 
-            // 1. Evitar cédulas/pasaportes duplicados en la misma reserva
-            var documentos = pasajeros
-                .Where(p => !string.IsNullOrWhiteSpace(p.NumeroDocumento))
-                .Select(p => p.NumeroDocumento.Trim().ToUpper())
-                .ToList();
+            var soloLetras = new System.Text.RegularExpressions.Regex(@"^[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]{1,100}$");
+            var pasaporte = new System.Text.RegularExpressions.Regex(@"^[A-Za-z0-9]{5,20}$");
+            var telefono = new System.Text.RegularExpressions.Regex(@"^[0-9 +]{1,20}$");
+            var validadorCorreo = new System.ComponentModel.DataAnnotations.EmailAddressAttribute();
 
+            // 1. Validaciones del wireframe (pantalla 9, puntos 9 a 13), repetidas en el servidor
+            for (int i = 0; i < pasajeros.Count; i++)
+            {
+                var p = pasajeros[i];
+                string n = "Pasajero " + (i + 1) + ": ";
+
+                p.NumeroDocumento = (p.NumeroDocumento ?? "").Trim().ToUpper();
+                p.Nombres = (p.Nombres ?? "").Trim();
+                p.Apellidos = (p.Apellidos ?? "").Trim();
+                p.Correo = string.IsNullOrWhiteSpace(p.Correo) ? null : p.Correo.Trim();
+                p.Telefono = string.IsNullOrWhiteSpace(p.Telefono) ? null : p.Telefono.Trim();
+
+                if (p.TipoDocumentoCodigo != "CEDULA" && p.TipoDocumentoCodigo != "PASAPORTE")
+                    return VolverAPasajeros(pasajeros, n + "seleccione el tipo de documento.");
+
+                if (p.TipoDocumentoCodigo == "CEDULA" && (p.NumeroDocumento.Length != 10 || !p.NumeroDocumento.All(char.IsDigit)))
+                    return VolverAPasajeros(pasajeros, n + "la cédula debe tener 10 dígitos.");
+
+                if (p.TipoDocumentoCodigo == "PASAPORTE" && !pasaporte.IsMatch(p.NumeroDocumento))
+                    return VolverAPasajeros(pasajeros, n + "el pasaporte debe tener entre 5 y 20 letras o números.");
+
+                if (!soloLetras.IsMatch(p.Nombres))
+                    return VolverAPasajeros(pasajeros, n + "los nombres son obligatorios y solo admiten letras y espacios.");
+
+                if (!soloLetras.IsMatch(p.Apellidos))
+                    return VolverAPasajeros(pasajeros, n + "los apellidos son obligatorios y solo admiten letras y espacios.");
+
+                if (p.FechaNacimiento.HasValue && (p.FechaNacimiento.Value.Date <= new DateTime(1900, 1, 1) || p.FechaNacimiento.Value.Date > DateTime.Today))
+                    return VolverAPasajeros(pasajeros, n + "la fecha de nacimiento debe ser posterior a 01/01/1900 y no futura.");
+
+                if (p.Correo != null && (p.Correo.Length > 256 || !validadorCorreo.IsValid(p.Correo)))
+                    return VolverAPasajeros(pasajeros, n + "el correo no tiene un formato válido.");
+
+                if (p.Telefono != null && !telefono.IsMatch(p.Telefono))
+                    return VolverAPasajeros(pasajeros, n + "el teléfono solo admite dígitos, espacios y «+» (máximo 20).");
+            }
+
+            // 2. El mismo documento no puede repetirse en la reserva
+            var documentos = pasajeros.Select(p => p.TipoDocumentoCodigo + "|" + p.NumeroDocumento).ToList();
             if (documentos.Distinct().Count() != documentos.Count)
             {
-                TempData["Error"] = "No puede ingresar el mismo número de documento para más de un pasajero.";
-                return RedirectToAction("Pasajeros");
-            }
-
-            // 2. Validaciones de obligatoriedad y formato de cédula
-            foreach (var p in pasajeros)
-            {
-                if (string.IsNullOrWhiteSpace(p.Nombres) || string.IsNullOrWhiteSpace(p.Apellidos) || string.IsNullOrWhiteSpace(p.NumeroDocumento))
-                {
-                    TempData["Error"] = "Nombres, apellidos y documento son campos obligatorios.";
-                    return RedirectToAction("Pasajeros");
-                }
-
-                // Si el código es Cédula, validar exactamente 10 dígitos
-                if (p.TipoDocumentoCodigo == "CEDULA" && (p.NumeroDocumento.Trim().Length != 10 || !p.NumeroDocumento.Trim().All(char.IsDigit)))
-                {
-                    TempData["Error"] = "La cédula debe contener exactamente 10 dígitos numéricos.";
-                    return RedirectToAction("Pasajeros");
-                }
+                return VolverAPasajeros(pasajeros, "No puede ingresar el mismo número de documento para más de un pasajero.");
             }
 
             // 3. Reutilización o registro en la base de datos
@@ -256,15 +301,15 @@ namespace Con_Autenticacion.Controllers
 
             foreach (var p in pasajeros)
             {
-                string numDoc = p.NumeroDocumento.Trim().ToUpper();
+                string numDoc = p.NumeroDocumento;
                 string tipoCodigo = p.TipoDocumentoCodigo;
 
                 var pasajeroBD = db.Pasajero.FirstOrDefault(x => x.TipoDocumentoCodigo == tipoCodigo && x.NumeroDocumento == numDoc);
 
                 if (pasajeroBD != null)
                 {
-                    if (!string.IsNullOrWhiteSpace(p.Correo)) pasajeroBD.Correo = p.Correo.Trim();
-                    if (!string.IsNullOrWhiteSpace(p.Telefono)) pasajeroBD.Telefono = p.Telefono.Trim();
+                    if (p.Correo != null) pasajeroBD.Correo = p.Correo;
+                    if (p.Telefono != null) pasajeroBD.Telefono = p.Telefono;
                     db.SaveChanges();
                     pasajerosIds.Add(pasajeroBD.PasajeroId);
                 }
@@ -274,11 +319,12 @@ namespace Con_Autenticacion.Controllers
                     {
                         TipoDocumentoCodigo = tipoCodigo,
                         NumeroDocumento = numDoc,
-                        Nombres = p.Nombres.Trim(),
-                        Apellidos = p.Apellidos.Trim(),
+                        Nombres = p.Nombres,
+                        Apellidos = p.Apellidos,
                         FechaNacimiento = p.FechaNacimiento,
-                        Correo = !string.IsNullOrWhiteSpace(p.Correo) ? p.Correo.Trim() : null,
-                        Telefono = !string.IsNullOrWhiteSpace(p.Telefono) ? p.Telefono.Trim() : null
+                        Correo = p.Correo,
+                        Telefono = p.Telefono,
+                        FechaRegistro = DateTime.Now      // antes quedaba en 01/01/0001
                     };
 
                     db.Pasajero.Add(nuevo);
