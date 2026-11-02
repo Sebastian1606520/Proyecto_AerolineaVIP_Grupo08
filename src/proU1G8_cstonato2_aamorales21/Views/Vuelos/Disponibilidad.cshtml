@@ -131,10 +131,10 @@
                 &#8635; Actualizar disponibilidad
             </button>
             <a href="@Url.Action("Resultados", "Vuelos", new {
-                   origenId = Model.Frecuencia.Ruta.AeropuertoOrigenId,
-                   destinoId = Model.Frecuencia.Ruta.AeropuertoDestinoId,
+                   origenId = ViewBag.OrigenBusqueda,
+                   destinoId = ViewBag.DestinoBusqueda,
                    fecha = Model.FechaOperacion.ToString("yyyy-MM-dd"),
-                   pasajeros = (ViewBag.Pasajeros ?? 1)
+                   pasajeros = ViewBag.Pasajeros
                })" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
                 &larr; Regresar a resultados
             </a>
@@ -327,17 +327,28 @@
         </div>
 
         <div class="col-12 col-lg-5 text-lg-end">
-            @if ((7 - Model.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA")) > 0)
+            @{
+                int libres = 7 - Model.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA");
+                int pasajerosBuscados = (int)ViewBag.Pasajeros;
+            }
+
+            @if (libres <= 0)
             {
-                <a href="@Url.Action("SeleccionAsiento", "Reservas", new { id = Model.VueloId, pasajeros = (ViewBag.Pasajeros ?? 1) })" class="btn btn-dark px-4 py-2 fw-semibold">
-                    Continuar a selección de asientos &rarr;
-                </a>
+                <div class="alert alert-warning py-2 px-3 small mb-0 text-start" role="alert">
+                    No quedan asientos disponibles en este vuelo.
+                </div>
+            }
+            else if (libres < pasajerosBuscados)
+            {
+                <div class="alert alert-warning py-2 px-3 small mb-0 text-start" role="alert">
+                    Solo quedan @libres asiento(s) y su búsqueda es para @pasajerosBuscados pasajeros.
+                </div>
             }
             else
             {
-                <button class="btn btn-secondary px-4 py-2 fw-semibold" disabled title="No quedan asientos libres en este vuelo">
-                    Vuelo completo (Sin disponibilidad)
-                </button>
+                <a href="@Url.Action("SeleccionAsiento", "Reservas", new { id = Model.VueloId, pasajeros = pasajerosBuscados })" class="btn btn-dark px-4 py-2 fw-semibold">
+                    Continuar a selección de asientos &rarr;
+                </a>
             }
         </div>
     </div>

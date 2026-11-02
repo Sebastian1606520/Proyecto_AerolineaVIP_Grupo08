@@ -18,29 +18,19 @@
 
             @using (Html.BeginForm("Resultados", "Vuelos", FormMethod.Get, new { id = "formBuscarVuelos" }))
             {
-                <input type="hidden" name="btnBuscar" value="1" />
                 <div class="row g-3">
                     <!-- Campo Origen -->
                     <div class="col-12 col-md-3">
                         <label for="selectOrigen" class="form-label fw-semibold">Origen <span class="text-danger">*</span></label>
-                        <select name="origen" id="selectOrigen" class="form-select" required>
-                            <option value="UIO" selected>Quito (UIO)</option>
-                            <option value="GYE">Guayaquil (GYE)</option>
-                            <option value="MEC">Manta (MEC)</option>
-                            <option value="GPS">Galápagos (GPS)</option>
-                        </select>
+                        @Html.DropDownList("origenId", (SelectList)ViewBag.Origenes,
+                            new { @class = "form-select", id = "selectOrigen", required = "required" })
                     </div>
 
                     <!-- Campo Destino -->
                     <div class="col-12 col-md-3">
                         <label for="selectDestino" class="form-label fw-semibold">Destino <span class="text-danger">*</span></label>
-                        <select name="destino" id="selectDestino" class="form-select" required>
-                            <option value="">Seleccionar destino</option>
-                            <option value="GYE">Guayaquil (GYE)</option>
-                            <option value="MEC">Manta (MEC)</option>
-                            <option value="GPS">Galápagos (GPS)</option>
-                            <option value="UIO">Quito (UIO)</option>
-                        </select>
+                        @Html.DropDownList("destinoId", (SelectList)ViewBag.Destinos, "Seleccionar destino",
+                            new { @class = "form-select", id = "selectDestino", required = "required" })
                     </div>
 
                     <!-- Campo Fecha de Salida -->

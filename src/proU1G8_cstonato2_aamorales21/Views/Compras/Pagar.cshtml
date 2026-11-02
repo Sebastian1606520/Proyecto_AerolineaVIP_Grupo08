@@ -74,8 +74,8 @@
                 Formalice la compra de su reserva <strong>@Model.CodigoReserva</strong>.
             </p>
         </div>
-        <a href="@Url.Action("Confirmar", "Reservas")" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
-            &larr; Volver a la reserva
+        <a href="@Url.Action("MisReservas", "Reservas")" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+            &larr; Mis reservas
         </a>
     </div>
 
@@ -179,7 +179,7 @@
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center pt-3 border-top">
-                            <a href="@Url.Action("Confirmar", "Reservas")" class="btn btn-outline-secondary px-3 py-2 fw-semibold small">
+                            <a href="@Url.Action("MisReservas", "Reservas")" class="btn btn-outline-secondary px-3 py-2 fw-semibold small">
                                 &larr; Volver
                             </a>
                             <button type="button" id="btnAbrirModal" class="btn btn-dark px-4 py-2 fw-semibold">
@@ -212,9 +212,13 @@
                     <span class="text-dark">@ViewBag.FechaVuelo</span>
                 </div>
 
+                <div class="d-flex justify-content-between mb-2 small">
+                    <span class="text-secondary">Pasajeros:</span>
+                    <span class="text-dark">@ViewBag.NumPasajeros</span>
+                </div>
                 <div class="d-flex justify-content-between mb-3 small">
-                    <span class="text-secondary">Boletos reservados:</span>
-                    <span class="text-dark">@Model.ReservaPasajeroVuelo.Count</span>
+                    <span class="text-secondary">Tramos:</span>
+                    <span class="text-dark">@ViewBag.NumTramos</span>
                 </div>
 
                 <div class="border-top pt-3 mt-2">
@@ -359,6 +363,14 @@
 
                 if (vence.length !== 5) {
                     alert('Ingrese una fecha de vencimiento válida en formato MM/AA.');
+                    $('#inputVenceVisual').focus();
+                    return;
+                }
+                var mes = parseInt(vence.substring(0, 2), 10);
+                var anio = 2000 + parseInt(vence.substring(3, 5), 10);
+                var hoy = new Date();
+                if (anio < hoy.getFullYear() || (anio === hoy.getFullYear() && mes < hoy.getMonth() + 1)) {
+                    alert('La tarjeta está vencida.');
                     $('#inputVenceVisual').focus();
                     return;
                 }

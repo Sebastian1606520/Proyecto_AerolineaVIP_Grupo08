@@ -534,24 +534,29 @@ namespace Con_Autenticacion.Controllers
         // Pantalla 2 (punto 4): ReturnUrl local, o el área según el rol.
         // Por ahora todo va a Home porque las pantallas 13 y 17 aún no existen.
         // Cuando existan, descomente las líneas de cada rol.
+        // Pantalla 2: después del login cada rol va a su área (mapa de navegación 11.4.2)
         private ActionResult RedirigirPorRol(string returnUrl, string nombreUsuario = null)
         {
+            // Si venía de una página protegida, vuelve a ella (solo URLs locales)
             if (Url.IsLocalUrl(returnUrl))
             {
                 return Redirect(returnUrl);
             }
 
-            // Justo después del login User todavía no refleja la sesión nueva,
-            // por eso se consulta el rol con el UserManager.
-            // string nombre = nombreUsuario ?? User.Identity.Name;
-            // var usuario = UserManager.FindByName(nombre);
-            // if (usuario != null)
-            // {
-            //     if (UserManager.IsInRole(usuario.Id, "SuperUsuario") || UserManager.IsInRole(usuario.Id, "Administrador"))
-            //         return RedirectToAction("Index", "Admin");          // Pantalla 17
-            //     if (UserManager.IsInRole(usuario.Id, "Cliente"))
-            //         return RedirectToAction("MisReservas", "Reservas"); // Pantalla 13
-            // }
+            string nombre = nombreUsuario ?? User.Identity.Name;
+            var usuario = UserManager.FindByName(nombre);
+
+            if (usuario != null)
+            {
+                if (UserManager.IsInRole(usuario.Id, "SuperUsuario") || UserManager.IsInRole(usuario.Id, "Administrador"))
+                    return RedirectToAction("Index", "Admin");                               // Pantalla 17
+
+                if (UserManager.IsInRole(usuario.Id, "Counter"))
+                    return RedirectToAction("Gestion", "Admin", new { tab = "reservas" });   // Pantalla 20 (área de counter)
+
+                if (UserManager.IsInRole(usuario.Id, "Cliente"))
+                    return RedirectToAction("MisReservas", "Reservas");                      // Pantalla 13
+            }
 
             return RedirectToAction("Index", "Home");
         }

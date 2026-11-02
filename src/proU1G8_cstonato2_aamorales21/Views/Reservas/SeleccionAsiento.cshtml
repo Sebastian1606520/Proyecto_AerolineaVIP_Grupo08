@@ -1,14 +1,38 @@
 ﻿@using Con_Autenticacion.Models;
 @model Vuelo
-
-
 @{
     ViewBag.Title = "Selección de asientos";
     Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var tramos = (List<Vuelo>)ViewBag.Tramos;
+    int totalPasajeros = (int)ViewBag.Pasajeros;
+    bool esItinerario = tramos.Count > 1;
+    var ultimo = tramos.Last();
+
+    // Estado de un asiento en un vuelo: ocupado (rojo), reservado (morado) o disponible (verde)
+    Func<Vuelo, int, string> estadoAsiento = (v, n) =>
+        v.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == n && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "ocupado"
+        : v.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == n && r.EstadoAsignacionCodigo == "PENDIENTE") ? "reservado"
+        : "disponible";
+
+    Func<Vuelo, int> libres = v =>
+        7 - v.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA");
+
+    // Distribución del Embraer Phenom 300E (DP-11): número en BD, código y ubicación
+    var filaDerecha = new[] {
+        new { N = 1, C = "1D", U = "ventanilla derecha, fila 1" },
+        new { N = 2, C = "2D", U = "ventanilla derecha, fila 2" },
+        new { N = 4, C = "3D", U = "ventanilla derecha, fila 3" },
+        new { N = 6, C = "4D", U = "ventanilla derecha, fila 4" }
+    };
+    var filaIzquierda = new[] {
+        new { N = 3, C = "2I", U = "ventanilla izquierda, fila 2" },
+        new { N = 5, C = "3I", U = "ventanilla izquierda, fila 3" },
+        new { N = 7, C = "4I", U = "ventanilla izquierda, fila 4" }
+    };
 }
 
 <style>
-    /* Pasos del proceso */
     .step-indicator {
         font-size: 0.8rem;
         letter-spacing: 0.5px;
@@ -20,7 +44,6 @@
         border-bottom: 2px solid #0f172a;
     }
 
-    /* Fuselaje */
     .fuselage-container {
         background: #ffffff;
         border: 2px solid #cbd5e1;
@@ -36,7 +59,6 @@
         }
     }
 
-    /* Asientos interactivos */
     .seat-btn {
         width: 78px;
         height: 78px;
@@ -52,7 +74,6 @@
         cursor: pointer;
     }
 
-    /* Colores oscuros de cabina */
     .seat-disponible {
         background-color: #065f46;
         border-color: #044e39;
@@ -80,7 +101,6 @@
         opacity: 0.85;
     }
 
-    /* Asiento seleccionado por el usuario */
     .seat-seleccionado {
         background-color: #0f172a !important;
         border: 3px solid #f59e0b !important;
@@ -98,7 +118,6 @@
         font-weight: 900;
     }
 
-    /* Lista lateral de pasajeros */
     .passenger-slot {
         cursor: pointer;
         transition: all 0.2s ease;
@@ -111,7 +130,6 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         }
 
-    /* Zonas del fuselaje */
     .cockpit-zone {
         border-right: 2px dashed #94a3b8;
         padding-right: 18px;
@@ -143,278 +161,271 @@
         border-radius: 12px;
         font-size: 0.7rem;
     }
+
+    .tab-tramo.active {
+        background-color: #0f172a;
+        color: #ffffff;
+        border-color: #0f172a;
+    }
 </style>
 
 <main class="container py-5">
 
-    <!-- Indicador de Pasos del Flujo -->
+    <!-- Indicador de pasos (pantallas 8 a 11) -->
     <div class="d-flex align-items-center justify-content-center gap-4 text-muted small text-uppercase mb-4 pb-2 border-bottom border-light-subtle step-indicator">
-        <span class="step-item active pb-2">1. Selección de Asientos</span>
+        <span class="step-item active pb-2">1. Asientos</span>
         <span class="pb-2">&rarr;</span>
-        <span class="pb-2">2. Datos de Pasajeros</span>
+        <span class="pb-2">2. Pasajeros</span>
         <span class="pb-2">&rarr;</span>
-        <span class="pb-2">3. Confirmación</span>
+        <span class="pb-2">3. Reserva</span>
         <span class="pb-2">&rarr;</span>
         <span class="pb-2">4. Pago</span>
     </div>
 
-    <!-- Encabezado Corporativo -->
+    <!-- Encabezado -->
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3">
         <div>
             <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
                 Aerolínea VIP &middot; Pantalla 8
             </span>
-            <h2 class="h3 fw-bold text-dark mb-1">Seleccione su asiento</h2>
+            <h1 class="h3 fw-bold text-dark mb-1">Seleccione sus asientos</h1>
             <p class="text-secondary small mb-0">
-                Vuelo <strong>VIP@(Model.VueloId.ToString("D5"))</strong> &middot;
                 <strong>@Model.Frecuencia.Ruta.Aeropuerto.Localidad (@Model.Frecuencia.Ruta.Aeropuerto.CodigoIATA)</strong> &rarr;
-                <strong>@Model.Frecuencia.Ruta.Aeropuerto1.Localidad (@Model.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)</strong> &middot;
-                @(ViewBag.Pasajeros ?? 1) @(Equals(ViewBag.Pasajeros, 1) ? "asiento por asignar" : "asientos por asignar")
+                <strong>@ultimo.Frecuencia.Ruta.Aeropuerto1.Localidad (@ultimo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)</strong>
+                @if (esItinerario)
+                {
+                    <text>&middot; itinerario con escala en GYE (@tramos.Count tramos)</text>
+                }
+                &middot; @totalPasajeros @(totalPasajeros == 1 ? "pasajero" : "pasajeros")
             </p>
         </div>
-        <a href="@Url.Action("Disponibilidad", "Vuelos", new { id = Model.VueloId })" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+        <a href="@Url.Action("Disponibilidad", "Vuelos", new { id = Model.VueloId, pasajeros = totalPasajeros })" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
             &larr; Regresar al mapa
         </a>
     </div>
 
     @if (TempData["Error"] != null)
     {
-        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2">
+        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
             <span>&#9888;</span>
             <span>@TempData["Error"]</span>
         </div>
     }
 
-    <!-- Región aria-live para anunciar selecciones a lectores de pantalla (A1-A5) -->
+    <!-- Anuncios para lectores de pantalla -->
     <div id="ariaAnunciador" class="visually-hidden" aria-live="polite"></div>
 
     <form id="formSeleccionAsientos" action="@Url.Action("SeleccionAsiento", "Reservas")" method="post">
         @Html.AntiForgeryToken()
         <input type="hidden" name="vueloId" value="@Model.VueloId" />
-        <input type="hidden" name="pasajeros" value="@(ViewBag.Pasajeros ?? 1)" />
+        <input type="hidden" name="pasajeros" value="@totalPasajeros" />
 
         <div class="row g-4 align-items-start">
 
-            <!-- Columna Izquierda: Fuselaje Interactivo (Phenom 300E) -->
+            <!-- Columna izquierda: pestañas por tramo, datos del vuelo y mapa -->
             <div class="col-12 col-lg-8">
-                <div class="card border border-light-subtle shadow-sm rounded-4 bg-white p-4">
 
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="small text-muted fw-semibold text-uppercase">
-                            Haga clic en un asiento verde para asignarlo al pasajero activo
-                        </span>
-                        <span class="badge bg-light text-secondary border small">Embraer Phenom 300E</span>
+                @if (esItinerario)
+                {
+                    <div class="d-flex flex-wrap gap-2 mb-3" role="tablist" aria-label="Tramos del itinerario">
+                        @for (int k = 0; k < tramos.Count; k++)
+                        {
+                            var t = tramos[k];
+                            <button type="button" class="btn btn-outline-dark btn-sm px-3 py-2 fw-semibold tab-tramo @(k == 0 ? "active" : "")"
+                                    data-tramo="@k" role="tab" aria-selected="@(k == 0 ? "true" : "false")">
+                                Tramo @(k + 1) &middot; @t.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @t.Frecuencia.Ruta.Aeropuerto1.CodigoIATA @t.Frecuencia.HoraSalida.ToString(@"hh\:mm")
+                            </button>
+                        }
                     </div>
+                }
 
-                    <div class="fuselage-container overflow-auto my-2">
-                        <div class="d-flex align-items-center" style="min-width: 760px;">
+                @for (int k = 0; k < tramos.Count; k++)
+                {
+                    var t = tramos[k];
+                    <div class="panel-tramo @(k == 0 ? "" : "d-none")" id="panel-tramo-@k">
 
-                            <!-- Cabina de Mando -->
-                            <div class="cockpit-zone text-center pe-3">
-                                <span class="d-block text-secondary small fw-bold text-uppercase" style="font-size: 0.7rem; writing-mode: vertical-rl; transform: rotate(180deg);">
-                                    &#9992; Cabina Mando
+                        <!-- Barra de datos del vuelo (wireframe 6.3) -->
+                        <div class="card border border-light-subtle shadow-sm rounded-3 bg-white p-3 mb-3">
+                            <div class="row g-2 small">
+                                <div class="col-6 col-md-4">
+                                    <span class="text-muted d-block">Vuelo</span>
+                                    <strong class="text-dark">VIP@(t.VueloId.ToString("D5"))</strong>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <span class="text-muted d-block">Fecha</span>
+                                    <strong class="text-dark">@t.FechaOperacion.ToString("dd/MM/yyyy")</strong>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <span class="text-muted d-block">Salida &ndash; llegada</span>
+                                    <strong class="text-dark">@t.Frecuencia.HoraSalida.ToString(@"hh\:mm") &ndash; @t.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</strong>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <span class="text-muted d-block">Ruta</span>
+                                    <strong class="text-dark">@t.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @t.Frecuencia.Ruta.Aeropuerto1.CodigoIATA</strong>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <span class="text-muted d-block">Aeronave</span>
+                                    <strong class="text-dark">@(t.Aeronave != null ? t.Aeronave.Matricula : "Pendiente") &middot; Phenom 300E</strong>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <span class="text-muted d-block">Capacidad máxima &middot; Disponibles</span>
+                                    <strong class="text-dark">7 asientos &middot; <span class="text-success">@libres(t)</span></strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mapa de asientos -->
+                        <div class="card border border-light-subtle shadow-sm rounded-4 bg-white p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="small text-muted fw-semibold text-uppercase">
+                                    Haga clic en un asiento verde para asignarlo al pasajero activo
                                 </span>
+                                <span class="badge bg-light text-secondary border small">Embraer Phenom 300E</span>
                             </div>
 
-                            <!-- Cabina de Pasajeros -->
-                            <div class="flex-grow-1 px-3">
+                            <div class="fuselage-container overflow-auto my-2">
+                                <div class="d-flex align-items-center" style="min-width: 760px;">
 
-                                <!-- LADO DERECHO (D): 1D, 2D, 3D, 4D -->
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="text-muted small fw-semibold" style="width: 70px;">Lado (D)</span>
-
-                                    <!-- 1D (Asiento 1) -->
-                                    <button type="button"
-                                            class="seat-btn @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 1 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "seat-ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 1 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "seat-reservado" : "seat-disponible")"
-                                            data-numero="1" data-codigo="1D"
-                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 1 && (r.EstadoAsignacionCodigo == "CONFIRMADA" || r.EstadoAsignacionCodigo == "PENDIENTE")) ? "disabled aria-disabled=true" : "aria-pressed=false")
-                                            aria-label="Asiento 1D, ventanilla derecha, fila 1">
-                                        <span class="seat-check-mark d-none">&#10003;</span>
-                                        <span class="fs-5 fw-bold">1D</span>
-                                        <span class="text-uppercase small seat-tag" style="font-size: 0.62rem;">
-                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 1 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "Ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 1 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "Reservado" : "Libre")
+                                    <div class="cockpit-zone text-center pe-3">
+                                        <span class="d-block text-secondary small fw-bold text-uppercase" style="font-size: 0.7rem; writing-mode: vertical-rl; transform: rotate(180deg);">
+                                            &#9992; Cabina Mando
                                         </span>
-                                    </button>
-
-                                    <!-- 2D (Asiento 2) -->
-                                    <button type="button"
-                                            class="seat-btn @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 2 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "seat-ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 2 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "seat-reservado" : "seat-disponible")"
-                                            data-numero="2" data-codigo="2D"
-                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 2 && (r.EstadoAsignacionCodigo == "CONFIRMADA" || r.EstadoAsignacionCodigo == "PENDIENTE")) ? "disabled aria-disabled=true" : "aria-pressed=false")
-                                            aria-label="Asiento 2D, ventanilla derecha, fila 2">
-                                        <span class="seat-check-mark d-none">&#10003;</span>
-                                        <span class="fs-5 fw-bold">2D</span>
-                                        <span class="text-uppercase small seat-tag" style="font-size: 0.62rem;">
-                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 2 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "Ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 2 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "Reservado" : "Libre")
-                                        </span>
-                                    </button>
-
-                                    <!-- 3D (Asiento 4) -->
-                                    <button type="button"
-                                            class="seat-btn @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 4 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "seat-ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 4 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "seat-reservado" : "seat-disponible")"
-                                            data-numero="4" data-codigo="3D"
-                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 4 && (r.EstadoAsignacionCodigo == "CONFIRMADA" || r.EstadoAsignacionCodigo == "PENDIENTE")) ? "disabled aria-disabled=true" : "aria-pressed=false")
-                                            aria-label="Asiento 3D, ventanilla derecha, fila 3">
-                                        <span class="seat-check-mark d-none">&#10003;</span>
-                                        <span class="fs-5 fw-bold">3D</span>
-                                        <span class="text-uppercase small seat-tag" style="font-size: 0.62rem;">
-                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 4 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "Ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 4 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "Reservado" : "Libre")
-                                        </span>
-                                    </button>
-
-                                    <!-- 4D (Asiento 6) -->
-                                    <button type="button"
-                                            class="seat-btn @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 6 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "seat-ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 6 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "seat-reservado" : "seat-disponible")"
-                                            data-numero="6" data-codigo="4D"
-                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 6 && (r.EstadoAsignacionCodigo == "CONFIRMADA" || r.EstadoAsignacionCodigo == "PENDIENTE")) ? "disabled aria-disabled=true" : "aria-pressed=false")
-                                            aria-label="Asiento 4D, ventanilla derecha, fila 4">
-                                        <span class="seat-check-mark d-none">&#10003;</span>
-                                        <span class="fs-5 fw-bold">4D</span>
-                                        <span class="text-uppercase small seat-tag" style="font-size: 0.62rem;">
-                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 6 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "Ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 6 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "Reservado" : "Libre")
-                                        </span>
-                                    </button>
-                                </div>
-
-                                <!-- Mesas Ejecutivas -->
-                                <div class="d-flex justify-content-between align-items-center my-1 text-center">
-                                    <span style="width: 70px;"></span>
-                                    <div style="width: 78px;"></div>
-                                    <div class="table-zone d-flex align-items-center justify-content-center fw-semibold" style="width: 78px;">Mesa</div>
-                                    <div class="table-zone d-flex align-items-center justify-content-center fw-semibold" style="width: 78px;">Mesa</div>
-                                    <div style="width: 78px;"></div>
-                                </div>
-
-                                <!-- Pasillo Central -->
-                                <div class="aisle-zone text-center py-1 my-2 fw-semibold">
-                                    &larr; P A S I L L O &nbsp; C E N T R A L &rarr;
-                                </div>
-
-                                <!-- LADO IZQUIERDO (I): Puerta, 2I, 3I, 4I -->
-                                <div class="d-flex justify-content-between align-items-center mt-2">
-                                    <span class="text-muted small fw-semibold" style="width: 70px;">Lado (I)</span>
-
-                                    <!-- Puerta Acceso -->
-                                    <div class="door-zone d-flex flex-column align-items-center justify-content-center fw-semibold" style="width: 78px; height: 78px;">
-                                        <span class="fs-6">&#128682;</span>
-                                        <span style="font-size: 0.62rem;" class="text-center">Puerta</span>
                                     </div>
 
-                                    <!-- 2I (Asiento 3) -->
-                                    <button type="button"
-                                            class="seat-btn @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 3 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "seat-ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 3 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "seat-reservado" : "seat-disponible")"
-                                            data-numero="3" data-codigo="2I"
-                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 3 && (r.EstadoAsignacionCodigo == "CONFIRMADA" || r.EstadoAsignacionCodigo == "PENDIENTE")) ? "disabled aria-disabled=true" : "aria-pressed=false")
-                                            aria-label="Asiento 2I, ventanilla izquierda, fila 2">
-                                        <span class="seat-check-mark d-none">&#10003;</span>
-                                        <span class="fs-5 fw-bold">2I</span>
-                                        <span class="text-uppercase small seat-tag" style="font-size: 0.62rem;">
-                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 3 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "Ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 3 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "Reservado" : "Libre")
-                                        </span>
-                                    </button>
+                                    <div class="flex-grow-1 px-3">
 
-                                    <!-- 3I (Asiento 5) -->
-                                    <button type="button"
-                                            class="seat-btn @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 5 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "seat-ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 5 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "seat-reservado" : "seat-disponible")"
-                                            data-numero="5" data-codigo="3I"
-                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 5 && (r.EstadoAsignacionCodigo == "CONFIRMADA" || r.EstadoAsignacionCodigo == "PENDIENTE")) ? "disabled aria-disabled=true" : "aria-pressed=false")
-                                            aria-label="Asiento 3I, ventanilla izquierda, fila 3">
-                                        <span class="seat-check-mark d-none">&#10003;</span>
-                                        <span class="fs-5 fw-bold">3I</span>
-                                        <span class="text-uppercase small seat-tag" style="font-size: 0.62rem;">
-                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 5 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "Ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 5 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "Reservado" : "Libre")
-                                        </span>
-                                    </button>
+                                        <!-- Lado derecho (D): 1D, 2D, 3D, 4D -->
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="text-muted small fw-semibold" style="width: 70px;">Lado (D)</span>
+                                            @foreach (var s in filaDerecha)
+                                            {
+                                                var e = estadoAsiento(t, s.N);
+                                                <button type="button" class="seat-btn seat-@e"
+                                                        data-tramo="@k" data-numero="@s.N" data-codigo="@s.C"
+                                                        @(e == "disponible" ? "" : "disabled") aria-pressed="false"
+                                                        aria-label="Asiento @s.C, @s.U, @(e == "disponible" ? "libre" : e)">
+                                                    <span class="seat-check-mark d-none">&#10003;</span>
+                                                    <span class="fs-5 fw-bold">@s.C</span>
+                                                    <span class="text-uppercase small" style="font-size: 0.62rem;">@(e == "ocupado" ? "Ocupado" : e == "reservado" ? "Reservado" : "Libre")</span>
+                                                </button>
+                                            }
+                                        </div>
 
-                                    <!-- 4I (Asiento 7) -->
-                                    <button type="button"
-                                            class="seat-btn @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 7 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "seat-ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 7 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "seat-reservado" : "seat-disponible")"
-                                            data-numero="7" data-codigo="4I"
-                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 7 && (r.EstadoAsignacionCodigo == "CONFIRMADA" || r.EstadoAsignacionCodigo == "PENDIENTE")) ? "disabled aria-disabled=true" : "aria-pressed=false")
-                                            aria-label="Asiento 4I, ventanilla izquierda, fila 4">
-                                        <span class="seat-check-mark d-none">&#10003;</span>
-                                        <span class="fs-5 fw-bold">4I</span>
-                                        <span class="text-uppercase small seat-tag" style="font-size: 0.62rem;">
-                                            @(Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 7 && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "Ocupado" : Model.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == 7 && r.EstadoAsignacionCodigo == "PENDIENTE") ? "Reservado" : "Libre")
-                                        </span>
-                                    </button>
+                                        <!-- Mesas entre las filas 2 y 3 -->
+                                        <div class="d-flex justify-content-between align-items-center my-1 text-center">
+                                            <span style="width: 70px;"></span>
+                                            <div style="width: 78px;"></div>
+                                            <div class="table-zone d-flex align-items-center justify-content-center fw-semibold" style="width: 78px;">Mesa</div>
+                                            <div class="table-zone d-flex align-items-center justify-content-center fw-semibold" style="width: 78px;">Mesa</div>
+                                            <div style="width: 78px;"></div>
+                                        </div>
+
+                                        <div class="aisle-zone text-center py-1 my-2 fw-semibold">
+                                            &larr; P A S I L L O &nbsp; C E N T R A L &rarr;
+                                        </div>
+
+                                        <!-- Lado izquierdo (I): puerta, 2I, 3I, 4I -->
+                                        <div class="d-flex justify-content-between align-items-center mt-2">
+                                            <span class="text-muted small fw-semibold" style="width: 70px;">Lado (I)</span>
+                                            <div class="door-zone d-flex flex-column align-items-center justify-content-center fw-semibold" style="width: 78px; height: 78px;">
+                                                <span class="fs-6">&#128682;</span>
+                                                <span style="font-size: 0.62rem;" class="text-center">Puerta</span>
+                                            </div>
+                                            @foreach (var s in filaIzquierda)
+                                            {
+                                                var e = estadoAsiento(t, s.N);
+                                                <button type="button" class="seat-btn seat-@e"
+                                                        data-tramo="@k" data-numero="@s.N" data-codigo="@s.C"
+                                                        @(e == "disponible" ? "" : "disabled") aria-pressed="false"
+                                                        aria-label="Asiento @s.C, @s.U, @(e == "disponible" ? "libre" : e)">
+                                                    <span class="seat-check-mark d-none">&#10003;</span>
+                                                    <span class="fs-5 fw-bold">@s.C</span>
+                                                    <span class="text-uppercase small" style="font-size: 0.62rem;">@(e == "ocupado" ? "Ocupado" : e == "reservado" ? "Reservado" : "Libre")</span>
+                                                </button>
+                                            }
+                                        </div>
+
+                                    </div>
+
+                                    <div class="text-center ps-3 border-start border-2 border-secondary-subtle">
+                                        <div class="p-2 bg-light rounded-3 text-secondary small fw-bold" style="font-size: 0.68rem;">
+                                            &#128701; Baño<br />
+                                            <span class="text-muted fw-normal">Privado</span>
+                                        </div>
+                                    </div>
+
                                 </div>
-
                             </div>
 
-                            <!-- Popa / Baño -->
-                            <div class="text-center ps-3 border-start border-2 border-secondary-subtle">
-                                <div class="p-2 bg-light rounded-3 text-secondary small fw-bold" style="font-size: 0.68rem;">
-                                    &#128701; Baño<br />
-                                    <span class="text-muted fw-normal">Privado</span>
+                            <!-- Leyenda (siempre visible) -->
+                            <div class="d-flex flex-wrap justify-content-center align-items-center gap-3 mt-3 pt-3 border-top border-light-subtle small">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="d-inline-block rounded-2" style="width: 16px; height: 16px; background-color: #065f46;"></span>
+                                    <span class="text-secondary">Verde · Disponible</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="d-inline-block rounded-2" style="width: 16px; height: 16px; background-color: #581c87;"></span>
+                                    <span class="text-secondary">Morado · Reservado</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="d-inline-block rounded-2" style="width: 16px; height: 16px; background-color: #881337;"></span>
+                                    <span class="text-secondary">Rojo · Ocupado</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="d-inline-block rounded-2" style="width: 16px; height: 16px; background-color: #0f172a; border: 2px solid #f59e0b;"></span>
+                                    <span class="text-secondary fw-semibold">&#10003; Su selección</span>
                                 </div>
                             </div>
-
                         </div>
                     </div>
-
-                    <!-- Leyenda Oficial -->
-                    <div class="d-flex flex-wrap justify-content-center align-items-center gap-3 mt-3 pt-3 border-top border-light-subtle small">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="d-inline-block rounded-2" style="width: 16px; height: 16px; background-color: #065f46;"></span>
-                            <span class="text-secondary">Disponible</span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="d-inline-block rounded-2" style="width: 16px; height: 16px; background-color: #0f172a; border: 2px solid #f59e0b;"></span>
-                            <span class="text-secondary fw-semibold">Su selección</span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="d-inline-block rounded-2" style="width: 16px; height: 16px; background-color: #581c87;"></span>
-                            <span class="text-secondary">Reservado</span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="d-inline-block rounded-2" style="width: 16px; height: 16px; background-color: #881337;"></span>
-                            <span class="text-secondary">Ocupado</span>
-                        </div>
-                    </div>
-
-                </div>
+                }
             </div>
 
-            <!-- Columna Derecha: Panel de Asignación por Pasajero -->
+            <!-- Columna derecha: resumen de la selección -->
             <div class="col-12 col-lg-4">
                 <div class="card border border-light-subtle shadow-sm rounded-4 bg-white p-4">
 
-                    <h3 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">
-                        Pasajeros por ubicar (@(ViewBag.Pasajeros ?? 1))
-                    </h3>
+                    <h2 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">
+                        Resumen de la selección (@totalPasajeros @(totalPasajeros == 1 ? "pasajero" : "pasajeros"))
+                    </h2>
 
-                    <!-- Lista de pasajeros a ubicar -->
                     <div class="d-flex flex-column gap-2 mb-4" id="listaPasajeros">
-                        @for (int p = 1; p <= (int)(ViewBag.Pasajeros ?? 1); p++)
+                        @for (int p = 1; p <= totalPasajeros; p++)
                         {
-                            <div class="passenger-slot p-3 border rounded-3 d-flex justify-content-between align-items-center @(p == 1 ? "active" : "")"
-                                 data-pasajero="@p" id="pasajero-card-@p">
-                                <div>
-                                    <span class="fw-bold text-dark d-block">Pasajero @p</span>
-                                    <small class="text-muted d-block" id="texto-asiento-@p">Sin asiento asignado</small>
-                                </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-light text-dark border fs-6 fw-bold px-3 py-1 d-none" id="badge-asiento-@p">--</span>
-                                    <button type="button" class="btn btn-sm btn-outline-danger btn-quitar-asiento d-none p-1"
-                                            data-pasajero="@p" title="Quitar selección">
-                                        &times;
-                                    </button>
-                                </div>
-                                <!-- Input oculto que se envía al controlador -->
-                                <input type="hidden" name="asientosSeleccionados" id="input-asiento-@p" value="" />
+                            <div class="passenger-slot p-3 border rounded-3 @(p == 1 ? "active" : "")" data-pasajero="@p" id="pasajero-card-@p">
+                                <span class="fw-bold text-dark d-block mb-1">Pasajero @p</span>
+                                @for (int k = 0; k < tramos.Count; k++)
+                                {
+                                    <div class="d-flex justify-content-between align-items-center small py-1">
+                                        <span class="text-muted">@(esItinerario ? "Tramo " + (k + 1) : "Asiento")</span>
+                                        <span class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-light text-dark border fw-bold px-2" id="badge-@k-@p">&mdash;</span>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-quitar d-none py-0 px-1"
+                                                    data-tramo="@k" data-pasajero="@p"
+                                                    title="Quitar selección" aria-label="Quitar selección del pasajero @p">
+                                                &times;
+                                            </button>
+                                        </span>
+                                    </div>
+                                    <input type="hidden" name="@(k == 0 ? "asientosSeleccionados" : "asientosTramo2")" id="input-@k-@p" value="" />
+                                }
                             </div>
                         }
                     </div>
 
-                    <div class="alert alert-info py-2 px-3 small border-0 rounded-3 mb-4 text-secondary">
-                        <small>&#9432; <em>Su selección es temporal: la reserva se registra al confirmar en el paso 3.</em></small>
+                    <div class="alert alert-info py-2 px-3 small border-0 rounded-3 mb-3 text-secondary">
+                        &#9432; Su selección es temporal: la reserva se registra al confirmar en el paso 3.
+                        Disponibilidad calculada a las <strong>@ViewBag.HoraCorte</strong>.
                     </div>
 
-                    <!-- Botón de Continuar (Deshabilitado hasta completar la asignación) -->
-                    <button type="submit" id="btnContinuar" class="btn btn-dark w-100 py-2 fw-semibold" disabled>
-                        Continuar con datos de pasajeros &rarr;
-                    </button>
+                    <div class="d-grid gap-2">
+                        <button type="submit" id="btnContinuar" class="btn btn-dark py-2 fw-semibold" disabled>
+                            Continuar &rarr;
+                        </button>
+                        <a href="@Url.Action("Disponibilidad", "Vuelos", new { id = Model.VueloId, pasajeros = totalPasajeros })" class="btn btn-outline-secondary py-2">
+                            Regresar
+                        </a>
+                    </div>
 
                 </div>
             </div>
@@ -426,109 +437,95 @@
 
 @section Scripts {
     <script>
-        $(document).ready(function () {
+        $(function () {
             var pasajeroActivo = 1;
-            var totalPasajeros = parseInt('@(ViewBag.Pasajeros ?? 1)');
+            var tramoActivo = 0;
+            var totalPasajeros = @totalPasajeros;
+            var totalTramos = @tramos.Count;
 
-            // 1. Cambiar pasajero activo al hacer clic en su tarjeta
-            $('.passenger-slot').on('click', function () {
+            function activarPasajero(p) {
+                pasajeroActivo = p;
                 $('.passenger-slot').removeClass('active');
-                $(this).addClass('active');
-                pasajeroActivo = parseInt($(this).data('pasajero'));
+                $('#pasajero-card-' + p).addClass('active');
+            }
+
+            function desmarcarAsiento(k, numero) {
+                var $b = $('.seat-btn[data-tramo="' + k + '"][data-numero="' + numero + '"]');
+                $b.removeClass('seat-seleccionado').attr('aria-pressed', 'false');
+                $b.find('.seat-check-mark').addClass('d-none');
+            }
+
+            function validarCompleto() {
+                var completo = true;
+                for (var k = 0; k < totalTramos; k++) {
+                    for (var p = 1; p <= totalPasajeros; p++) {
+                        if (!$('#input-' + k + '-' + p).val()) { completo = false; }
+                    }
+                }
+                $('#btnContinuar').prop('disabled', !completo);
+            }
+
+            // Pestañas por tramo
+            $('.tab-tramo').on('click', function () {
+                tramoActivo = parseInt($(this).data('tramo'));
+                $('.tab-tramo').removeClass('active').attr('aria-selected', 'false');
+                $(this).addClass('active').attr('aria-selected', 'true');
+                $('.panel-tramo').addClass('d-none');
+                $('#panel-tramo-' + tramoActivo).removeClass('d-none');
+                activarPasajero(1);
             });
 
-            // 2. Clic en asiento verde disponible
+            // Elegir el pasajero activo
+            $('.passenger-slot').on('click', function () {
+                activarPasajero(parseInt($(this).data('pasajero')));
+            });
+
+            // Clic en un asiento verde
             $('.seat-btn.seat-disponible').on('click', function () {
-                var numeroAsiento = $(this).data('numero');
-                var codigoAsiento = $(this).data('codigo');
+                var k = parseInt($(this).data('tramo'));
+                var numero = String($(this).data('numero'));
+                var codigo = $(this).data('codigo');
 
-                // Si este asiento ya lo tenía otro pasajero, no permitir duplicados
-                var asignadoA = null;
-                $('input[name="asientosSeleccionados"]').each(function () {
-                    if ($(this).val() == numeroAsiento) {
-                        asignadoA = $(this).closest('.passenger-slot').data('pasajero');
+                // El mismo asiento no puede ser de dos pasajeros en el mismo tramo
+                for (var p = 1; p <= totalPasajeros; p++) {
+                    if (p !== pasajeroActivo && $('#input-' + k + '-' + p).val() === numero) {
+                        alert('El asiento ' + codigo + ' ya está asignado al Pasajero ' + p + '.');
+                        return;
                     }
-                });
-
-                if (asignadoA && asignadoA !== pasajeroActivo) {
-                    alert('El asiento ' + codigoAsiento + ' ya está asignado al Pasajero ' + asignadoA + '.');
-                    return;
                 }
 
-                // Si el pasajero activo ya tenía un asiento previo, liberarlo en el dibujo
-                var asientoPrevio = $('#input-asiento-' + pasajeroActivo).val();
-                if (asientoPrevio) {
-                    var $botonPrevio = $('.seat-btn[data-numero="' + asientoPrevio + '"]');
-                    $botonPrevio.removeClass('seat-seleccionado').attr('aria-pressed', 'false');
-                    $botonPrevio.find('.seat-check-mark').addClass('d-none');
-                }
+                var previo = $('#input-' + k + '-' + pasajeroActivo).val();
+                if (previo) { desmarcarAsiento(k, previo); }
 
-                // Asignar el nuevo asiento al pasajero activo
-                $('#input-asiento-' + pasajeroActivo).val(numeroAsiento);
-                $('#badge-asiento-' + pasajeroActivo).text(codigoAsiento).removeClass('d-none');
-                $('#texto-asiento-' + pasajeroActivo).text('Asiento ' + codigoAsiento + ' seleccionado');
-                $('#pasajero-card-' + pasajeroActivo).find('.btn-quitar-asiento').removeClass('d-none');
-
-                // Marcar visualmente el asiento como seleccionado
+                $('#input-' + k + '-' + pasajeroActivo).val(numero);
+                $('#badge-' + k + '-' + pasajeroActivo).text(codigo);
+                $('.btn-quitar[data-tramo="' + k + '"][data-pasajero="' + pasajeroActivo + '"]').removeClass('d-none');
                 $(this).addClass('seat-seleccionado').attr('aria-pressed', 'true');
                 $(this).find('.seat-check-mark').removeClass('d-none');
 
-                // Anuncio de accesibilidad (A1-A5)
-                $('#ariaAnunciador').text('Asiento ' + codigoAsiento + ' seleccionado para Pasajero ' + pasajeroActivo);
+                $('#ariaAnunciador').text('Asiento ' + codigo + ' seleccionado para el Pasajero ' + pasajeroActivo);
 
-                // Avanzar automáticamente al siguiente pasajero sin asiento
-                var proximoSinAsiento = null;
-                for (var p = 1; p <= totalPasajeros; p++) {
-                    if (!$('#input-asiento-' + p).val()) {
-                        proximoSinAsiento = p;
-                        break;
-                    }
-                }
-
-                if (proximoSinAsiento) {
-                    $('#pasajero-card-' + proximoSinAsiento).trigger('click');
+                // Pasa al siguiente pasajero sin asiento en este tramo
+                for (var q = 1; q <= totalPasajeros; q++) {
+                    if (!$('#input-' + k + '-' + q).val()) { activarPasajero(q); break; }
                 }
 
                 validarCompleto();
             });
 
-            // 3. Quitar selección de un pasajero
-            $('.btn-quitar-asiento').on('click', function (e) {
+            // Quitar selección
+            $('.btn-quitar').on('click', function (e) {
                 e.stopPropagation();
-                var p = $(this).data('pasajero');
-                var numeroAsiento = $('#input-asiento-' + p).val();
-
-                if (numeroAsiento) {
-                    var $boton = $('.seat-btn[data-numero="' + numeroAsiento + '"]');
-                    $boton.removeClass('seat-seleccionado').attr('aria-pressed', 'false');
-                    $boton.find('.seat-check-mark').addClass('d-none');
-                }
-
-                $('#input-asiento-' + p).val('');
-                $('#badge-asiento-' + p).addClass('d-none').text('--');
-                $('#texto-asiento-' + p).text('Sin asiento asignado');
+                var k = $(this).data('tramo');
+                var p = parseInt($(this).data('pasajero'));
+                var numero = $('#input-' + k + '-' + p).val();
+                if (numero) { desmarcarAsiento(k, numero); }
+                $('#input-' + k + '-' + p).val('');
+                $('#badge-' + k + '-' + p).html('&mdash;');
                 $(this).addClass('d-none');
-
-                $('#pasajero-card-' + p).trigger('click');
+                activarPasajero(p);
                 validarCompleto();
             });
-
-            // 4. Validar si todos los pasajeros tienen asiento asignado
-            function validarCompleto() {
-                var todosCompletos = true;
-                for (var p = 1; p <= totalPasajeros; p++) {
-                    if (!$('#input-asiento-' + p).val()) {
-                        todosCompletos = false;
-                        break;
-                    }
-                }
-
-                if (todosCompletos) {
-                    $('#btnContinuar').removeAttr('disabled').removeClass('btn-secondary').addClass('btn-dark');
-                } else {
-                    $('#btnContinuar').attr('disabled', 'disabled');
-                }
-            }
         });
     </script>
 }

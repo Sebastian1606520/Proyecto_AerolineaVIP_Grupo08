@@ -1,7 +1,15 @@
-﻿@model Con_Autenticacion.Models.Vuelo
+﻿@using Con_Autenticacion.Models;
+@model Vuelo
 @{
     ViewBag.Title = "Registro de pasajeros";
     Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var tramos = (List<Vuelo>)ViewBag.Tramos;
+    var codigos = (List<List<string>>)ViewBag.CodigosPorPasajero;
+    var ingresados = ViewBag.PasajerosIngresados as List<Pasajero>;
+    int totalPasajeros = codigos.Count;
+    bool esItinerario = tramos.Count > 1;
+    var ultimo = tramos.Last();
 }
 
 <style>
@@ -9,16 +17,19 @@
         font-size: 0.8rem;
         letter-spacing: 0.5px;
     }
+
     .step-item.active {
         color: #0f172a;
         font-weight: 700;
         border-bottom: 2px solid #0f172a;
     }
+
     .passenger-block {
         border: 1px solid #e2e8f0;
         border-radius: 0.75rem;
         background: #ffffff;
     }
+
     .passenger-block-header {
         background-color: #f8fafc;
         border-bottom: 1px solid #e2e8f0;
@@ -26,6 +37,7 @@
         border-top-right-radius: 0.75rem;
         padding: 1rem 1.25rem;
     }
+
     .summary-card {
         border: 1px solid #e2e8f0;
         border-radius: 0.75rem;
@@ -43,29 +55,29 @@
 
 <main class="container py-5">
 
-    <!-- Indicador de Pasos del Flujo -->
+    <!-- Indicador de pasos (paso 2) -->
     <div class="d-flex align-items-center justify-content-center gap-4 text-muted small text-uppercase mb-4 pb-2 border-bottom border-light-subtle step-indicator">
         <span class="pb-2 text-secondary">1. Asientos</span>
         <span class="pb-2">&rarr;</span>
-        <span class="step-item active pb-2">2. Datos de Pasajeros</span>
+        <span class="step-item active pb-2">2. Pasajeros</span>
         <span class="pb-2">&rarr;</span>
-        <span class="pb-2 text-muted">3. Confirmación</span>
+        <span class="pb-2">3. Reserva</span>
         <span class="pb-2">&rarr;</span>
-        <span class="pb-2 text-muted">4. Pago</span>
+        <span class="pb-2">4. Pago</span>
     </div>
 
-    <!-- Encabezado Corporativo -->
+    <!-- Encabezado -->
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3">
         <div>
             <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
                 Aerolínea VIP &middot; Pantalla 9
             </span>
-            <h2 class="h3 fw-bold text-dark mb-1">Registro de datos del pasajero</h2>
+            <h1 class="h3 fw-bold text-dark mb-1">Registro de datos del pasajero</h1>
             <p class="text-secondary small mb-0">
-                Ingrese la información oficial de cada persona que viajará en esta operación.
+                Ingrese los datos de cada persona que viaja. Puede ser distinta del usuario que reserva.
             </p>
         </div>
-        <a href="@Url.Action("SeleccionAsiento", "Reservas", new { id = Model.VueloId, pasajeros = ((List<int>)ViewBag.AsientosNumeros).Count })"
+        <a href="@Url.Action("SeleccionAsiento", "Reservas", new { id = Model.VueloId, pasajeros = totalPasajeros })"
            class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
             &larr; Regresar a asientos
         </a>
@@ -73,7 +85,7 @@
 
     @if (TempData["Error"] != null)
     {
-        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2">
+        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
             <span>&#9888;</span>
             <span>@TempData["Error"]</span>
         </div>
@@ -84,180 +96,183 @@
 
         <div class="row g-4 align-items-start">
 
-            <!-- Columna Principal: Bloques de Pasajeros -->
+            <!-- Bloques por pasajero -->
             <div class="col-12 col-lg-8">
                 <div class="d-flex flex-column gap-4">
 
-                    @for (int i = 0; i < ((List<int>)ViewBag.AsientosNumeros).Count; i++)
+                    @for (int i = 0; i < totalPasajeros; i++)
                     {
+                        // Datos ya escritos (si el servidor devolvió un error)
+                        var d = (ingresados != null && i < ingresados.Count) ? ingresados[i] : null;
+                        string tipo = d != null && d.TipoDocumentoCodigo == "PASAPORTE" ? "PASAPORTE" : "CEDULA";
+
                         <div class="passenger-block shadow-sm">
-                            <!-- Cabecera del bloque -->
-                            <div class="passenger-block-header d-flex justify-content-between align-items-center">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-dark text-white rounded-pill px-2 py-1" style="font-size: 0.75rem;">
-                                        Pasajero @(i + 1)
-                                    </span>
-                                    <span class="fw-bold text-dark">
-                                        Asiento asignado: @(((List<string>)ViewBag.CodigosAsientos)[i])
-                                    </span>
+                            <div class="passenger-block-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <span class="badge bg-dark text-white rounded-pill px-2 py-1" style="font-size: 0.75rem;">Pasajero @(i + 1)</span>
+                                    @for (int k = 0; k < codigos[i].Count; k++)
+                                    {
+                                        <span class="fw-bold text-dark small">
+                                            @(esItinerario ? "Tramo " + (k + 1) + ":" : "Asiento") @codigos[i][k]
+                                        </span>
+                                    }
                                 </div>
-                                <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle small fw-semibold">
-                                    Confirmado en cabina
+                                <span class="badge bg-info bg-opacity-10 text-info border border-info-subtle small fw-semibold">
+                                    Selección temporal
                                 </span>
                             </div>
 
-                            <!-- Campos del Pasajero alineados con la base de datos -->
                             <div class="p-4">
-
-                                <!-- Fila 1: Documento -->
+                                <!-- Documento -->
                                 <div class="row g-3 mb-3">
                                     <div class="col-12 col-md-5">
-                                        <label class="form-label small fw-semibold text-secondary mb-1">
+                                        <label for="tipo_@i" class="form-label small fw-semibold text-secondary mb-1">
                                             Tipo de documento <span class="text-danger">*</span>
                                         </label>
-                                        <select name="pasajeros[@i].TipoDocumentoCodigo" class="form-select form-select-sm py-2 tipo-doc-select" data-index="@i" required>
-                                            <option value="CEDULA">Cédula</option>
-                                            <option value="PASAPORTE">Pasaporte</option>
+                                        <select id="tipo_@i" name="pasajeros[@i].TipoDocumentoCodigo" class="form-select form-select-sm py-2 tipo-doc-select" data-index="@i" required>
+                                            <option value="CEDULA" @(tipo == "CEDULA" ? "selected" : "")>Cédula</option>
+                                            <option value="PASAPORTE" @(tipo == "PASAPORTE" ? "selected" : "")>Pasaporte</option>
                                         </select>
                                     </div>
                                     <div class="col-12 col-md-7">
-                                        <label class="form-label small fw-semibold text-secondary mb-1">
+                                        <label for="doc_@i" class="form-label small fw-semibold text-secondary mb-1">
                                             Número de documento <span class="text-danger">*</span>
                                         </label>
-                                        <input type="text"
-                                               name="pasajeros[@i].NumeroDocumento"
-                                               id="doc_@i"
+                                        <input type="text" name="pasajeros[@i].NumeroDocumento" id="doc_@i"
                                                class="form-control form-control-sm py-2 doc-input"
-                                               placeholder="10 dígitos para cédula"
-                                               maxlength="20"
-                                               required />
-                                        <small class="text-danger d-none doc-error" id="error_doc_@i" style="font-size: 0.75rem;">
-                                            &#9888; La cédula debe tener exactamente 10 dígitos.
-                                        </small>
+                                               value="@(d != null ? d.NumeroDocumento : "")"
+                                               placeholder="Cédula: 10 dígitos · Pasaporte: 5 a 20 letras o números"
+                                               maxlength="20" required aria-describedby="error_doc_@i" />
+                                        <small class="text-danger d-none" id="error_doc_@i" role="alert" style="font-size: 0.75rem;"></small>
                                     </div>
                                 </div>
 
-                                <!-- Fila 2: Nombres y Apellidos -->
+                                <!-- Nombres y apellidos -->
                                 <div class="row g-3 mb-3">
                                     <div class="col-12 col-md-6">
-                                        <label class="form-label small fw-semibold text-secondary mb-1">
-                                            Nombres completos <span class="text-danger">*</span>
+                                        <label for="nom_@i" class="form-label small fw-semibold text-secondary mb-1">
+                                            Nombres <span class="text-danger">*</span>
                                         </label>
-                                        <input type="text"
-                                               name="pasajeros[@i].Nombres"
+                                        <input type="text" id="nom_@i" name="pasajeros[@i].Nombres"
                                                class="form-control form-control-sm py-2"
-                                               placeholder="Ej. Carlos Sebastián"
-                                               maxlength="100"
-                                               required />
+                                               value="@(d != null ? d.Nombres : "")"
+                                               placeholder="Ej.: María José" maxlength="100" required
+                                               pattern="[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+" title="Solo letras y espacios" />
                                     </div>
                                     <div class="col-12 col-md-6">
-                                        <label class="form-label small fw-semibold text-secondary mb-1">
-                                            Apellidos completos <span class="text-danger">*</span>
+                                        <label for="ape_@i" class="form-label small fw-semibold text-secondary mb-1">
+                                            Apellidos <span class="text-danger">*</span>
                                         </label>
-                                        <input type="text"
-                                               name="pasajeros[@i].Apellidos"
+                                        <input type="text" id="ape_@i" name="pasajeros[@i].Apellidos"
                                                class="form-control form-control-sm py-2"
-                                               placeholder="Ej. Tonato Coronel"
-                                               maxlength="100"
-                                               required />
+                                               value="@(d != null ? d.Apellidos : "")"
+                                               placeholder="Ej.: Pérez Torres" maxlength="100" required
+                                               pattern="[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+" title="Solo letras y espacios" />
                                     </div>
                                 </div>
 
-                                <!-- Fila 3: Nacimiento, Correo y Teléfono -->
+                                <!-- Opcionales -->
                                 <div class="row g-3">
                                     <div class="col-12 col-md-4">
-                                        <label class="form-label small fw-semibold text-secondary mb-1">
+                                        <label for="nac_@i" class="form-label small fw-semibold text-secondary mb-1">
                                             Fecha de nacimiento <span class="text-muted fw-normal">(opcional)</span>
                                         </label>
-                                        <input type="date"
-                                               name="pasajeros[@i].FechaNacimiento"
+                                        <input type="date" id="nac_@i" name="pasajeros[@i].FechaNacimiento"
                                                class="form-control form-control-sm py-2"
-                                               max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                                               value="@(d != null && d.FechaNacimiento.HasValue ? d.FechaNacimiento.Value.ToString("yyyy-MM-dd") : "")"
+                                               min="1900-01-02" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
                                     </div>
                                     <div class="col-12 col-md-4">
-                                        <label class="form-label small fw-semibold text-secondary mb-1">
+                                        <label for="mail_@i" class="form-label small fw-semibold text-secondary mb-1">
                                             Correo <span class="text-muted fw-normal">(opcional)</span>
                                         </label>
-                                        <input type="email"
-                                               name="pasajeros[@i].Correo"
+                                        <input type="email" id="mail_@i" name="pasajeros[@i].Correo"
                                                class="form-control form-control-sm py-2"
-                                               placeholder="correo@ejemplo.com"
-                                               maxlength="256" />
+                                               value="@(d != null ? d.Correo : "")"
+                                               placeholder="correo@ejemplo.com" maxlength="256" />
                                     </div>
                                     <div class="col-12 col-md-4">
-                                        <label class="form-label small fw-semibold text-secondary mb-1">
+                                        <label for="tel_@i" class="form-label small fw-semibold text-secondary mb-1">
                                             Teléfono <span class="text-muted fw-normal">(opcional)</span>
                                         </label>
-                                        <input type="tel"
-                                               name="pasajeros[@i].Telefono"
+                                        <input type="tel" id="tel_@i" name="pasajeros[@i].Telefono"
                                                class="form-control form-control-sm py-2"
-                                               placeholder="Ej. 0990000000"
-                                               maxlength="20" />
+                                               value="@(d != null ? d.Telefono : "")"
+                                               placeholder="Ej.: 0990000000" maxlength="20"
+                                               pattern="[0-9 +]{1,20}" title="Solo dígitos, espacios y +" />
                                     </div>
                                 </div>
-
                             </div>
                         </div>
                     }
 
                 </div>
 
-                <!-- Botones Inferiores -->
+                <!-- Botones -->
                 <div class="d-flex flex-wrap justify-content-between align-items-center mt-4 pt-3 border-top border-light-subtle gap-2">
-                    <a href="@Url.Action("SeleccionAsiento", "Reservas", new { id = Model.VueloId, pasajeros = ((List<int>)ViewBag.AsientosNumeros).Count })"
+                    <a href="@Url.Action("SeleccionAsiento", "Reservas", new { id = Model.VueloId, pasajeros = totalPasajeros })"
                        class="btn btn-outline-secondary px-3 py-2 fw-semibold small">
-                        &larr; Modificar asientos
+                        &larr; Regresar a asientos
                     </a>
                     <button type="submit" id="btnContinuar" class="btn btn-dark px-4 py-2 fw-semibold">
-                        Continuar a la confirmación &rarr;
+                        Continuar &rarr;
                     </button>
                 </div>
             </div>
 
-            <!-- Columna Lateral: Resumen del Itinerario -->
+            <!-- Resumen lateral -->
             <div class="col-12 col-lg-4">
                 <div class="summary-card shadow-sm p-4">
-                    <h3 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">
-                        Resumen del Itinerario
-                    </h3>
+                    <h2 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">Resumen</h2>
 
                     <div class="mb-3">
-                        <span class="text-muted d-block small">Ruta:</span>
+                        <span class="text-muted d-block small">Ruta</span>
                         <strong class="text-dark">
-                            @Model.Frecuencia.Ruta.Aeropuerto.Localidad (@Model.Frecuencia.Ruta.Aeropuerto.CodigoIATA) &rarr; @Model.Frecuencia.Ruta.Aeropuerto1.Localidad (@Model.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)
+                            @Model.Frecuencia.Ruta.Aeropuerto.Localidad (@Model.Frecuencia.Ruta.Aeropuerto.CodigoIATA) &rarr;
+                            @ultimo.Frecuencia.Ruta.Aeropuerto1.Localidad (@ultimo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)
                         </strong>
                     </div>
 
                     <div class="row g-2 mb-3">
                         <div class="col-6">
-                            <span class="text-muted d-block small">Fecha de vuelo:</span>
+                            <span class="text-muted d-block small">Fecha</span>
                             <span class="text-dark fw-semibold">@Model.FechaOperacion.ToString("dd/MM/yyyy")</span>
                         </div>
                         <div class="col-6">
-                            <span class="text-muted d-block small">Horario:</span>
-                            <span class="text-dark fw-semibold">@Model.Frecuencia.HoraSalida.ToString(@"hh\:mm")</span>
+                            <span class="text-muted d-block small">Tramos</span>
+                            <span class="text-dark fw-semibold">@tramos.Count</span>
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <span class="text-muted d-block small">Aeronave:</span>
-                        <span class="text-dark">Embraer Phenom 300E</span>
-                    </div>
+                    <ul class="list-unstyled small mb-3">
+                        @for (int k = 0; k < tramos.Count; k++)
+                        {
+                            var t = tramos[k];
+                            <li class="mb-1">
+                                <strong>@(esItinerario ? "Tramo " + (k + 1) + ":" : "Vuelo:")</strong>
+                                VIP@(t.VueloId.ToString("D5")) &middot;
+                                @t.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @t.Frecuencia.Ruta.Aeropuerto1.CodigoIATA &middot;
+                                @t.Frecuencia.HoraSalida.ToString(@"hh\:mm")&ndash;@t.Frecuencia.HoraLlegada.ToString(@"hh\:mm")
+                            </li>
+                        }
+                    </ul>
 
                     <div class="border-top pt-3">
-                        <span class="text-muted d-block small mb-2">Asientos asignados:</span>
-                        <div class="d-flex flex-wrap gap-2">
-                            @foreach (var cod in (List<string>)ViewBag.CodigosAsientos)
-                            {
-                                <span class="badge bg-dark text-warning px-3 py-2 fs-6">
-                                    @cod
-                                </span>
-                            }
-                        </div>
+                        <span class="text-muted d-block small mb-2">Asientos</span>
+                        @for (int i = 0; i < totalPasajeros; i++)
+                        {
+                            <div class="small mb-1">
+                                Pasajero @(i + 1):
+                                @for (int k = 0; k < codigos[i].Count; k++)
+                                {
+                                    <span class="badge bg-dark text-warning px-2 py-1">@codigos[i][k]</span>
+                                }
+                            </div>
+                        }
                     </div>
 
                     <div class="alert alert-light border small mt-4 mb-0 text-secondary">
-                        <small>&#9432; <em>Verifique que los nombres coincidan exactamente con la identificación oficial.</em></small>
+                        &#9432; Verifique que los nombres coincidan con el documento de identidad.
                     </div>
                 </div>
             </div>
@@ -269,53 +284,62 @@
 
 @section Scripts {
     <script>
-        $(document).ready(function () {
-            // Validación en tiempo real del documento (Cédula: 10 dígitos numéricos)
-            $('.doc-input').on('input', function () {
-                var $input = $(this);
-                var id = $input.attr('id').replace('doc_', '');
-                var tipoDoc = $('select[name="pasajeros[' + id + '].TipoDocumentoCodigo"]').val();
-                var valor = $input.val().trim();
+                $(function () {
+                    // Validación del documento según el tipo (cédula 10 dígitos, pasaporte 5 a 20 alfanuméricos)
+                    function validarDocumento(i) {
+                        var $input = $('#doc_' + i);
+                        var tipo = $('#tipo_' + i).val();
+                        var valor = $input.val().trim();
+                        var mensaje = '';
 
-                if (tipoDoc === 'CEDULA') {
-                    $input.val(valor.replace(/\D/g, ''));
-                    if ($input.val().length !== 10) {
-                        $('#error_doc_' + id).removeClass('d-none');
-                    } else {
-                        $('#error_doc_' + id).addClass('d-none');
-                    }
-                } else {
-                    $('#error_doc_' + id).addClass('d-none');
-                }
-            });
+                        if (tipo === 'CEDULA') {
+                            valor = valor.replace(/\D/g, '');
+                            $input.val(valor);
+                            if (valor.length !== 10) { mensaje = '⚠ La cédula debe tener 10 dígitos.'; }
+                        } else {
+                            valor = valor.toUpperCase();
+                            $input.val(valor);
+                            if (!/^[A-Z0-9]{5,20}$/.test(valor)) { mensaje = '⚠ El pasaporte debe tener entre 5 y 20 letras o números.'; }
+                        }
 
-            // Revalidar cuando se cambia el selector entre Cédula y Pasaporte
-            $('.tipo-doc-select').on('change', function () {
-                var index = $(this).data('index');
-                $('#doc_' + index).trigger('input');
-            });
-
-            // Evitar registrar el mismo documento a dos personas en la misma reserva
-            $('#formRegistroPasajeros').on('submit', function (e) {
-                var docs = [];
-                var repetido = false;
-
-                $('.doc-input').each(function () {
-                    var val = $(this).val().trim().toUpperCase();
-                    if (val) {
-                        if (docs.indexOf(val) !== -1) {
-                            repetido = true;
+                        if (mensaje && valor.length > 0) {
+                            $('#error_doc_' + i).text(mensaje).removeClass('d-none');
                             return false;
                         }
-                        docs.push(val);
+                        $('#error_doc_' + i).addClass('d-none');
+                        return mensaje === '';
                     }
-                });
 
-                if (repetido) {
-                    e.preventDefault();
-                    alert('No puede registrar el mismo número de documento para dos pasajeros distintos.');
-                }
-            });
-        });
+                    $('.doc-input').on('input', function () {
+                        validarDocumento($(this).attr('id').replace('doc_', ''));
+                    });
+
+                    $('.tipo-doc-select').on('change', function () {
+                        validarDocumento($(this).data('index'));
+                    });
+
+                    $('#formRegistroPasajeros').on('submit', function (e) {
+                        var ok = true;
+                        var docs = [];
+
+                        $('.doc-input').each(function () {
+                            var i = $(this).attr('id').replace('doc_', '');
+                            if (!validarDocumento(i)) { ok = false; }
+
+                            var clave = $('#tipo_' + i).val() + '|' + $(this).val().trim().toUpperCase();
+                            if ($(this).val().trim() && docs.indexOf(clave) !== -1) {
+                                alert('No puede registrar el mismo número de documento para dos pasajeros distintos.');
+                                ok = false;
+                            }
+                            docs.push(clave);
+                        });
+
+                        if (!ok) {
+                            e.preventDefault();
+                            return;
+                        }
+                        $('#btnContinuar').prop('disabled', true).text('Guardando…');
+                    });
+                });
     </script>
 }

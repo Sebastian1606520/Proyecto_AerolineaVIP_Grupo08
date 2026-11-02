@@ -1,9 +1,17 @@
 ﻿@using Con_Autenticacion.Models;
 @model Reserva
-
 @{
     ViewBag.Title = "Confirmación de operación";
     Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var detalle = (List<ReservaPasajeroVuelo>)ViewBag.Detalle;
+    var codigos = (Dictionary<int, string>)ViewBag.CodigosAsiento;
+    var tramosIds = (List<int>)ViewBag.TramosIds;
+    bool esPagada = (bool)ViewBag.EsPagada;
+    bool esRechazada = (bool)ViewBag.EsRechazada;
+    bool esSoloReserva = (bool)ViewBag.EsSoloReserva;
+    bool puedePagar = (bool)ViewBag.PuedePagar;
+    int? comprobanteId = ViewBag.ComprobanteId as int?;
 }
 
 <style>
@@ -37,99 +45,99 @@
 
 <main class="container py-5">
 
-    <!-- Indicador de Pasos del Flujo -->
     <div class="d-flex align-items-center justify-content-center gap-4 text-muted small text-uppercase mb-4 pb-2 border-bottom border-light-subtle step-indicator">
         <span class="pb-2 text-secondary">1. Asientos</span>
         <span class="pb-2">&rarr;</span>
         <span class="pb-2 text-secondary">2. Pasajeros</span>
         <span class="pb-2">&rarr;</span>
-        <span class="pb-2 text-secondary">3. Confirmación</span>
+        <span class="pb-2 text-secondary">3. Reserva</span>
         <span class="pb-2">&rarr;</span>
-        <span class="step-item active pb-2">4. Resultado</span>
+        <span class="step-item active pb-2">4. Pago</span>
     </div>
 
-    <!-- Encabezado -->
     <div class="mb-4">
         <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
             Aerolínea VIP &middot; Pantalla 12
         </span>
-        <h2 class="h3 fw-bold text-dark">Resultado de la Operación</h2>
+        <h1 class="h3 fw-bold text-dark">Resultado de la operación</h1>
     </div>
 
-    <!-- Aviso Permanente de Simulación -->
     <div class="alert alert-info py-2 px-3 mb-4 rounded-3 border-0 d-flex align-items-center gap-2 small">
         <span>&#9432;</span>
-        <span><strong>Simulación académica:</strong> no se realizan cobros reales en pasarelas bancarias.</span>
+        <span><strong>Simulación académica:</strong> no se realizan cobros reales.</span>
     </div>
 
-    <!-- Mensajes Principales según el Resultado -->
-    @if ((bool)ViewBag.EsPagada)
+    @if (TempData["Error"] != null)
     {
-        <div class="outcome-banner bg-success-subtle border border-success-subtle p-4 mb-4 d-flex gap-3 align-items-start">
+        <div class="alert alert-warning py-2 px-3 mb-4 small rounded-3 border-0" role="alert">@TempData["Error"]</div>
+    }
+
+    <!-- Mensaje principal según el resultado -->
+    @if (esPagada)
+    {
+        <div class="outcome-banner bg-success-subtle border border-success-subtle p-4 mb-4 d-flex gap-3 align-items-start" role="status">
             <span class="fs-3 text-success">&#10004;</span>
             <div>
-                <h4 class="h5 fw-bold text-success mb-1">¡Compra completada con éxito!</h4>
+                <h2 class="h5 fw-bold text-success mb-1">Compra pagada</h2>
                 <p class="text-success-emphasis small mb-0">
-                    Compra <strong>@Model.CodigoReserva</strong> pagada. Pago simulado aprobado <strong>@ViewBag.CodigoOperacion</strong>.
+                    Reserva <strong>@Model.CodigoReserva</strong> confirmada. Pago simulado aprobado <strong>@ViewBag.CodigoOperacion</strong>.
                 </p>
             </div>
         </div>
     }
-    else if ((bool)ViewBag.EsSoloReserva)
+    else if (esRechazada)
     {
-        <div class="outcome-banner bg-warning-subtle border border-warning-subtle p-4 mb-4 d-flex gap-3 align-items-start">
-            <span class="fs-3 text-warning-emphasis">&#9432;</span>
-            <div>
-                <h4 class="h5 fw-bold text-warning-emphasis mb-1">Reserva Registrada</h4>
-                <p class="text-warning-emphasis small mb-0">
-                    Reserva registrada. La compra continúa pendiente de pago (retención máxima de 2 horas).
-                </p>
-            </div>
-        </div>
-    }
-    else if ((bool)ViewBag.EsRechazada)
-    {
-        <div class="outcome-banner bg-danger-subtle border border-danger-subtle p-4 mb-4 d-flex gap-3 align-items-start">
+        <div class="outcome-banner bg-danger-subtle border border-danger-subtle p-4 mb-4 d-flex gap-3 align-items-start" role="alert">
             <span class="fs-3 text-danger">&#10008;</span>
             <div>
-                <h4 class="h5 fw-bold text-danger mb-1">Pago Rechazado</h4>
-                <p class="text-danger-emphasis small mb-0">
-                    El pago simulado fue rechazado. La reserva sigue pendiente de pago.
+                <h2 class="h5 fw-bold text-danger mb-1">Pago rechazado</h2>
+                <p class="text-danger-emphasis small mb-0">El pago simulado fue rechazado. La reserva sigue pendiente de pago.</p>
+            </div>
+        </div>
+    }
+    else if (esSoloReserva)
+    {
+        <div class="outcome-banner bg-warning-subtle border border-warning-subtle p-4 mb-4 d-flex gap-3 align-items-start" role="status">
+            <span class="fs-3 text-warning-emphasis">&#9432;</span>
+            <div>
+                <h2 class="h5 fw-bold text-warning-emphasis mb-1">Reserva registrada</h2>
+                <p class="text-warning-emphasis small mb-0">
+                    Reserva <strong>@Model.CodigoReserva</strong> registrada y pendiente de pago
+                    @if (Model.FechaExpiracion.HasValue)
+                    {
+                        <text>hasta el <strong>@Model.FechaExpiracion.Value.ToString("dd/MM/yyyy HH:mm")</strong></text>
+                    }.
                 </p>
             </div>
         </div>
     }
+    else
+    {
+        <div class="outcome-banner bg-light border p-4 mb-4" role="status">
+            <h2 class="h5 fw-bold text-dark mb-1">Estado de la reserva: @ViewBag.EstadoReservaTexto</h2>
+        </div>
+    }
 
-    <!-- Tres Etiquetas de Estado Separadas -->
+    <!-- Tres etiquetas de estado separadas (con texto, no solo color) -->
     <div class="d-flex flex-wrap gap-2 mb-4 pb-2 border-bottom">
-        <span class="status-badge bg-dark text-white">
-            Reserva: @ViewBag.EstadoReservaTexto
-        </span>
-
-        <span class="status-badge @((bool)ViewBag.EsPagada ? "bg-success text-white" : "bg-warning text-dark")">
-            Compra: @ViewBag.EstadoCompraTexto
-        </span>
-
-        <span class="status-badge @((bool)ViewBag.EsPagada ? "bg-success text-white" : ((bool)ViewBag.EsRechazada ? "bg-danger text-white" : "bg-secondary text-white"))">
-            Pago simulado: @ViewBag.EstadoPagoTexto
-        </span>
+        <span class="status-badge bg-dark text-white">Reserva: @ViewBag.EstadoReservaTexto</span>
+        <span class="status-badge @(esPagada ? "bg-success text-white" : "bg-warning text-dark")">Compra: @ViewBag.EstadoCompraTexto</span>
+        <span class="status-badge @(esPagada ? "bg-success text-white" : esRechazada ? "bg-danger text-white" : "bg-secondary text-white")">Pago simulado: @ViewBag.EstadoPagoTexto</span>
     </div>
 
-    <!-- Región Central: Detalle y Resumen -->
     <div class="row g-4 align-items-start">
 
-        <!-- Tabla de Detalle -->
+        <!-- Detalle por tramo y pasajero -->
         <div class="col-12 col-lg-8">
             <div class="card border border-light-subtle shadow-sm rounded-3">
-                <div class="card-header bg-light border-bottom py-3 fw-bold text-dark small text-uppercase">
-                    Detalle de Pasajeros y Asientos
-                </div>
+                <div class="card-header bg-light border-bottom py-3 fw-bold text-dark small text-uppercase">Detalle</div>
                 <div class="card-body p-4">
                     <div class="table-responsive">
                         <table class="table align-middle mb-0" style="font-size: 0.9rem;">
                             <thead class="table-light text-secondary small">
                                 <tr>
                                     <th>Tramo</th>
+                                    <th>Vuelo</th>
                                     <th>Ruta</th>
                                     <th>Fecha</th>
                                     <th>Horario</th>
@@ -138,18 +146,23 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var rp in Model.ReservaPasajeroVuelo)
+                                @foreach (var a in detalle)
                                 {
+                                    var v = a.Vuelo;
+                                    string colorAsiento = a.EstadoAsignacionCodigo == "CONFIRMADA" ? "#881337"
+                                                        : a.EstadoAsignacionCodigo == "PENDIENTE" ? "#581c87" : "#64748b";
+                                    string textoAsiento = a.EstadoAsignacionCodigo == "CONFIRMADA" ? "Ocupado"
+                                                        : a.EstadoAsignacionCodigo == "PENDIENTE" ? "Reservado" : a.EstadoAsignacionCodigo;
                                     <tr>
-                                        <td>1</td>
-                                        <td class="fw-semibold text-dark">@ViewBag.RutaStr</td>
-                                        <td>@ViewBag.FechaVueloStr</td>
-                                        <td class="text-nowrap">@ViewBag.HorarioStr</td>
-                                        <td class="fw-semibold text-dark">@rp.Pasajero.Nombres @rp.Pasajero.Apellidos</td>
+                                        <td>@(tramosIds.IndexOf(a.VueloId) + 1)</td>
+                                        <td class="text-nowrap">VIP@(v.VueloId.ToString("D5"))</td>
+                                        <td class="fw-semibold text-dark text-nowrap">@v.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @v.Frecuencia.Ruta.Aeropuerto1.CodigoIATA</td>
+                                        <td>@v.FechaOperacion.ToString("dd/MM/yyyy")</td>
+                                        <td class="text-nowrap">@v.Frecuencia.HoraSalida.ToString(@"hh\:mm")&ndash;@v.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</td>
+                                        <td class="fw-semibold text-dark">@a.Pasajero.Nombres @a.Pasajero.Apellidos</td>
                                         <td class="text-center">
-                                            <span class="badge text-white px-2 py-1" style="background-color: #581c87;">
-                                                @rp.NumeroAsiento
-                                            </span>
+                                            <span class="badge text-white px-2 py-1" style="background-color: @colorAsiento;">@codigos[a.AsignacionId]</span>
+                                            <small class="d-block text-muted">@textoAsiento</small>
                                         </td>
                                     </tr>
                                 }
@@ -160,74 +173,72 @@
             </div>
         </div>
 
-        <!-- Resumen Comercial -->
+        <!-- Resumen comercial -->
         <div class="col-12 col-lg-4">
             <div class="card border border-light-subtle shadow-sm rounded-3 p-4">
-                <h5 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">Resumen Comercial</h5>
+                <h2 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">Resumen</h2>
 
                 <div class="d-flex justify-content-between mb-2 small">
-                    <span class="text-secondary">Código Reserva:</span>
+                    <span class="text-secondary">Reserva</span>
                     <strong class="text-dark">@Model.CodigoReserva</strong>
                 </div>
-
+                <div class="d-flex justify-content-between mb-2 small">
+                    <span class="text-secondary">Ruta</span>
+                    <span class="text-dark text-end">@ViewBag.RutaStr</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2 small">
+                    <span class="text-secondary">Fecha</span>
+                    <span class="text-dark">@ViewBag.FechaVuelo</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2 small">
+                    <span class="text-secondary">Horario</span>
+                    <span class="text-dark text-end">@ViewBag.HorarioStr</span>
+                </div>
                 <div class="d-flex justify-content-between mb-3 small">
-                    <span class="text-secondary">Pasajes:</span>
-                    <span class="text-dark">@Model.ReservaPasajeroVuelo.Count</span>
+                    <span class="text-secondary">Pasajeros</span>
+                    <span class="text-dark">@ViewBag.NumPasajeros</span>
                 </div>
 
-                <div class="border-top pt-3 mt-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="fw-bold text-dark">Total:</span>
-                        <span class="fs-4 fw-bold text-dark">$@(((decimal)ViewBag.TotalPagar).ToString("N2")) <small class="fs-6 text-muted">USD</small></span>
-                    </div>
+                <div class="border-top pt-3 mt-2 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark">Total</span>
+                    <span class="fs-4 fw-bold text-dark">$@(((decimal)ViewBag.TotalPagar).ToString("N2")) <small class="fs-6 text-muted">USD</small></span>
                 </div>
 
                 @if ((bool)ViewBag.TienePago)
                 {
-                    <div class="border-top pt-3 mt-3">
-                        <span class="d-block fw-bold text-dark small mb-2">Instrumento de Pago</span>
-                        <div class="small bg-light p-2 rounded-2">
-                            <span class="d-block text-secondary">Método: <strong class="text-dark">@ViewBag.MetodoPagoTexto</strong></span>
-                            <span class="d-block text-secondary">Tarjeta: <strong class="text-dark">@ViewBag.TarjetaTexto</strong></span>
-                            @if ((bool)ViewBag.EsPagada)
-                            {
-                                <span class="d-block text-secondary">Operación: <strong class="text-dark text-success">@ViewBag.CodigoOperacion</strong></span>
-                            }
-                        </div>
+                    <div class="border-top pt-3 mt-3 small bg-light p-2 rounded-2">
+                        <span class="d-block text-secondary">Método: <strong class="text-dark">@ViewBag.MetodoPagoTexto</strong></span>
+                        <span class="d-block text-secondary">Tarjeta: <strong class="text-dark">@ViewBag.TarjetaTexto</strong></span>
+                        <span class="d-block text-secondary">Operación: <strong class="text-dark">@ViewBag.CodigoOperacion</strong></span>
                     </div>
                 }
             </div>
         </div>
-
     </div>
 
-    <!-- Botones de Navegación -->
+    <!-- Botones (wireframe pantalla 12) -->
     <div class="d-flex flex-wrap gap-2 mt-4 pt-3 border-top justify-content-between">
-        <div>
-            <!-- Botón 1: Ver reserva (Pantalla 13) -->
-            <a href="@Url.Action("Buscar", "Vuelos")" class="btn btn-outline-secondary px-3 py-2 fw-semibold small">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="@Url.Action("Gestionar", "Reservas", new { id = Model.ReservaId })" class="btn btn-outline-secondary px-3 py-2 fw-semibold small">
                 Ver reserva
             </a>
 
-            <!-- Botón 2: Consultar comprobante (solo si está pagada) -->
-            @if ((bool)ViewBag.EsPagada)
+            @if (esPagada && comprobanteId.HasValue)
             {
-                <a href="@Url.Action("Buscar", "Vuelos")" class="btn btn-dark px-4 py-2 fw-semibold small">
+                <a href="@Url.Action("Comprobantes", "Compras", new { ver = comprobanteId.Value })#vistaPrevia" class="btn btn-dark px-4 py-2 fw-semibold small">
                     Consultar comprobante
                 </a>
             }
 
-            <!-- Botón 3: Reintentar pago (solo si fue rechazado) -->
-            @if ((bool)ViewBag.EsRechazada)
+            @if (puedePagar)
             {
                 <a href="@Url.Action("Pagar", "Compras", new { id = Model.ReservaId })" class="btn btn-warning px-4 py-2 fw-semibold text-dark small">
-                    Reintentar pago &rarr;
+                    @(esRechazada ? "Reintentar pago" : "Pagar ahora") &rarr;
                 </a>
             }
         </div>
 
-        <!-- Botón 4: Volver al inicio -->
-        <a href="@Url.Action("Buscar", "Vuelos")" class="btn btn-outline-dark px-3 py-2 fw-semibold small">
+        <a href="@Url.Action("Index", "Home")" class="btn btn-outline-dark px-3 py-2 fw-semibold small">
             Volver al inicio
         </a>
     </div>
