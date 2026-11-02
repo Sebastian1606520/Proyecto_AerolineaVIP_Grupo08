@@ -4,102 +4,97 @@
     ViewBag.Title = "Iniciar sesión";
 }
 
-<main aria-labelledby="title" class="py-4">
+<main class="container py-5 my-auto" aria-labelledby="loginHeading">
     <div class="row justify-content-center">
-        <div class="col-12 col-md-8 col-lg-6">
+        <div class="col-12 col-md-8 col-lg-6 col-xl-5">
 
-            <div class="card shadow-sm border-0 rounded-3">
-                <div class="card-body p-4">
+            <div class="card shadow-sm border border-light-subtle rounded-3 bg-white">
+                <div class="card-body p-4 p-md-5">
 
+                    <!-- Encabezado corporativo VIP -->
                     <div class="text-center mb-4">
-                        <span class="badge bg-dark text-warning px-3 py-2 text-uppercase" style="letter-spacing: 1px;">
+                        <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px;">
                             Aerolínea VIP
                         </span>
-                        <h1 id="title" class="h3 fw-bold mt-3 mb-1">@ViewBag.Title</h1>
-                        <p class="text-muted small mb-0">Ingrese con su nombre de usuario y contraseña.</p>
+                        <h2 id="loginHeading" class="h3 fw-bold text-dark mt-2 mb-1">Iniciar sesión</h2>
+                        <p class="text-secondary small mb-0">Ingrese sus credenciales para acceder al sistema de reservas.</p>
                     </div>
 
-                    @* Advertencia: llegó por sesión expirada (ReturnUrl presente) *@
+                    @* Mensajes y alertas de sesión *@
                     @if (!string.IsNullOrEmpty(ViewBag.ReturnUrl as string))
                     {
-                        <div class="alert alert-warning py-2 small" role="alert">
-                            Su sesión expiró o necesita iniciar sesión para continuar. Inicie sesión nuevamente.
+                        <div class="alert alert-warning py-2 px-3 small border-0 rounded-3 mb-3" role="alert">
+                            Su sesión expiró o necesita autenticarse para continuar.
                         </div>
                     }
 
                     @if (TempData["Mensaje"] != null)
                     {
-                        <div class="alert alert-success py-2 small" role="status">@TempData["Mensaje"]</div>
+                        <div class="alert alert-success alert-dismissible fade show small py-2 mb-3" role="alert">
+                            @TempData["Mensaje"]
+                            <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
                     }
 
-                    <section id="loginForm">
-                        @using (Html.BeginForm("Login", "Account", new { ReturnUrl = ViewBag.ReturnUrl }, FormMethod.Post,
-                            new { role = "form", onsubmit = "if (this.checkValidity()) { var b = document.getElementById('btnLogin'); b.disabled = true; b.value = 'Verificando…'; }" }))
-                        {
-                            @Html.AntiForgeryToken()
+                    @using (Html.BeginForm("Login", "Account", new { ReturnUrl = ViewBag.ReturnUrl }, FormMethod.Post, new { id = "formLogin", role = "form" }))
+                    {
+                        @Html.AntiForgeryToken()
 
-                            @* Resumen de errores (Error de acceso) *@
-                            @Html.ValidationSummary(true, "", new { @class = "alert alert-danger py-2 small", role = "alert" })
+                        @Html.ValidationSummary(true, "", new { @class = "alert alert-danger py-2 px-3 small border-0 rounded-3 mb-3 list-unstyled" })
 
-                            <div class="row mb-3">
-                                @Html.LabelFor(m => m.UserName, new { @class = "col-md-4 col-form-label fw-semibold" })
-                                <div class="col-md-8">
-                                    @Html.TextBoxFor(m => m.UserName, new
-                                    {
-                                        @class = "form-control",
-                                        placeholder = "Su nombre de usuario",
-                                        maxlength = "256",
-                                        autofocus = "autofocus",
-                                        autocomplete = "username",
-                                        required = "required"
-                                    })
-                                    @Html.ValidationMessageFor(m => m.UserName, "", new { @class = "text-danger small", role = "alert" })
-                                </div>
+                        <!-- CAMPO 1: Nombre de usuario -->
+                        <div class="mb-3">
+                            @Html.LabelFor(m => m.UserName, new { @class = "form-label fw-semibold text-secondary small mb-1" })
+                            <span class="text-danger">*</span>
+                            @Html.TextBoxFor(m => m.UserName, new
+                            {
+                                @class = "form-control",
+                                id = "UserName",
+                                placeholder = "Usuario (ej.: ctonato)",
+                                maxlength = "256",
+                                autocomplete = "username",
+                                autofocus = "autofocus"
+                            })
+                            @Html.ValidationMessageFor(m => m.UserName, "", new { @class = "text-danger small mt-1 d-block" })
+                        </div>
+
+                        <!-- CAMPO 2: Contraseña directa -->
+                        <div class="mb-3">
+                            @Html.LabelFor(m => m.Password, new { @class = "form-label fw-semibold text-secondary small mb-1" })
+                            <span class="text-danger">*</span>
+                            @Html.PasswordFor(m => m.Password, new
+                            {
+                                @class = "form-control",
+                                id = "Password",
+                                placeholder = "••••••••",
+                                autocomplete = "current-password"
+                            })
+                            @Html.ValidationMessageFor(m => m.Password, "", new { @class = "text-danger small mt-1 d-block" })
+                        </div>
+
+                        <!-- FILA 3: Recordar Cuenta y ¿Olvidó su contraseña? alineados -->
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div class="form-check mb-0">
+                                @Html.CheckBoxFor(m => m.RememberMe, new { @class = "form-check-input", id = "RememberMe" })
+                                <label class="form-check-label text-secondary small user-select-none" for="RememberMe">
+                                    @Html.DisplayNameFor(m => m.RememberMe)
+                                </label>
                             </div>
+                            @Html.ActionLink("¿Olvidó su contraseña?", "ForgotPassword", "Account", null, new { @class = "text-decoration-none small text-muted" })
+                        </div>
 
-                            <div class="row mb-3">
-                                @Html.LabelFor(m => m.Password, new { @class = "col-md-4 col-form-label fw-semibold" })
-                                <div class="col-md-8">
-                                    <div class="input-group">
-                                        @Html.PasswordFor(m => m.Password, new
-                                        {
-                                            @class = "form-control",
-                                            placeholder = "••••••••",
-                                            autocomplete = "current-password",
-                                            required = "required"
-                                        })
-                                        <button type="button" class="btn btn-outline-secondary"
-                                                aria-label="Mostrar u ocultar contraseña"
-                                                onclick="var p = document.getElementById('Password'); p.type = (p.type === 'password') ? 'text' : 'password'; this.textContent = (p.type === 'password') ? 'Mostrar' : 'Ocultar';">
-                                            Mostrar
-                                        </button>
-                                    </div>
-                                    @Html.ValidationMessageFor(m => m.Password, "", new { @class = "text-danger small", role = "alert" })
-                                </div>
-                            </div>
+                        <!-- FILA 4: Botones de Acción -->
+                        <div class="d-flex flex-wrap gap-2 mb-4">
+                            <input type="submit" value="Iniciar sesión" class="btn btn-dark px-4 py-2 fw-semibold" />
+                            @Html.ActionLink("Cancelar", "Index", "Home", null, new { @class = "btn btn-outline-secondary px-4 py-2" })
+                        </div>
 
-                            <div class="row mb-3">
-                                <div class="offset-md-4 col-md-8">
-                                    <div class="form-check">
-                                        @Html.CheckBoxFor(m => m.RememberMe, new { @class = "form-check-input" })
-                                        @Html.LabelFor(m => m.RememberMe, new { @class = "form-check-label" })
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="row mb-3">
-                                <div class="offset-md-4 col-md-8 d-grid d-md-block">
-                                    <input type="submit" id="btnLogin" value="Iniciar sesión" class="btn btn-dark px-4" />
-                                </div>
-                            </div>
-
-                            <hr />
-                            <div class="d-flex justify-content-between small">
-                                @Html.ActionLink("¿Olvidó su contraseña?", "ForgotPassword", null, new { @class = "text-muted" })
-                                @Html.ActionLink("Crear cuenta", "Register", null, new { @class = "fw-bold text-dark" })
-                            </div>
-                        }
-                    </section>
+                        <!-- FILA 5: Retorno a Registrarse -->
+                        <div class="border-top border-light-subtle pt-3 text-center text-md-start small">
+                            <span class="text-muted">¿No tiene una cuenta registrada?</span>
+                            @Html.ActionLink("Crear cuenta", "Register", "Account", null, new { @class = "text-decoration-none fw-bold text-dark ms-1" })
+                        </div>
+                    }
 
                 </div>
             </div>
