@@ -1,0 +1,414 @@
+﻿@model IEnumerable<Con_Autenticacion.Models.Vuelo>
+@{
+    ViewBag.Title = "Resultados de vuelos";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .card-vuelo-custom {
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+        .card-vuelo-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.06);
+        }
+
+    .flight-divider-line {
+        height: 2px;
+        background: #cbd5e1;
+        position: relative;
+        width: 100%;
+    }
+
+    .flight-divider-dot {
+        width: 7px;
+        height: 7px;
+        background: #334155;
+        border-radius: 50%;
+    }
+
+    .flight-icon-mid {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #ffffff;
+        padding: 0 6px;
+        font-size: 0.8rem;
+    }
+</style>
+
+<main class="container py-5">
+
+    <!-- Encabezado corporativo (Consistente con Pantalla 5) -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3">
+        <div>
+            <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
+                Aerolínea VIP &middot; Pantalla 6
+            </span>
+            <h2 class="h3 fw-bold text-dark mb-1">Resultados de vuelos</h2>
+            <p class="text-secondary small mb-0">
+                <strong>@(ViewBag.CiudadOrigen ?? "Origen")</strong> &rarr; <strong>@(ViewBag.CiudadDestino ?? "Destino")</strong>
+                &middot; @(ViewBag.Fecha != null ? ((DateTime)ViewBag.Fecha).ToString("dd/MM/yyyy") : "Fecha no especificada")
+                &middot; @(ViewBag.Pasajeros ?? 1) @(Equals(ViewBag.Pasajeros, 1) ? "pasajero" : "pasajeros")
+            </p>
+        </div>
+        <a href="@Url.Action("Buscar", "Vuelos", new {
+               origenId = ViewBag.OrigenId,
+               destinoId = ViewBag.DestinoId,
+               fecha = (ViewBag.Fecha != null ? ((DateTime)ViewBag.Fecha).ToString("yyyy-MM-dd") : null),
+               pasajeros = (ViewBag.Pasajeros ?? 1)
+           })" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+            &larr; Modificar búsqueda
+        </a>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2">
+            <span>&#9888;</span>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
+
+    @if (Model == null || !Model.Any())
+    {
+        <!-- Estado Vacío -->
+        <div class="card border border-light-subtle shadow-sm rounded-3 bg-white p-5 text-center my-4">
+            <span class="display-6 text-muted">&#9992;</span>
+            <h3 class="h5 fw-bold text-dark mt-3 mb-2">No hay vuelos para los criterios seleccionados</h3>
+            <p class="text-secondary small mb-4">
+                @(ViewBag.EsItinerarioEscala == true
+                    ? "La ruta Quito – Galápagos (con escala en Guayaquil) opera exclusivamente los días domingo."
+                    : "La ruta seleccionada no opera en esta fecha o no existen frecuencias programadas autorizadas.")
+            </p>
+            <a href="@Url.Action("Buscar", "Vuelos", new { origenId = ViewBag.OrigenId, destinoId = ViewBag.DestinoId })" class="btn btn-dark fw-semibold px-4 py-2">
+                Modificar búsqueda
+            </a>
+        </div>
+    }
+    else if (ViewBag.EsItinerarioEscala == true)
+    {
+        <!-- CASO ITINERARIO CON ESCALA (Quito - Galápagos: 2 tramos de ida) -->
+        <div class="d-flex flex-column gap-3 mb-4">
+            <div class="card card-vuelo-custom shadow-sm p-4">
+                <div class="row align-items-center g-3">
+
+                    <!-- Información de Ruta con Escala y Trayecto Visual -->
+                    <div class="col-12 col-lg-5">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle fw-semibold rounded-pill px-3 py-1" style="font-size: 0.72rem;">
+                                Itinerario dominical con escala
+                            </span>
+                            <span class="badge bg-light text-secondary border small">1 escala en GYE (1h de espera)</span>
+                        </div>
+
+                        <!-- Línea de tiempo UIO -> GPS -->
+                        <div class="row align-items-center text-center g-1 my-2">
+                            <div class="col-4 text-start">
+                                <div class="h5 fw-bold text-dark mb-0">09:00</div>
+                                <div class="text-muted small">UIO &middot; Quito</div>
+                            </div>
+                            <div class="col-4 position-relative">
+                                <div class="d-flex align-items-center">
+                                    <div class="flight-divider-dot"></div>
+                                    <div class="flight-divider-line mx-1">
+                                        <span class="flight-icon-mid text-primary">&#9992;</span>
+                                    </div>
+                                    <div class="flight-divider-dot"></div>
+                                </div>
+                                <span class="text-muted d-block mt-1 fw-semibold" style="font-size: 0.65rem;">ESCALA GYE</span>
+                            </div>
+                            <div class="col-4 text-end">
+                                <div class="h5 fw-bold text-dark mb-0">13:00</div>
+                                <div class="text-muted small">GPS &middot; Galápagos</div>
+                            </div>
+                        </div>
+
+                        <!-- Detalle puntual de los 2 tramos de ida -->
+                        <div class="bg-light bg-opacity-50 border rounded-3 p-2 small mt-2">
+                            @foreach (var tramo in Model)
+                            {
+                                <div class="d-flex align-items-center justify-content-between py-1 text-secondary" style="font-size: 0.75rem;">
+                                    <span>
+                                        <strong>@tramo.Frecuencia.HoraSalida.ToString(@"hh\:mm") &ndash; @tramo.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</strong>
+                                        (@tramo.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @tramo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)
+                                    </span>
+                                    <span class="badge bg-white text-success border">
+                                        @(7 - tramo.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA")) 
+                                    </span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Estado de Disponibilidad de la Conexión -->
+                    <div class="col-12 col-lg-3 text-lg-center">
+                        <div class="text-success fw-bold fs-5 mb-0">
+                            @(7 - Model.Max(t => t.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA")))
+                            <span class="text-muted fs-6 fw-normal">/ 7</span>
+                        </div>
+                        <small class="text-muted d-block" style="font-size: 0.75rem;">asientos libres garantizados</small>
+                        <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">(Capacidad mínima en la conexión)</small>
+                    </div>
+
+                    <!-- Botones de Acción -->
+                    <div class="col-12 col-lg-4 text-lg-end d-flex flex-wrap justify-content-lg-end gap-2 align-items-center">
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold"
+                                data-bs-toggle="modal" data-bs-target="#modal-itinerario-galapagos">
+                            Ver detalles
+                        </button>
+
+                        <a href="@Url.Action("Disponibilidad", "Vuelos", new { id = Model.First().VueloId })"
+                           class="btn btn-outline-dark btn-sm px-3 py-2 fw-semibold">
+                            Consultar mapa
+                        </a>
+
+                        <a href="@Url.Action("SeleccionAsiento", "Reservas", new { vueloId = Model.First().VueloId, pasajeros = (ViewBag.Pasajeros ?? 1) })"
+                           class="btn btn-dark btn-sm px-3 py-2 fw-semibold">
+                            Seleccionar vuelo &rarr;
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Itinerario Galápagos -->
+        <div class="modal fade" id="modal-itinerario-galapagos" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header bg-light py-3">
+                        <h5 class="modal-title h6 fw-bold mb-0">Itinerario Dominical con Escala</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4 small">
+                        <p class="text-secondary mb-3">Conexión integral en el mismo día mediante aeronaves Embraer Phenom 300E:</p>
+                        @foreach (var tramo in Model)
+                        {
+                            <div class="p-3 border rounded-3 mb-2 bg-light bg-opacity-50">
+                                <div class="fw-bold text-dark mb-1">
+                                    @tramo.Frecuencia.Ruta.Aeropuerto.Localidad (@tramo.Frecuencia.Ruta.Aeropuerto.CodigoIATA) &rarr; @tramo.Frecuencia.Ruta.Aeropuerto1.Localidad (@tramo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)
+                                </div>
+                                <div class="text-muted">Horario: @tramo.Frecuencia.HoraSalida.ToString(@"hh\:mm") a @tramo.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</div>
+                                <div class="text-muted">Aeronave asignada: @(tramo.Aeronave != null ? tramo.Aeronave.Matricula : "Pendiente")</div>
+                                <div class="text-success fw-semibold mt-1">
+                                    Disponibles: @(7 - tramo.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA")) de 7 asientos
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div class="modal-footer bg-light py-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- CASO VUELOS DIRECTOS (Quito - Guayaquil / Manta) -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-secondary small fw-semibold">Horario:</span>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-dark active btn-filtro" data-filtro="todos">Todos</button>
+                    <button type="button" class="btn btn-outline-dark btn-filtro" data-filtro="manana">Mañana</button>
+                    <button type="button" class="btn btn-outline-dark btn-filtro" data-filtro="tarde">Tarde</button>
+                    <button type="button" class="btn btn-outline-dark btn-filtro" data-filtro="noche">Noche</button>
+                </div>
+            </div>
+            <small class="text-muted">
+                Mostrando <strong id="conteoVuelos" class="text-dark">@Model.Count()</strong> vuelos
+            </small>
+        </div>
+
+        <div class="d-flex flex-column gap-3 mb-4">
+            @foreach (var vuelo in Model)
+            {
+                <div class="card card-vuelo-custom shadow-sm p-4 tarjeta-vuelo"
+                     data-jornada="@(vuelo.Frecuencia.HoraSalida.Hours < 12 ? "manana" : vuelo.Frecuencia.HoraSalida.Hours < 18 ? "tarde" : "noche")">
+
+                    <div class="row align-items-center g-3">
+
+                        <!-- Horas y Trayecto -->
+                        <div class="col-12 col-md-5">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="badge bg-dark text-warning rounded-pill px-2 py-1 small fw-semibold" style="font-size: 0.7rem;">
+                                    VIP@(vuelo.VueloId.ToString("D5"))
+                                </span>
+                                <span class="text-muted small">
+                                    @(vuelo.Frecuencia.HoraSalida.Hours < 12 ? "Vuelo de mañana" : vuelo.Frecuencia.HoraSalida.Hours < 18 ? "Vuelo de tarde" : "Vuelo nocturno")
+                                </span>
+                            </div>
+                            <div class="row align-items-center text-center g-1">
+                                <div class="col-4 text-start">
+                                    <div class="h5 fw-bold text-dark mb-0">@vuelo.Frecuencia.HoraSalida.ToString(@"hh\:mm")</div>
+                                    <div class="text-muted small">@vuelo.Frecuencia.Ruta.Aeropuerto.CodigoIATA</div>
+                                </div>
+                                <div class="col-4 position-relative">
+                                    <div class="d-flex align-items-center">
+                                        <div class="flight-divider-dot"></div>
+                                        <div class="flight-divider-line mx-1">
+                                            <span class="flight-icon-mid text-muted">&#9992;</span>
+                                        </div>
+                                        <div class="flight-divider-dot"></div>
+                                    </div>
+                                    <span class="text-muted d-block mt-1" style="font-size: 0.65rem;">DIRECTO</span>
+                                </div>
+                                <div class="col-4 text-end">
+                                    <div class="h5 fw-bold text-dark mb-0">@vuelo.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</div>
+                                    <div class="text-muted small">@vuelo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA</div>
+                                </div>
+                            </div>
+                            <div class="mt-2 text-muted" style="font-size: 0.75rem;">
+                                Aeronave: @(vuelo.Aeronave != null ? vuelo.Aeronave.Matricula : "Pendiente") &middot; Phenom 300E
+                            </div>
+                        </div>
+
+                        <!-- Disponibilidad -->
+                        <div class="col-12 col-md-3 text-md-center">
+                            @if (vuelo.EstadoVueloCodigo == "CANCELADO")
+                            {
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle px-3 py-2 small fw-semibold">
+                                    Vuelo Cancelado
+                                </span>
+                            }
+                            else if (vuelo.AeronaveId == null)
+                            {
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle px-3 py-2 small fw-semibold">
+                                    Sin aeronave asignada
+                                </span>
+                            }
+                            else if ((7 - vuelo.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA")) <= 0)
+                            {
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle px-3 py-2 small fw-semibold">
+                                    Sin asientos disponibles
+                                </span>
+                            }
+                            else
+                            {
+                                <div class="text-success fw-bold fs-5 mb-0">
+                                    @(7 - vuelo.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA"))
+                                    <span class="text-muted fs-6 fw-normal">/ 7</span>
+                                </div>
+                                <small class="text-muted d-block" style="font-size: 0.75rem;">asientos disponibles</small>
+                            }
+                        </div>
+
+                        <!-- Acciones -->
+                        <div class="col-12 col-md-4 text-md-end d-flex flex-wrap justify-content-md-end gap-2 align-items-center">
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-3 py-2"
+                                    data-bs-toggle="modal" data-bs-target="#modal-@vuelo.VueloId">
+                                Ver detalles
+                            </button>
+
+                            <a href="@Url.Action("Disponibilidad", "Vuelos", new { id = vuelo.VueloId })" class="btn btn-outline-dark btn-sm px-3 py-2">
+                                Disponibilidad
+                            </a>
+
+                            @if (vuelo.EstadoVueloCodigo != "CANCELADO" && vuelo.AeronaveId != null && (7 - vuelo.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA")) >= (ViewBag.Pasajeros ?? 1))
+                            {
+                                <a href="@Url.Action("SeleccionAsiento", "Reservas", new { id = vuelo.VueloId, pasajeros = (ViewBag.Pasajeros ?? 1) })"
+                                   class="btn btn-dark btn-sm px-3 py-2 fw-semibold">
+                                    Seleccionar vuelo &rarr;
+                                </a>
+                            }
+                            else
+                            {
+                                <button class="btn btn-secondary btn-sm px-3 py-2 fw-semibold" disabled>
+                                    No disponible
+                                </button>
+                            }
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Modal Detalles Vuelo Directo -->
+                <div class="modal fade" id="modal-@vuelo.VueloId" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow">
+                            <div class="modal-header bg-light py-3">
+                                <h5 class="modal-title h6 fw-bold mb-0">Detalle del vuelo VIP@(vuelo.VueloId.ToString("D5"))</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body p-4 small">
+                                <div class="mb-3">
+                                    <span class="text-muted d-block">Ruta:</span>
+                                    <strong class="text-dark">
+                                        @vuelo.Frecuencia.Ruta.Aeropuerto.Localidad (@vuelo.Frecuencia.Ruta.Aeropuerto.CodigoIATA) &rarr; @vuelo.Frecuencia.Ruta.Aeropuerto1.Localidad (@vuelo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)
+                                    </strong>
+                                </div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <span class="text-muted d-block">Salida:</span>
+                                        <span class="text-dark fw-semibold">@vuelo.Frecuencia.HoraSalida.ToString(@"hh\:mm")</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <span class="text-muted d-block">Llegada:</span>
+                                        <span class="text-dark fw-semibold">@vuelo.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</span>
+                                    </div>
+                                </div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <span class="text-muted d-block">Aeronave:</span>
+                                        <span class="text-dark">Embraer Phenom 300E</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <span class="text-muted d-block">Matrícula:</span>
+                                        <span class="text-dark fw-semibold">@(vuelo.Aeronave != null ? vuelo.Aeronave.Matricula : "Pendiente")</span>
+                                    </div>
+                                </div>
+                                <div class="border-top pt-2">
+                                    <span class="text-muted d-block mb-1">Capacidad e Inventario:</span>
+                                    <span>Capacidad total: <strong>7 asientos</strong></span> &middot;
+                                    <span>Ocupados: <strong>@vuelo.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA")</strong></span> &middot;
+                                    <span>Libres: <strong class="text-success">@(7 - vuelo.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA"))</strong></span>
+                                </div>
+                            </div>
+                            <div class="modal-footer bg-light py-2">
+                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <p class="text-muted small text-center pt-2">
+        <em>La disponibilidad se verificará para la fecha y el vuelo seleccionados.</em>
+    </p>
+
+</main>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('.btn-filtro').on('click', function () {
+                $('.btn-filtro').removeClass('active');
+                $(this).addClass('active');
+
+                var filtro = $(this).data('filtro');
+                var count = 0;
+
+                $('.tarjeta-vuelo').each(function () {
+                    var jornada = $(this).data('jornada');
+                    if (filtro === 'todos' || jornada === filtro) {
+                        $(this).show();
+                        count++;
+                    } else {
+                        $(this).hide();
+                    }
+                });
+
+                $('#conteoVuelos').text(count);
+            });
+        });
+    </script>
+}
