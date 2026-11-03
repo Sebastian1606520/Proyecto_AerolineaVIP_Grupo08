@@ -48,17 +48,17 @@ namespace Con_Autenticacion.Models
 
     public class LoginViewModel
     {
-        [Required(ErrorMessage = "Ingrese su nombre de usuario.")]
+        [Required(ErrorMessage = "El nombre de usuario o correo es obligatorio.")]
         [StringLength(256, ErrorMessage = "Máximo 256 caracteres.")]
         [Display(Name = "Nombre de usuario")]
         public string UserName { get; set; }
 
-        [Required(ErrorMessage = "Ingrese su contraseña.")]
+        [Required(ErrorMessage = "La contraseña es obligatoria.")]
         [DataType(DataType.Password)]
         [Display(Name = "Contraseña")]
         public string Password { get; set; }
 
-        [Display(Name = "Recordar Cuenta")]
+        [Display(Name = "¿Recordar mi cuenta en este equipo?")]
         public bool RememberMe { get; set; }
     }
 
@@ -119,7 +119,7 @@ namespace Con_Autenticacion.Models
     public class ForgotPasswordViewModel
     {
         [Required(ErrorMessage = "El correo electrónico es obligatorio.")]
-        [EmailAddress(ErrorMessage = "Ingrese un correo electrónico válido.")]
+        [EmailAddress(ErrorMessage = "Ingrese un correo electrónico válido (ej.: usuario@ejemplo.com).")]
         [Display(Name = "Correo electrónico")]
         public string Email { get; set; }
     }

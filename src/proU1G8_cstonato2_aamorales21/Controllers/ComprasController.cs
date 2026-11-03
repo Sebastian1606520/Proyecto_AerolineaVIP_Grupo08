@@ -54,16 +54,33 @@ namespace Con_Autenticacion.Controllers
         }
 
         // Devuelve null si la reserva puede pagarse, o el motivo por el que no
+        // Devuelve null si la reserva puede pagarse, o el motivo por el que no.
+        // Si el plazo de retención venció, la reserva pasa a EXPIRADA y sus asientos a LIBERADA (DP-07)
         private string MotivoNoPagable(Reserva r)
         {
             if (r.EstadoReservaCodigo == "CONFIRMADA")
                 return "Esta reserva ya fue pagada.";
+
             if (r.EstadoReservaCodigo != "PENDIENTE")
                 return "Esta reserva no se encuentra pendiente de pago.";
+
             if (r.FechaExpiracion.HasValue && r.FechaExpiracion.Value < DateTime.Now)
-                return "La reserva expiró y sus asientos fueron liberados. Realice una nueva reserva.";
+            {
+                r.EstadoReservaCodigo = "EXPIRADA";
+                foreach (var asig in r.ReservaPasajeroVuelo.Where(a => a.EstadoAsignacionCodigo == "PENDIENTE"))
+                {
+                    asig.EstadoAsignacionCodigo = "LIBERADA";
+                }
+                db.SaveChanges();   // libera los asientos en la base
+
+                return "El plazo de retención para pagar esta reserva venció el "
+                     + r.FechaExpiracion.Value.ToString("dd/MM/yyyy HH:mm")
+                     + ". Los asientos fueron liberados; realice una nueva reserva.";
+            }
+
             if (!r.ReservaPasajeroVuelo.Any())
                 return "La reserva no tiene pasajeros asignados.";
+
             return null;
         }
 
@@ -85,9 +102,9 @@ namespace Con_Autenticacion.Controllers
             {
                 var primero = tramos.First();
                 var ultimo = tramos.Last();
-                ViewBag.CodigoRuta = primero.Frecuencia.Ruta.Aeropuerto.CodigoIATA + " → " + ultimo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA;
-                ViewBag.RutaStr = primero.Frecuencia.Ruta.Aeropuerto.Localidad + " (" + primero.Frecuencia.Ruta.Aeropuerto.CodigoIATA + ") → "
-                                + ultimo.Frecuencia.Ruta.Aeropuerto1.Localidad + " (" + ultimo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA + ")";
+                ViewBag.CodigoRuta = primero.Frecuencia.Ruta.Aeropuerto1.CodigoIATA + " → " + ultimo.Frecuencia.Ruta.Aeropuerto.CodigoIATA;
+                ViewBag.RutaStr = primero.Frecuencia.Ruta.Aeropuerto1.Localidad + " (" + primero.Frecuencia.Ruta.Aeropuerto1.CodigoIATA + ") → "
+                                + ultimo.Frecuencia.Ruta.Aeropuerto.Localidad + " (" + ultimo.Frecuencia.Ruta.Aeropuerto.CodigoIATA + ")";
                 ViewBag.FechaVuelo = primero.FechaOperacion.ToString("dd/MM/yyyy");
                 ViewBag.HorarioStr = primero.Frecuencia.HoraSalida.ToString(@"hh\:mm") + " – " + ultimo.Frecuencia.HoraLlegada.ToString(@"hh\:mm")
                                    + (tramos.Count > 1 ? " (" + tramos.Count + " tramos, escala en GYE)" : "");

@@ -1,49 +1,51 @@
-﻿@using Con_Autenticacion.Models;
-@model Vuelo
+﻿@model Con_Autenticacion.Models.Vuelo
 @{
     ViewBag.Title = "Registro de pasajeros";
     Layout = "~/Views/Shared/_Layout.cshtml";
-
-    var tramos = (List<Vuelo>)ViewBag.Tramos;
-    var codigos = (List<List<string>>)ViewBag.CodigosPorPasajero;
-    var ingresados = ViewBag.PasajerosIngresados as List<Pasajero>;
-    int totalPasajeros = codigos.Count;
-    bool esItinerario = tramos.Count > 1;
-    var ultimo = tramos.Last();
 }
 
 <style>
-    .step-indicator {
-        font-size: 0.8rem;
-        letter-spacing: 0.5px;
+    .step-item {
+        font-size: 0.78rem;
+        letter-spacing: 0.8px;
+        color: #94a3b8;
     }
 
-    .step-item.active {
-        color: #0f172a;
-        font-weight: 700;
-        border-bottom: 2px solid #0f172a;
-    }
+        .step-item.active {
+            color: #0f172a;
+            font-weight: 700;
+            border-bottom: 2px solid #0f172a;
+        }
 
+    /* Tarjetas de Pasajeros */
     .passenger-block {
         border: 1px solid #e2e8f0;
-        border-radius: 0.75rem;
+        border-radius: 14px;
         background: #ffffff;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
 
+        .passenger-block:focus-within {
+            border-color: #cbd5e1;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07);
+        }
+
     .passenger-block-header {
-        background-color: #f8fafc;
+        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
         border-bottom: 1px solid #e2e8f0;
-        border-top-left-radius: 0.75rem;
-        border-top-right-radius: 0.75rem;
+        border-top-left-radius: 14px;
+        border-top-right-radius: 14px;
         padding: 1rem 1.25rem;
     }
 
     .summary-card {
         border: 1px solid #e2e8f0;
-        border-radius: 0.75rem;
+        border-radius: 14px;
         background: #ffffff;
         position: sticky;
-        top: 20px;
+        top: 24px;
+        box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05);
     }
 
     @@media (max-width: 991.98px) {
@@ -51,36 +53,49 @@
             position: static;
         }
     }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #0f172a;
+        box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.1);
+    }
 </style>
 
-<main class="container py-5">
+<main class="container py-4 py-lg-5">
 
-    <!-- Indicador de pasos (paso 2) -->
-    <div class="d-flex align-items-center justify-content-center gap-4 text-muted small text-uppercase mb-4 pb-2 border-bottom border-light-subtle step-indicator">
-        <span class="pb-2 text-secondary">1. Asientos</span>
-        <span class="pb-2">&rarr;</span>
+    <div class="d-flex align-items-center justify-content-center gap-3 gap-md-4 text-uppercase mb-4 pb-2 border-bottom border-light-subtle step-indicator">
+        <span class="step-item pb-2 text-secondary">1. Asientos</span>
+        <span class="step-item pb-2">&rarr;</span>
         <span class="step-item active pb-2">2. Pasajeros</span>
-        <span class="pb-2">&rarr;</span>
-        <span class="pb-2">3. Reserva</span>
-        <span class="pb-2">&rarr;</span>
-        <span class="pb-2">4. Pago</span>
+        <span class="step-item pb-2">&rarr;</span>
+        <span class="step-item pb-2 text-secondary">3. Confirmar</span>
+        <span class="step-item pb-2">&rarr;</span>
+        <span class="step-item pb-2 text-secondary">4. Pago</span>
     </div>
 
-    <!-- Encabezado -->
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3">
-        <div>
-            <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
-                Aerolínea VIP &middot; Pantalla 9
-            </span>
-            <h1 class="h3 fw-bold text-dark mb-1">Registro de datos del pasajero</h1>
-            <p class="text-secondary small mb-0">
-                Ingrese los datos de cada persona que viaja. Puede ser distinta del usuario que reserva.
-            </p>
+    <!-- Encabezado Corporativo -->
+    <div class="card border border-light-subtle shadow-sm rounded-3 bg-white mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-dark text-warning px-3 py-1 text-uppercase fw-semibold" style="letter-spacing: 1px; font-size: 0.72rem;">
+                            Aerolínea VIP &middot; Pantalla 9
+                        </span>
+                        <span class="badge bg-light text-secondary border fw-normal" style="font-size: 0.75rem;">
+                            Registro Oficial
+                        </span>
+                    </div>
+                    <h1 class="h3 fw-bold text-dark mb-1">Registro de datos del pasajero</h1>
+                    <p class="text-secondary small mb-0">
+                        Ingrese los datos oficiales de cada viajero conforme a su cédula o pasaporte.
+                    </p>
+                </div>
+                <a href="@Url.Action("SeleccionAsiento", "Reservas", new { id = Model.VueloId, pasajeros = ViewBag.TotalPasajeros })"
+                   class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+                    &larr; Regresar a asientos
+                </a>
+            </div>
         </div>
-        <a href="@Url.Action("SeleccionAsiento", "Reservas", new { id = Model.VueloId, pasajeros = totalPasajeros })"
-           class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
-            &larr; Regresar a asientos
-        </a>
     </div>
 
     @if (TempData["Error"] != null)
@@ -100,25 +115,23 @@
             <div class="col-12 col-lg-8">
                 <div class="d-flex flex-column gap-4">
 
-                    @for (int i = 0; i < totalPasajeros; i++)
+                    @for (int i = 0; i < (int)ViewBag.TotalPasajeros; i++)
                     {
-                        // Datos ya escritos (si el servidor devolvió un error)
-                        var d = (ingresados != null && i < ingresados.Count) ? ingresados[i] : null;
-                        string tipo = d != null && d.TipoDocumentoCodigo == "PASAPORTE" ? "PASAPORTE" : "CEDULA";
-
-                        <div class="passenger-block shadow-sm">
+                        <div class="passenger-block">
                             <div class="passenger-block-header d-flex flex-wrap justify-content-between align-items-center gap-2">
                                 <div class="d-flex flex-wrap align-items-center gap-2">
-                                    <span class="badge bg-dark text-white rounded-pill px-2 py-1" style="font-size: 0.75rem;">Pasajero @(i + 1)</span>
-                                    @for (int k = 0; k < codigos[i].Count; k++)
+                                    <span class="badge bg-dark text-white rounded-pill px-3 py-1" style="font-size: 0.75rem;">
+                                        Pasajero @(i + 1)
+                                    </span>
+                                    @for (int k = 0; k < ViewBag.CodigosPorPasajero[i].Count; k++)
                                     {
-                                        <span class="fw-bold text-dark small">
-                                            @(esItinerario ? "Tramo " + (k + 1) + ":" : "Asiento") @codigos[i][k]
+                                        <span class="badge bg-warning bg-opacity-10 text-dark border border-warning-subtle px-2 py-1 small fw-bold">
+                                            @((bool)ViewBag.EsItinerario ? "Tramo " + (k + 1) + ":" : "Asiento:") @ViewBag.CodigosPorPasajero[i][k]
                                         </span>
                                     }
                                 </div>
-                                <span class="badge bg-info bg-opacity-10 text-info border border-info-subtle small fw-semibold">
-                                    Selección temporal
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle small fw-semibold">
+                                    Butaca reservada
                                 </span>
                             </div>
 
@@ -130,8 +143,8 @@
                                             Tipo de documento <span class="text-danger">*</span>
                                         </label>
                                         <select id="tipo_@i" name="pasajeros[@i].TipoDocumentoCodigo" class="form-select form-select-sm py-2 tipo-doc-select" data-index="@i" required>
-                                            <option value="CEDULA" @(tipo == "CEDULA" ? "selected" : "")>Cédula</option>
-                                            <option value="PASAPORTE" @(tipo == "PASAPORTE" ? "selected" : "")>Pasaporte</option>
+                                            <option value="CEDULA" @(ViewBag.PasajerosIngresados != null && i < ViewBag.PasajerosIngresados.Count && ViewBag.PasajerosIngresados[i].TipoDocumentoCodigo == "PASAPORTE" ? "" : "selected")>Cédula</option>
+                                            <option value="PASAPORTE" @(ViewBag.PasajerosIngresados != null && i < ViewBag.PasajerosIngresados.Count && ViewBag.PasajerosIngresados[i].TipoDocumentoCodigo == "PASAPORTE" ? "selected" : "")>Pasaporte</option>
                                         </select>
                                     </div>
                                     <div class="col-12 col-md-7">
@@ -140,38 +153,38 @@
                                         </label>
                                         <input type="text" name="pasajeros[@i].NumeroDocumento" id="doc_@i"
                                                class="form-control form-control-sm py-2 doc-input"
-                                               value="@(d != null ? d.NumeroDocumento : "")"
-                                               placeholder="Cédula: 10 dígitos · Pasaporte: 5 a 20 letras o números"
+                                               value="@(ViewBag.PasajerosIngresados != null && i < ViewBag.PasajerosIngresados.Count ? ViewBag.PasajerosIngresados[i].NumeroDocumento : "")"
+                                               placeholder="Cédula: 10 dígitos · Pasaporte: 5 a 20 caracteres"
                                                maxlength="20" required aria-describedby="error_doc_@i" />
                                         <small class="text-danger d-none" id="error_doc_@i" role="alert" style="font-size: 0.75rem;"></small>
                                     </div>
                                 </div>
 
-                                <!-- Nombres y apellidos -->
+                                <!-- Nombres y Apellidos -->
                                 <div class="row g-3 mb-3">
                                     <div class="col-12 col-md-6">
                                         <label for="nom_@i" class="form-label small fw-semibold text-secondary mb-1">
-                                            Nombres <span class="text-danger">*</span>
+                                            Nombres completos <span class="text-danger">*</span>
                                         </label>
                                         <input type="text" id="nom_@i" name="pasajeros[@i].Nombres"
                                                class="form-control form-control-sm py-2"
-                                               value="@(d != null ? d.Nombres : "")"
-                                               placeholder="Ej.: María José" maxlength="100" required
+                                               value="@(ViewBag.PasajerosIngresados != null && i < ViewBag.PasajerosIngresados.Count ? ViewBag.PasajerosIngresados[i].Nombres : "")"
+                                               placeholder="Ej.: Carlos Sebastián" maxlength="100" required
                                                pattern="[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+" title="Solo letras y espacios" />
                                     </div>
                                     <div class="col-12 col-md-6">
                                         <label for="ape_@i" class="form-label small fw-semibold text-secondary mb-1">
-                                            Apellidos <span class="text-danger">*</span>
+                                            Apellidos completos <span class="text-danger">*</span>
                                         </label>
                                         <input type="text" id="ape_@i" name="pasajeros[@i].Apellidos"
                                                class="form-control form-control-sm py-2"
-                                               value="@(d != null ? d.Apellidos : "")"
-                                               placeholder="Ej.: Pérez Torres" maxlength="100" required
+                                               value="@(ViewBag.PasajerosIngresados != null && i < ViewBag.PasajerosIngresados.Count ? ViewBag.PasajerosIngresados[i].Apellidos : "")"
+                                               placeholder="Ej.: Pérez Mendoza" maxlength="100" required
                                                pattern="[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+" title="Solo letras y espacios" />
                                     </div>
                                 </div>
 
-                                <!-- Opcionales -->
+                                <!-- Contacto Opcional -->
                                 <div class="row g-3">
                                     <div class="col-12 col-md-4">
                                         <label for="nac_@i" class="form-label small fw-semibold text-secondary mb-1">
@@ -179,27 +192,27 @@
                                         </label>
                                         <input type="date" id="nac_@i" name="pasajeros[@i].FechaNacimiento"
                                                class="form-control form-control-sm py-2"
-                                               value="@(d != null && d.FechaNacimiento.HasValue ? d.FechaNacimiento.Value.ToString("yyyy-MM-dd") : "")"
+                                               value="@(ViewBag.PasajerosIngresados != null && i < ViewBag.PasajerosIngresados.Count && ViewBag.PasajerosIngresados[i].FechaNacimiento.HasValue ? ViewBag.PasajerosIngresados[i].FechaNacimiento.Value.ToString("yyyy-MM-dd") : "")"
                                                min="1900-01-02" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
                                     </div>
                                     <div class="col-12 col-md-4">
                                         <label for="mail_@i" class="form-label small fw-semibold text-secondary mb-1">
-                                            Correo <span class="text-muted fw-normal">(opcional)</span>
+                                            Correo electrónico <span class="text-muted fw-normal">(opcional)</span>
                                         </label>
                                         <input type="email" id="mail_@i" name="pasajeros[@i].Correo"
                                                class="form-control form-control-sm py-2"
-                                               value="@(d != null ? d.Correo : "")"
-                                               placeholder="correo@ejemplo.com" maxlength="256" />
+                                               value="@(ViewBag.PasajerosIngresados != null && i < ViewBag.PasajerosIngresados.Count ? ViewBag.PasajerosIngresados[i].Correo : "")"
+                                               placeholder="cliente@ejemplo.com" maxlength="256" />
                                     </div>
                                     <div class="col-12 col-md-4">
                                         <label for="tel_@i" class="form-label small fw-semibold text-secondary mb-1">
-                                            Teléfono <span class="text-muted fw-normal">(opcional)</span>
+                                            Teléfono móvil <span class="text-muted fw-normal">(opcional)</span>
                                         </label>
                                         <input type="tel" id="tel_@i" name="pasajeros[@i].Telefono"
                                                class="form-control form-control-sm py-2"
-                                               value="@(d != null ? d.Telefono : "")"
-                                               placeholder="Ej.: 0990000000" maxlength="20"
-                                               pattern="[0-9 +]{1,20}" title="Solo dígitos, espacios y +" />
+                                               value="@(ViewBag.PasajerosIngresados != null && i < ViewBag.PasajerosIngresados.Count ? ViewBag.PasajerosIngresados[i].Telefono : "")"
+                                               placeholder="Ej.: 0991234567" maxlength="20"
+                                               pattern="[0-9 +]{1,20}" title="Solo números, espacios y +" />
                                     </div>
                                 </div>
                             </div>
@@ -208,28 +221,30 @@
 
                 </div>
 
-                <!-- Botones -->
+                <!-- Botones de Acción -->
                 <div class="d-flex flex-wrap justify-content-between align-items-center mt-4 pt-3 border-top border-light-subtle gap-2">
-                    <a href="@Url.Action("SeleccionAsiento", "Reservas", new { id = Model.VueloId, pasajeros = totalPasajeros })"
+                    <a href="@Url.Action("SeleccionAsiento", "Reservas", new { id = Model.VueloId, pasajeros = ViewBag.TotalPasajeros })"
                        class="btn btn-outline-secondary px-3 py-2 fw-semibold small">
                         &larr; Regresar a asientos
                     </a>
-                    <button type="submit" id="btnContinuar" class="btn btn-dark px-4 py-2 fw-semibold">
-                        Continuar &rarr;
+                    <button type="submit" id="btnContinuar" class="btn btn-dark px-4 py-2 fw-semibold shadow-sm">
+                        Continuar a confirmación &rarr;
                     </button>
                 </div>
             </div>
 
             <!-- Resumen lateral -->
             <div class="col-12 col-lg-4">
-                <div class="summary-card shadow-sm p-4">
-                    <h2 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">Resumen</h2>
+                <div class="summary-card p-4">
+                    <h2 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">
+                        Resumen del Itinerario
+                    </h2>
 
                     <div class="mb-3">
-                        <span class="text-muted d-block small">Ruta</span>
+                        <span class="text-muted d-block small">Ruta de vuelo</span>
                         <strong class="text-dark">
-                            @Model.Frecuencia.Ruta.Aeropuerto.Localidad (@Model.Frecuencia.Ruta.Aeropuerto.CodigoIATA) &rarr;
-                            @ultimo.Frecuencia.Ruta.Aeropuerto1.Localidad (@ultimo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)
+                            @Model.Frecuencia.Ruta.Aeropuerto1.Localidad (@Model.Frecuencia.Ruta.Aeropuerto1.CodigoIATA) &rarr;
+                            @ViewBag.UltimoTramo.Frecuencia.Ruta.Aeropuerto.Localidad (@ViewBag.UltimoTramo.Frecuencia.Ruta.Aeropuerto.CodigoIATA)
                         </strong>
                     </div>
 
@@ -239,40 +254,46 @@
                             <span class="text-dark fw-semibold">@Model.FechaOperacion.ToString("dd/MM/yyyy")</span>
                         </div>
                         <div class="col-6">
-                            <span class="text-muted d-block small">Tramos</span>
-                            <span class="text-dark fw-semibold">@tramos.Count</span>
+                            <span class="text-muted d-block small">Aeronave</span>
+                            <span class="text-dark fw-semibold">Phenom 300E</span>
                         </div>
                     </div>
 
-                    <ul class="list-unstyled small mb-3">
-                        @for (int k = 0; k < tramos.Count; k++)
+                    <ul class="list-unstyled small mb-3 border-top pt-2">
+                        @for (int k = 0; k < ViewBag.Tramos.Count; k++)
                         {
-                            var t = tramos[k];
-                            <li class="mb-1">
-                                <strong>@(esItinerario ? "Tramo " + (k + 1) + ":" : "Vuelo:")</strong>
-                                VIP@(t.VueloId.ToString("D5")) &middot;
-                                @t.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @t.Frecuencia.Ruta.Aeropuerto1.CodigoIATA &middot;
-                                @t.Frecuencia.HoraSalida.ToString(@"hh\:mm")&ndash;@t.Frecuencia.HoraLlegada.ToString(@"hh\:mm")
+                            <li class="mb-2">
+                                <span class="badge bg-light text-secondary border me-1">
+                                    @((bool)ViewBag.EsItinerario ? "Tramo " + (k + 1) : "Vuelo")
+                                </span>
+                                <strong>VIP@(((Con_Autenticacion.Models.Vuelo)ViewBag.Tramos[k]).VueloId.ToString("D5"))</strong> &middot;
+                                @(((Con_Autenticacion.Models.Vuelo)ViewBag.Tramos[k]).Frecuencia.Ruta.Aeropuerto1.CodigoIATA) &rarr;
+                                @(((Con_Autenticacion.Models.Vuelo)ViewBag.Tramos[k]).Frecuencia.Ruta.Aeropuerto.CodigoIATA)
+                                <span class="text-muted d-block ms-4">
+                                    Salida: @(((Con_Autenticacion.Models.Vuelo)ViewBag.Tramos[k]).Frecuencia.HoraSalida.ToString(@"hh\:mm"))
+                                </span>
                             </li>
                         }
                     </ul>
 
                     <div class="border-top pt-3">
-                        <span class="text-muted d-block small mb-2">Asientos</span>
-                        @for (int i = 0; i < totalPasajeros; i++)
+                        <span class="text-muted d-block small mb-2 fw-semibold">Butacas Asignadas:</span>
+                        @for (int i = 0; i < (int)ViewBag.TotalPasajeros; i++)
                         {
-                            <div class="small mb-1">
-                                Pasajero @(i + 1):
-                                @for (int k = 0; k < codigos[i].Count; k++)
-                                {
-                                    <span class="badge bg-dark text-warning px-2 py-1">@codigos[i][k]</span>
-                                }
+                            <div class="d-flex justify-content-between align-items-center small mb-2 p-2 bg-light rounded-2">
+                                <span class="fw-bold text-secondary">Pasajero @(i + 1)</span>
+                                <div>
+                                    @for (int k = 0; k < ViewBag.CodigosPorPasajero[i].Count; k++)
+                                    {
+                                        <span class="badge bg-dark text-warning px-2 py-1">@ViewBag.CodigosPorPasajero[i][k]</span>
+                                    }
+                                </div>
                             </div>
                         }
                     </div>
 
                     <div class="alert alert-light border small mt-4 mb-0 text-secondary">
-                        &#9432; Verifique que los nombres coincidan con el documento de identidad.
+                        &#9432; Verifique que los nombres y documentos coincidan exactamente con la identificación oficial.
                     </div>
                 </div>
             </div>
@@ -283,63 +304,111 @@
 </main>
 
 @section Scripts {
-    <script>
-                $(function () {
-                    // Validación del documento según el tipo (cédula 10 dígitos, pasaporte 5 a 20 alfanuméricos)
-                    function validarDocumento(i) {
-                        var $input = $('#doc_' + i);
-                        var tipo = $('#tipo_' + i).val();
-                        var valor = $input.val().trim();
-                        var mensaje = '';
+    <script type="application/javascript">
+        function validarCedulaEcuatoriana(cedula) {
+            if (!cedula || cedula.length !== 10 || !/^\d+$/.test(cedula)) return false;
+            var provincia = parseInt(cedula.substring(0, 2), 10);
+            if ((provincia < 1 || provincia > 24) && provincia !== 30) return false;
+            var tercerDigito = parseInt(cedula.substring(2, 3), 10);
+            if (tercerDigito >= 6) return false;
 
-                        if (tipo === 'CEDULA') {
-                            valor = valor.replace(/\D/g, '');
-                            $input.val(valor);
-                            if (valor.length !== 10) { mensaje = '⚠ La cédula debe tener 10 dígitos.'; }
-                        } else {
-                            valor = valor.toUpperCase();
-                            $input.val(valor);
-                            if (!/^[A-Z0-9]{5,20}$/.test(valor)) { mensaje = '⚠ El pasaporte debe tener entre 5 y 20 letras o números.'; }
+            var suma = 0;
+            var coeficientes = [2, 1, 2, 1, 2, 1, 2, 1, 2];
+            for (var i = 0; i < 9; i++) {
+                var valor = parseInt(cedula.charAt(i), 10) * coeficientes[i];
+                suma += (valor >= 10) ? valor - 9 : valor;
+            }
+            var digitoVerificador = parseInt(cedula.charAt(9), 10);
+            var decenaSuperior = Math.ceil(suma / 10) * 10;
+            var resultado = decenaSuperior - suma;
+            if (resultado === 10) resultado = 0;
+            return resultado === digitoVerificador;
+        }
+
+        function validarCampoDocumento(indice) {
+            var input = document.getElementById('doc_' + indice);
+            var tipoSelect = document.getElementById('tipo_' + indice);
+            var errorTag = document.getElementById('error_doc_' + indice);
+
+            if (!input || !tipoSelect || !errorTag) return true;
+
+            var tipo = tipoSelect.value;
+            var valor = input.value.trim();
+            var mensaje = '';
+
+            if (tipo === 'CEDULA') {
+                valor = valor.replace(/\D/g, '');
+                input.value = valor;
+                if (valor.length > 0 && (valor.length !== 10 || !validarCedulaEcuatoriana(valor))) {
+                    mensaje = '⚠ Cédula ecuatoriana no válida (debe tener 10 dígitos correctos).';
+                }
+            } else {
+                valor = valor.toUpperCase();
+                input.value = valor;
+                if (valor.length > 0 && !/^[A-Z0-9]{5,20}$/.test(valor)) {
+                    mensaje = '⚠ El pasaporte debe tener entre 5 y 20 caracteres alfanuméricos.';
+                }
+            }
+
+            if (mensaje) {
+                errorTag.textContent = mensaje;
+                errorTag.classList.remove('d-none');
+                return false;
+            } else {
+                errorTag.classList.add('d-none');
+                return true;
+            }
+        }
+
+        document.addEventListener('input', function (ev) {
+            var elem = ev.target;
+            if (elem && elem.classList && elem.classList.contains('doc-input')) {
+                validarCampoDocumento(elem.id.replace('doc_', ''));
+            }
+        });
+
+        document.addEventListener('change', function (ev) {
+            var elem = ev.target;
+            if (elem && elem.classList && elem.classList.contains('tipo-doc-select')) {
+                validarCampoDocumento(elem.getAttribute('data-index'));
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var form = document.getElementById('formRegistroPasajeros');
+            if (form) {
+                form.addEventListener('submit', function (ev) {
+                    var inputs = document.querySelectorAll('.doc-input');
+                    var esValido = true;
+                    var documentos = [];
+
+                    for (var i = 0; i < inputs.length; i++) {
+                        var idx = inputs[i].id.replace('doc_', '');
+                        if (!validarCampoDocumento(idx)) {
+                            esValido = false;
                         }
 
-                        if (mensaje && valor.length > 0) {
-                            $('#error_doc_' + i).text(mensaje).removeClass('d-none');
-                            return false;
+                        var tipoDoc = document.getElementById('tipo_' + idx);
+                        var clave = (tipoDoc ? tipoDoc.value : '') + '|' + inputs[i].value.trim().toUpperCase();
+
+                        if (inputs[i].value.trim() && documentos.indexOf(clave) !== -1) {
+                            alert('No puede registrar el mismo número de documento para dos pasajeros.');
+                            esValido = false;
                         }
-                        $('#error_doc_' + i).addClass('d-none');
-                        return mensaje === '';
+                        documentos.push(clave);
                     }
 
-                    $('.doc-input').on('input', function () {
-                        validarDocumento($(this).attr('id').replace('doc_', ''));
-                    });
-
-                    $('.tipo-doc-select').on('change', function () {
-                        validarDocumento($(this).data('index'));
-                    });
-
-                    $('#formRegistroPasajeros').on('submit', function (e) {
-                        var ok = true;
-                        var docs = [];
-
-                        $('.doc-input').each(function () {
-                            var i = $(this).attr('id').replace('doc_', '');
-                            if (!validarDocumento(i)) { ok = false; }
-
-                            var clave = $('#tipo_' + i).val() + '|' + $(this).val().trim().toUpperCase();
-                            if ($(this).val().trim() && docs.indexOf(clave) !== -1) {
-                                alert('No puede registrar el mismo número de documento para dos pasajeros distintos.');
-                                ok = false;
-                            }
-                            docs.push(clave);
-                        });
-
-                        if (!ok) {
-                            e.preventDefault();
-                            return;
+                    if (!esValido) {
+                        ev.preventDefault();
+                    } else {
+                        var btn = document.getElementById('btnContinuar');
+                        if (btn) {
+                            btn.setAttribute('disabled', 'disabled');
+                            btn.textContent = 'Guardando…';
                         }
-                        $('#btnContinuar').prop('disabled', true).text('Guardando…');
-                    });
+                    }
                 });
+            }
+        });
     </script>
 }

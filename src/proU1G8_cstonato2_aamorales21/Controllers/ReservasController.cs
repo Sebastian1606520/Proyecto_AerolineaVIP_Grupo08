@@ -25,6 +25,8 @@ namespace Con_Autenticacion.Controllers
             return View(reserva.ToList());
         }
 
+        // Devuelve los tramos que se venden juntos: 1 vuelo directo, o los 2 tramos del
+        // itinerario dominical de Galápagos (DP-09). null si el itinerario está incompleto.
         private List<Vuelo> ObtenerTramos(Vuelo vuelo)
         {
             if (vuelo.Frecuencia.DiaSemana != 7)
@@ -32,22 +34,32 @@ namespace Con_Autenticacion.Controllers
                 return new List<Vuelo> { vuelo };
             }
 
-            string origen = vuelo.Frecuencia.Ruta.Aeropuerto.CodigoIATA;
-            string destino = vuelo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA;
-            bool esIda = origen == "UIO" || destino == "GPS";
-            string[] rutasItinerario = esIda
-                ? new[] { "UIO-GYE", "GYE-GPS" }
-                : new[] { "GPS-GYE", "GYE-UIO" };
+            int uioId = db.Aeropuerto.Where(a => a.CodigoIATA == "UIO").Select(a => a.AeropuertoId).FirstOrDefault();
+            int gyeId = db.Aeropuerto.Where(a => a.CodigoIATA == "GYE").Select(a => a.AeropuertoId).FirstOrDefault();
+            int gpsId = db.Aeropuerto.Where(a => a.CodigoIATA == "GPS").Select(a => a.AeropuertoId).FirstOrDefault();
 
-            DateTime fecha = vuelo.FechaOperacion;
-            var tramos = db.Vuelo
+            // Ida: UIO → GYE → GPS   ·   Regreso: GPS → GYE → UIO
+            // (se compara por Id: en el .edmx Aeropuerto = DESTINO y Aeropuerto1 = ORIGEN)
+            var ruta = vuelo.Frecuencia.Ruta;
+            bool esIda = ruta.AeropuertoOrigenId == uioId || ruta.AeropuertoDestinoId == gpsId;
+            int origenId = esIda ? uioId : gpsId;
+            int destinoId = esIda ? gpsId : uioId;
+
+            DateTime fecha = vuelo.FechaOperacion.Date;
+            var vuelosDia = db.Vuelo
+                .Include(v => v.Frecuencia.Ruta.Aeropuerto)
+                .Include(v => v.Frecuencia.Ruta.Aeropuerto1)
+                .Include(v => v.Aeronave)
+                .Include(v => v.ReservaPasajeroVuelo)
                 .Where(v => v.FechaOperacion == fecha)
-                .ToList()
-                .Where(v => rutasItinerario.Contains(v.Frecuencia.Ruta.Aeropuerto.CodigoIATA + "-" + v.Frecuencia.Ruta.Aeropuerto1.CodigoIATA))
-                .OrderBy(v => v.Frecuencia.HoraSalida)
                 .ToList();
 
-            return tramos.Count == 2 ? tramos : null;
+            var tramo1 = vuelosDia.FirstOrDefault(v => v.Frecuencia.Ruta.AeropuertoOrigenId == origenId
+                                                    && v.Frecuencia.Ruta.AeropuertoDestinoId == gyeId);
+            var tramo2 = vuelosDia.FirstOrDefault(v => v.Frecuencia.Ruta.AeropuertoOrigenId == gyeId
+                                                    && v.Frecuencia.Ruta.AeropuertoDestinoId == destinoId);
+
+            return (tramo1 != null && tramo2 != null) ? new List<Vuelo> { tramo1, tramo2 } : null;
         }
 
         private int LibresEnVuelo(Vuelo v)
@@ -78,28 +90,13 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("Buscar", "Vuelos");
             }
 
-            // Cada tramo debe estar operativo y con aeronave (RNP-01)
-            foreach (var t in tramos)
-            {
-                if (t.EstadoVueloCodigo == "CANCELADO")
-                {
-                    TempData["Error"] = "El vuelo seleccionado no está disponible o ha sido cancelado.";
-                    return RedirectToAction("Buscar", "Vuelos");
-                }
-                if (t.AeronaveId == null)
-                {
-                    TempData["Error"] = "El vuelo no tiene aeronave asignada; sus asientos no pueden reservarse.";
-                    return RedirectToAction("Buscar", "Vuelos");
-                }
-            }
-
             int cantidadPasajeros = (pasajeros >= 1 && pasajeros <= 7) ? pasajeros : 1;
 
-            // Cupo suficiente en TODOS los tramos (mínimo entre tramos, DP-09)
-            int disponibles = tramos.Min(t => LibresEnVuelo(t));
-            if (disponibles < cantidadPasajeros)
+            // Misma regla que usa Resultados (VueloNegocio.EsVendible), repetida en el servidor:
+            // no cancelado, con aeronave, sin partir, con 60 min de anticipación y cupo en TODOS los tramos
+            if (tramos.Any(t => !t.EsVendible(cantidadPasajeros)))
             {
-                TempData["Error"] = "No quedan suficientes asientos disponibles para la cantidad de pasajeros requerida.";
+                TempData["Error"] = "Este vuelo ya no está disponible para " + cantidadPasajeros + " pasajero(s): está cancelado, sin aeronave, sin cupo suficiente o muy próximo a salir.";
                 return RedirectToAction("Resultados", "Vuelos", new
                 {
                     origenId = tramos.First().Frecuencia.Ruta.AeropuertoOrigenId,
@@ -109,11 +106,11 @@ namespace Con_Autenticacion.Controllers
                 });
             }
 
-            ViewBag.Pasajeros = cantidadPasajeros;
-            ViewBag.HoraCorte = DateTime.Now.ToString("HH:mm");
             ViewBag.Tramos = tramos;
+            ViewBag.Pasajeros = cantidadPasajeros;
+            ViewBag.EsItinerario = tramos.Count > 1;
+            ViewBag.UltimoTramo = tramos.Last();
 
-            // El modelo es siempre el primer tramo
             return View(tramos.First());
         }
 
@@ -122,6 +119,7 @@ namespace Con_Autenticacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult SeleccionAsiento(int vueloId, int pasajeros, List<int> asientosSeleccionados, List<int> asientosTramo2)
         {
+            Reserva.LiberarVencidas(db);
             var vuelo = db.Vuelo.Find(vueloId);
             var tramos = vuelo != null ? ObtenerTramos(vuelo) : null;
             if (tramos == null)
@@ -225,7 +223,10 @@ namespace Con_Autenticacion.Controllers
             }
 
             ViewBag.Tramos = tramos;
+            ViewBag.UltimoTramo = tramos.Last();
+            ViewBag.EsItinerario = tramos.Count > 1;
             ViewBag.CodigosPorPasajero = codigosPorPasajero;
+            ViewBag.TotalPasajeros = codigosPorPasajero.Count;
             ViewBag.PasajerosIngresados = TempData["PasajerosIngresados"] as List<Pasajero>;
 
             return View(tramos.First());
@@ -249,46 +250,14 @@ namespace Con_Autenticacion.Controllers
                 return VolverAPasajeros(pasajeros, "Debe completar la información de todos los pasajeros.");
             }
 
-            var soloLetras = new System.Text.RegularExpressions.Regex(@"^[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]{1,100}$");
-            var pasaporte = new System.Text.RegularExpressions.Regex(@"^[A-Za-z0-9]{5,20}$");
-            var telefono = new System.Text.RegularExpressions.Regex(@"^[0-9 +]{1,20}$");
-            var validadorCorreo = new System.ComponentModel.DataAnnotations.EmailAddressAttribute();
-
-            // 1. Validaciones del wireframe (pantalla 9, puntos 9 a 13), repetidas en el servidor
+            // 1. Validaciones del wireframe (pantalla 9), en la clase de negocio Pasajero
             for (int i = 0; i < pasajeros.Count; i++)
             {
-                var p = pasajeros[i];
-                string n = "Pasajero " + (i + 1) + ": ";
-
-                p.NumeroDocumento = (p.NumeroDocumento ?? "").Trim().ToUpper();
-                p.Nombres = (p.Nombres ?? "").Trim();
-                p.Apellidos = (p.Apellidos ?? "").Trim();
-                p.Correo = string.IsNullOrWhiteSpace(p.Correo) ? null : p.Correo.Trim();
-                p.Telefono = string.IsNullOrWhiteSpace(p.Telefono) ? null : p.Telefono.Trim();
-
-                if (p.TipoDocumentoCodigo != "CEDULA" && p.TipoDocumentoCodigo != "PASAPORTE")
-                    return VolverAPasajeros(pasajeros, n + "seleccione el tipo de documento.");
-
-                if (p.TipoDocumentoCodigo == "CEDULA" && (p.NumeroDocumento.Length != 10 || !p.NumeroDocumento.All(char.IsDigit)))
-                    return VolverAPasajeros(pasajeros, n + "la cédula debe tener 10 dígitos.");
-
-                if (p.TipoDocumentoCodigo == "PASAPORTE" && !pasaporte.IsMatch(p.NumeroDocumento))
-                    return VolverAPasajeros(pasajeros, n + "el pasaporte debe tener entre 5 y 20 letras o números.");
-
-                if (!soloLetras.IsMatch(p.Nombres))
-                    return VolverAPasajeros(pasajeros, n + "los nombres son obligatorios y solo admiten letras y espacios.");
-
-                if (!soloLetras.IsMatch(p.Apellidos))
-                    return VolverAPasajeros(pasajeros, n + "los apellidos son obligatorios y solo admiten letras y espacios.");
-
-                if (p.FechaNacimiento.HasValue && (p.FechaNacimiento.Value.Date <= new DateTime(1900, 1, 1) || p.FechaNacimiento.Value.Date > DateTime.Today))
-                    return VolverAPasajeros(pasajeros, n + "la fecha de nacimiento debe ser posterior a 01/01/1900 y no futura.");
-
-                if (p.Correo != null && (p.Correo.Length > 256 || !validadorCorreo.IsValid(p.Correo)))
-                    return VolverAPasajeros(pasajeros, n + "el correo no tiene un formato válido.");
-
-                if (p.Telefono != null && !telefono.IsMatch(p.Telefono))
-                    return VolverAPasajeros(pasajeros, n + "el teléfono solo admite dígitos, espacios y «+» (máximo 20).");
+                string error = pasajeros[i].ValidarDatosCompletos(i + 1);
+                if (error != null)
+                {
+                    return VolverAPasajeros(pasajeros, error);
+                }
             }
 
             // 2. El mismo documento no puede repetirse en la reserva
@@ -428,6 +397,7 @@ namespace Con_Autenticacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult Confirmar(bool? aceptarCondiciones, string accionBoton, string correoCliente)
         {
+            Reserva.LiberarVencidas(db);
             List<Vuelo> tramos;
             List<List<int>> asientosPorTramo;
             List<int> pasajerosIds;

@@ -1,207 +1,442 @@
-﻿@using Con_Autenticacion.Models;
-@model Vuelo
+﻿@model Con_Autenticacion.Models.Vuelo
 @{
     ViewBag.Title = "Selección de asientos";
     Layout = "~/Views/Shared/_Layout.cshtml";
-
-    var tramos = (List<Vuelo>)ViewBag.Tramos;
-    int totalPasajeros = (int)ViewBag.Pasajeros;
-    bool esItinerario = tramos.Count > 1;
-    var ultimo = tramos.Last();
-
-    // Estado de un asiento en un vuelo: ocupado (rojo), reservado (morado) o disponible (verde)
-    Func<Vuelo, int, string> estadoAsiento = (v, n) =>
-        v.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == n && r.EstadoAsignacionCodigo == "CONFIRMADA") ? "ocupado"
-        : v.ReservaPasajeroVuelo.Any(r => r.NumeroAsiento == n && r.EstadoAsignacionCodigo == "PENDIENTE") ? "reservado"
-        : "disponible";
-
-    Func<Vuelo, int> libres = v =>
-        7 - v.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA");
-
-    // Distribución del Embraer Phenom 300E (DP-11): número en BD, código y ubicación
-    var filaDerecha = new[] {
-        new { N = 1, C = "1D", U = "ventanilla derecha, fila 1" },
-        new { N = 2, C = "2D", U = "ventanilla derecha, fila 2" },
-        new { N = 4, C = "3D", U = "ventanilla derecha, fila 3" },
-        new { N = 6, C = "4D", U = "ventanilla derecha, fila 4" }
-    };
-    var filaIzquierda = new[] {
-        new { N = 3, C = "2I", U = "ventanilla izquierda, fila 2" },
-        new { N = 5, C = "3I", U = "ventanilla izquierda, fila 3" },
-        new { N = 7, C = "4I", U = "ventanilla izquierda, fila 4" }
-    };
 }
 
 <style>
-    .step-indicator {
-        font-size: 0.8rem;
-        letter-spacing: 0.5px;
+    .step-item {
+        font-size: 0.78rem;
+        letter-spacing: 0.8px;
+        color: #94a3b8;
     }
 
-    .step-item.active {
-        color: #0f172a;
-        font-weight: 700;
-        border-bottom: 2px solid #0f172a;
-    }
+        .step-item.active {
+            color: #0f172a;
+            font-weight: 700;
+            border-bottom: 2px solid #0f172a;
+        }
 
-    .fuselage-container {
-        background: #ffffff;
+    /* Fuselaje Aerodinámico Responsivo */
+    .aircraft-body {
+        background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
         border: 2px solid #cbd5e1;
-        border-radius: 90px 20px 20px 90px;
-        padding: 24px 32px;
         position: relative;
+        box-shadow: 0 16px 32px -8px rgba(15, 23, 42, 0.06);
+        margin: 0 auto;
+        width: 100%;
     }
 
-    @@media (max-width: 991.98px) {
-        .fuselage-container {
-            border-radius: 20px;
-            padding: 16px;
+    /* MÓVIL (< 768px): Vertical Compacto */
+    @@media (max-width: 767.98px) {
+        .aircraft-body {
+            max-width: 320px;
+            border-radius: 80px 80px 24px 24px;
+            padding: 22px 14px 18px 14px;
+        }
+
+        .cabin-grid {
+            display: grid;
+            grid-template-columns: 82px 30px 82px;
+            grid-template-rows: auto auto auto auto auto auto;
+            gap: 12px 6px;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+
+        .cockpit-zone {
+            grid-column: 1 / span 3;
+            grid-row: 1;
+            border-bottom: 2px dashed #94a3b8;
+            padding-bottom: 10px;
+            margin-bottom: 4px;
+            text-align: center;
+        }
+
+        .cockpit-label {
+            letter-spacing: 2px;
+            font-size: 0.72rem;
+            color: #64748b;
+        }
+
+        .seat-1d {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        .door-cell {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .seat-2i {
+            grid-column: 1;
+            grid-row: 3;
+        }
+
+        .seat-2d {
+            grid-column: 3;
+            grid-row: 3;
+        }
+
+        .table-i {
+            grid-column: 1;
+            grid-row: 4;
+        }
+
+        .table-d {
+            grid-column: 3;
+            grid-row: 4;
+        }
+
+        .seat-3i {
+            grid-column: 1;
+            grid-row: 5;
+        }
+
+        .seat-3d {
+            grid-column: 3;
+            grid-row: 5;
+        }
+
+        .seat-4i {
+            grid-column: 1;
+            grid-row: 6;
+        }
+
+        .seat-4d {
+            grid-column: 3;
+            grid-row: 6;
+        }
+
+        .aisle-zone {
+            grid-column: 2;
+            grid-row: 2 / span 5;
+            background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%);
+            border-left: 1px dashed #94a3b8;
+            border-right: 1px dashed #94a3b8;
+            border-radius: 4px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            font-size: 0.65rem;
+            letter-spacing: 3px;
+            color: #475569;
+            font-weight: 700;
+        }
+
+        .popa-zone {
+            grid-column: 1 / span 3;
+            grid-row: 7;
+            border-top: 2px dashed #cbd5e1;
+            padding-top: 12px;
+            margin-top: 4px;
+            text-align: center;
         }
     }
 
-    .seat-btn {
-        width: 78px;
-        height: 78px;
+    /* ESCRITORIO (>= 768px): Horizontal Proporcional */
+    @@media (min-width: 768px) {
+        .aircraft-body {
+            max-width: 920px;
+            border-radius: 100px 24px 24px 100px;
+            padding: 26px 34px;
+        }
+
+        .cabin-grid {
+            display: grid;
+            grid-template-columns: 85px repeat(4, 1fr) 110px;
+            grid-template-rows: auto auto auto auto;
+            gap: 12px 14px;
+            align-items: center;
+            width: 100%;
+        }
+
+        .cockpit-zone {
+            grid-column: 1;
+            grid-row: 1 / span 4;
+            border-right: 2px dashed #94a3b8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding-right: 14px;
+        }
+
+        .cockpit-label {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            letter-spacing: 2px;
+            font-size: 0.72rem;
+            color: #64748b;
+        }
+
+        .seat-1d {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .seat-2d {
+            grid-column: 3;
+            grid-row: 1;
+        }
+
+        .seat-3d {
+            grid-column: 4;
+            grid-row: 1;
+        }
+
+        .seat-4d {
+            grid-column: 5;
+            grid-row: 1;
+        }
+
+        .table-d {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        .table-i {
+            grid-column: 4;
+            grid-row: 2;
+        }
+
+        .aisle-zone {
+            grid-column: 2 / span 4;
+            grid-row: 3;
+            background: linear-gradient(90deg, #e2e8f0 0%, #cbd5e1 50%, #e2e8f0 100%);
+            border-top: 1px dashed #94a3b8;
+            border-bottom: 1px dashed #94a3b8;
+            border-radius: 6px;
+            letter-spacing: 4px;
+            font-size: 0.68rem;
+            color: #475569;
+            font-weight: 700;
+            text-align: center;
+            padding: 5px 0;
+            margin: 2px 0;
+        }
+
+        .door-cell {
+            grid-column: 2;
+            grid-row: 4;
+        }
+
+        .seat-2i {
+            grid-column: 3;
+            grid-row: 4;
+        }
+
+        .seat-3i {
+            grid-column: 4;
+            grid-row: 4;
+        }
+
+        .seat-4i {
+            grid-column: 5;
+            grid-row: 4;
+        }
+
+        .popa-zone {
+            grid-column: 6;
+            grid-row: 1 / span 4;
+            border-left: 2px dashed #cbd5e1;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-left: 14px;
+        }
+    }
+
+    /* Butacas Reactivas */
+    .seat-checkbox {
+        display: none;
+    }
+
+    .seat-label {
+        width: 100%;
+        max-width: 95px;
+        height: 70px;
+        margin: 0 auto;
         border-radius: 12px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        font-weight: 700;
+        font-weight: 800;
         border: 2px solid transparent;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
         position: relative;
         cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+        user-select: none;
     }
 
-    .seat-disponible {
-        background-color: #065f46;
-        border-color: #044e39;
-        color: #ffffff;
-    }
-
-        .seat-disponible:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 10px rgba(6, 95, 70, 0.3);
+        .seat-label.seat-disponible {
+            background: linear-gradient(145deg, #047857 0%, #064e3b 100%);
+            border-color: #10b981;
+            color: #ffffff;
         }
 
-    .seat-reservado {
-        background-color: #581c87;
-        border-color: #3b0764;
-        color: #ffffff;
-        cursor: not-allowed;
-        opacity: 0.85;
-    }
+            .seat-label.seat-disponible:hover {
+                transform: translateY(-2px) scale(1.02);
+            }
 
-    .seat-ocupado {
-        background-color: #881337;
-        border-color: #4c0519;
-        color: #ffffff;
-        cursor: not-allowed;
-        opacity: 0.85;
-    }
-
-    .seat-seleccionado {
-        background-color: #0f172a !important;
+    .seat-checkbox:checked + .seat-label {
+        background: #0f172a !important;
         border: 3px solid #f59e0b !important;
         color: #ffffff !important;
-        transform: scale(1.06);
-        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.4) !important;
+        transform: translateY(-3px) scale(1.04);
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.4) !important;
     }
 
-    .seat-check-mark {
+        .seat-checkbox:checked + .seat-label .check-icon {
+            display: block !important;
+        }
+
+    .check-icon {
         position: absolute;
-        top: 4px;
+        top: 3px;
         right: 6px;
         color: #f59e0b;
         font-size: 0.85rem;
         font-weight: 900;
+        display: none;
     }
 
-    .passenger-slot {
-        cursor: pointer;
-        transition: all 0.2s ease;
-        border-left: 4px solid transparent;
+    .seat-label.seat-reservado {
+        background: linear-gradient(145deg, #6b21a8 0%, #3b0764 100%);
+        border-color: #a855f7;
+        color: #ffffff;
+        cursor: not-allowed;
+        opacity: 0.85;
     }
 
-        .passenger-slot.active {
-            background-color: #f8fafc;
-            border-left-color: #0f172a;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-        }
-
-    .cockpit-zone {
-        border-right: 2px dashed #94a3b8;
-        padding-right: 18px;
-    }
-
-    .aisle-zone {
-        background: #f1f5f9;
-        border-radius: 6px;
-        border-top: 1px dashed #cbd5e1;
-        border-bottom: 1px dashed #cbd5e1;
-        letter-spacing: 3px;
-        font-size: 0.72rem;
-        color: #475569;
+    .seat-label.seat-ocupado {
+        background: linear-gradient(145deg, #9f1239 0%, #4c0519 100%);
+        border-color: #f43f5e;
+        color: #ffffff;
+        cursor: not-allowed;
+        opacity: 0.85;
     }
 
     .table-zone {
-        background: #e2e8f0;
-        border: 1px solid #cbd5e1;
+        background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+        border: 1px dashed #94a3b8;
         border-radius: 6px;
-        height: 24px;
+        height: 22px;
+        width: 100%;
+        max-width: 95px;
+        margin: 0 auto;
         font-size: 0.65rem;
-        color: #334155;
+        color: #475569;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .door-zone {
-        background: #fef3c7;
+        background: linear-gradient(145deg, #fffbeb 0%, #fef3c7 100%);
         border: 1.5px dashed #d97706;
-        color: #78350f;
+        color: #92400e;
         border-radius: 12px;
-        font-size: 0.7rem;
+        width: 100%;
+        max-width: 95px;
+        height: 70px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.62rem;
     }
 
-    .tab-tramo.active {
-        background-color: #0f172a;
-        color: #ffffff;
-        border-color: #0f172a;
+    /* Estilos del panel de pasajeros a la derecha */
+    .passenger-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
+
+        .passenger-card.assigned {
+            border-color: #cbd5e1;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+        }
+
+    .btn-remove-seat {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 1px solid #fecdd3;
+        background-color: #fff1f2;
+        color: #e11d48;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0;
+        transition: all 0.15s ease;
+    }
+
+        .btn-remove-seat:hover {
+            background-color: #ffe4e6;
+            border-color: #fda4af;
+            color: #be123c;
+            transform: scale(1.08);
+        }
 </style>
 
-<main class="container py-5">
+<main class="container py-4 py-lg-5">
 
-    <!-- Indicador de pasos (pantallas 8 a 11) -->
-    <div class="d-flex align-items-center justify-content-center gap-4 text-muted small text-uppercase mb-4 pb-2 border-bottom border-light-subtle step-indicator">
+    <div class="d-flex align-items-center justify-content-center gap-3 gap-md-4 text-uppercase mb-4 pb-2 border-bottom border-light-subtle step-indicator">
         <span class="step-item active pb-2">1. Asientos</span>
-        <span class="pb-2">&rarr;</span>
-        <span class="pb-2">2. Pasajeros</span>
-        <span class="pb-2">&rarr;</span>
-        <span class="pb-2">3. Reserva</span>
-        <span class="pb-2">&rarr;</span>
-        <span class="pb-2">4. Pago</span>
+        <span class="step-item pb-2">&rarr;</span>
+        <span class="step-item pb-2">2. Pasajeros</span>
+        <span class="step-item pb-2">&rarr;</span>
+        <span class="step-item pb-2">3. Confirmar</span>
+        <span class="step-item pb-2">&rarr;</span>
+        <span class="step-item pb-2">4. Pago</span>
     </div>
 
-    <!-- Encabezado -->
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3">
-        <div>
-            <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
-                Aerolínea VIP &middot; Pantalla 8
-            </span>
-            <h1 class="h3 fw-bold text-dark mb-1">Seleccione sus asientos</h1>
-            <p class="text-secondary small mb-0">
-                <strong>@Model.Frecuencia.Ruta.Aeropuerto.Localidad (@Model.Frecuencia.Ruta.Aeropuerto.CodigoIATA)</strong> &rarr;
-                <strong>@ultimo.Frecuencia.Ruta.Aeropuerto1.Localidad (@ultimo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)</strong>
-                @if (esItinerario)
-                {
-                    <text>&middot; itinerario con escala en GYE (@tramos.Count tramos)</text>
-                }
-                &middot; @totalPasajeros @(totalPasajeros == 1 ? "pasajero" : "pasajeros")
-            </p>
+    <!-- Encabezado Corporativo -->
+    <div class="card border border-light-subtle shadow-sm rounded-3 bg-white mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-dark text-warning px-3 py-1 text-uppercase fw-semibold" style="letter-spacing: 1px; font-size: 0.72rem;">
+                            Aerolínea VIP &middot; Pantalla 8
+                        </span>
+                        <span class="badge bg-light text-secondary border fw-normal" style="font-size: 0.75rem;">
+                            Flota Embraer Phenom 300E
+                        </span>
+                    </div>
+                    <h1 class="h3 fw-bold text-dark mb-1">Selección de asientos</h1>
+                    <p class="text-secondary small mb-0">
+                        <strong>@Model.Frecuencia.Ruta.Aeropuerto1.Localidad (@Model.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)</strong> &rarr;
+                        <strong>@ViewBag.UltimoTramo.Frecuencia.Ruta.Aeropuerto.Localidad (@ViewBag.UltimoTramo.Frecuencia.Ruta.Aeropuerto.CodigoIATA)</strong>
+                        @if ((bool)ViewBag.EsItinerario)
+                        {
+                            <text>&middot; Itinerario con escala en GYE (@ViewBag.Tramos.Count tramos)</text>
+                        }
+                        &middot; @ViewBag.Pasajeros pasajero(s)
+                    </p>
+                </div>
+                <a href="@Url.Action("Disponibilidad", "Vuelos", new { id = Model.VueloId, pasajeros = ViewBag.Pasajeros })" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+                    &larr; Regresar al mapa
+                </a>
+            </div>
         </div>
-        <a href="@Url.Action("Disponibilidad", "Vuelos", new { id = Model.VueloId, pasajeros = totalPasajeros })" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
-            &larr; Regresar al mapa
-        </a>
     </div>
 
     @if (TempData["Error"] != null)
@@ -212,217 +447,142 @@
         </div>
     }
 
-    <!-- Anuncios para lectores de pantalla -->
-    <div id="ariaAnunciador" class="visually-hidden" aria-live="polite"></div>
-
-    <form id="formSeleccionAsientos" action="@Url.Action("SeleccionAsiento", "Reservas")" method="post">
+    <!-- Formulario Directo -->
+    <form action="@Url.Action("SeleccionAsiento", "Reservas")" method="post">
         @Html.AntiForgeryToken()
         <input type="hidden" name="vueloId" value="@Model.VueloId" />
-        <input type="hidden" name="pasajeros" value="@totalPasajeros" />
+        <input type="hidden" name="pasajeros" value="@ViewBag.Pasajeros" />
 
         <div class="row g-4 align-items-start">
 
-            <!-- Columna izquierda: pestañas por tramo, datos del vuelo y mapa -->
+            <!-- Columna Izquierda: Fuselaje -->
             <div class="col-12 col-lg-8">
-
-                @if (esItinerario)
+                @for (int k = 0; k < ViewBag.Tramos.Count; k++)
                 {
-                    <div class="d-flex flex-wrap gap-2 mb-3" role="tablist" aria-label="Tramos del itinerario">
-                        @for (int k = 0; k < tramos.Count; k++)
-                        {
-                            var t = tramos[k];
-                            <button type="button" class="btn btn-outline-dark btn-sm px-3 py-2 fw-semibold tab-tramo @(k == 0 ? "active" : "")"
-                                    data-tramo="@k" role="tab" aria-selected="@(k == 0 ? "true" : "false")">
-                                Tramo @(k + 1) &middot; @t.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @t.Frecuencia.Ruta.Aeropuerto1.CodigoIATA @t.Frecuencia.HoraSalida.ToString(@"hh\:mm")
-                            </button>
-                        }
-                    </div>
-                }
-
-                @for (int k = 0; k < tramos.Count; k++)
-                {
-                    var t = tramos[k];
-                    <div class="panel-tramo @(k == 0 ? "" : "d-none")" id="panel-tramo-@k">
-
-                        <!-- Barra de datos del vuelo (wireframe 6.3) -->
-                        <div class="card border border-light-subtle shadow-sm rounded-3 bg-white p-3 mb-3">
-                            <div class="row g-2 small">
-                                <div class="col-6 col-md-4">
-                                    <span class="text-muted d-block">Vuelo</span>
-                                    <strong class="text-dark">VIP@(t.VueloId.ToString("D5"))</strong>
-                                </div>
-                                <div class="col-6 col-md-4">
-                                    <span class="text-muted d-block">Fecha</span>
-                                    <strong class="text-dark">@t.FechaOperacion.ToString("dd/MM/yyyy")</strong>
-                                </div>
-                                <div class="col-6 col-md-4">
-                                    <span class="text-muted d-block">Salida &ndash; llegada</span>
-                                    <strong class="text-dark">@t.Frecuencia.HoraSalida.ToString(@"hh\:mm") &ndash; @t.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</strong>
-                                </div>
-                                <div class="col-6 col-md-4">
-                                    <span class="text-muted d-block">Ruta</span>
-                                    <strong class="text-dark">@t.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @t.Frecuencia.Ruta.Aeropuerto1.CodigoIATA</strong>
-                                </div>
-                                <div class="col-6 col-md-4">
-                                    <span class="text-muted d-block">Aeronave</span>
-                                    <strong class="text-dark">@(t.Aeronave != null ? t.Aeronave.Matricula : "Pendiente") &middot; Phenom 300E</strong>
-                                </div>
-                                <div class="col-6 col-md-4">
-                                    <span class="text-muted d-block">Capacidad máxima &middot; Disponibles</span>
-                                    <strong class="text-dark">7 asientos &middot; <span class="text-success">@libres(t)</span></strong>
-                                </div>
+                    <div class="card border border-light-subtle shadow-sm rounded-4 bg-white p-3 p-md-4 mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <span class="badge bg-dark text-white px-2 py-1 small me-1">Tramo @(k + 1)</span>
+                                <strong>@ViewBag.Tramos[k].Frecuencia.Ruta.Aeropuerto1.CodigoIATA &rarr; @ViewBag.Tramos[k].Frecuencia.Ruta.Aeropuerto.CodigoIATA</strong>
+                                <small class="text-muted ms-2">(@ViewBag.Tramos[k].Frecuencia.HoraSalida.ToString(@"hh\:mm"))</small>
                             </div>
+                            <span class="badge bg-light text-secondary border small">
+                                Seleccione @ViewBag.Pasajeros asiento(s)
+                            </span>
                         </div>
 
-                        <!-- Mapa de asientos -->
-                        <div class="card border border-light-subtle shadow-sm rounded-4 bg-white p-4">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="small text-muted fw-semibold text-uppercase">
-                                    Haga clic en un asiento verde para asignarlo al pasajero activo
-                                </span>
-                                <span class="badge bg-light text-secondary border small">Embraer Phenom 300E</span>
-                            </div>
+                        <div class="aircraft-body my-2">
+                            <div class="cabin-grid">
 
-                            <div class="fuselage-container overflow-auto my-2">
-                                <div class="d-flex align-items-center" style="min-width: 760px;">
+                                <div class="cockpit-zone">
+                                    <span class="d-block fw-bold text-uppercase cockpit-label">
+                                        &#9992; Proa
+                                    </span>
+                                </div>
 
-                                    <div class="cockpit-zone text-center pe-3">
-                                        <span class="d-block text-secondary small fw-bold text-uppercase" style="font-size: 0.7rem; writing-mode: vertical-rl; transform: rotate(180deg);">
-                                            &#9992; Cabina Mando
-                                        </span>
-                                    </div>
-
-                                    <div class="flex-grow-1 px-3">
-
-                                        <!-- Lado derecho (D): 1D, 2D, 3D, 4D -->
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span class="text-muted small fw-semibold" style="width: 70px;">Lado (D)</span>
-                                            @foreach (var s in filaDerecha)
-                                            {
-                                                var e = estadoAsiento(t, s.N);
-                                                <button type="button" class="seat-btn seat-@e"
-                                                        data-tramo="@k" data-numero="@s.N" data-codigo="@s.C"
-                                                        @(e == "disponible" ? "" : "disabled") aria-pressed="false"
-                                                        aria-label="Asiento @s.C, @s.U, @(e == "disponible" ? "libre" : e)">
-                                                    <span class="seat-check-mark d-none">&#10003;</span>
-                                                    <span class="fs-5 fw-bold">@s.C</span>
-                                                    <span class="text-uppercase small" style="font-size: 0.62rem;">@(e == "ocupado" ? "Ocupado" : e == "reservado" ? "Reservado" : "Libre")</span>
-                                                </button>
-                                            }
-                                        </div>
-
-                                        <!-- Mesas entre las filas 2 y 3 -->
-                                        <div class="d-flex justify-content-between align-items-center my-1 text-center">
-                                            <span style="width: 70px;"></span>
-                                            <div style="width: 78px;"></div>
-                                            <div class="table-zone d-flex align-items-center justify-content-center fw-semibold" style="width: 78px;">Mesa</div>
-                                            <div class="table-zone d-flex align-items-center justify-content-center fw-semibold" style="width: 78px;">Mesa</div>
-                                            <div style="width: 78px;"></div>
-                                        </div>
-
-                                        <div class="aisle-zone text-center py-1 my-2 fw-semibold">
-                                            &larr; P A S I L L O &nbsp; C E N T R A L &rarr;
-                                        </div>
-
-                                        <!-- Lado izquierdo (I): puerta, 2I, 3I, 4I -->
-                                        <div class="d-flex justify-content-between align-items-center mt-2">
-                                            <span class="text-muted small fw-semibold" style="width: 70px;">Lado (I)</span>
-                                            <div class="door-zone d-flex flex-column align-items-center justify-content-center fw-semibold" style="width: 78px; height: 78px;">
-                                                <span class="fs-6">&#128682;</span>
-                                                <span style="font-size: 0.62rem;" class="text-center">Puerta</span>
+                                @foreach (var s in ViewBag.Tramos[k].AsientosCabina)
+                                {
+                                    <div class="@s.GridClass">
+                                        @if (s.EstaDisponible)
+                                        {
+                                            <input type="@((int)ViewBag.Pasajeros == 1 ? "radio" : "checkbox")"
+                                                   id="seat-@(k)-@(s.Numero)"
+                                                   name="@(k == 0 ? "asientosSeleccionados" : "asientosTramo2")"
+                                                   value="@s.Numero"
+                                                   data-codigo="@s.Codigo"
+                                                   data-tramo="@k"
+                                                   class="seat-checkbox" />
+                                            <label for="seat-@(k)-@(s.Numero)" class="seat-label seat-disponible" title="@s.Ubicacion">
+                                                <span class="check-icon">&#10003;</span>
+                                                <span class="fs-5">@s.Codigo</span>
+                                                <span class="text-uppercase" style="font-size: 0.62rem;">Libre</span>
+                                            </label>
+                                        }
+                                        else
+                                        {
+                                            <div class="seat-label seat-@s.Estado">
+                                                <span class="fs-5">@s.Codigo</span>
+                                                <span class="text-uppercase" style="font-size: 0.62rem;">@s.Estado</span>
                                             </div>
-                                            @foreach (var s in filaIzquierda)
-                                            {
-                                                var e = estadoAsiento(t, s.N);
-                                                <button type="button" class="seat-btn seat-@e"
-                                                        data-tramo="@k" data-numero="@s.N" data-codigo="@s.C"
-                                                        @(e == "disponible" ? "" : "disabled") aria-pressed="false"
-                                                        aria-label="Asiento @s.C, @s.U, @(e == "disponible" ? "libre" : e)">
-                                                    <span class="seat-check-mark d-none">&#10003;</span>
-                                                    <span class="fs-5 fw-bold">@s.C</span>
-                                                    <span class="text-uppercase small" style="font-size: 0.62rem;">@(e == "ocupado" ? "Ocupado" : e == "reservado" ? "Reservado" : "Libre")</span>
-                                                </button>
-                                            }
-                                        </div>
-
+                                        }
                                     </div>
+                                }
 
-                                    <div class="text-center ps-3 border-start border-2 border-secondary-subtle">
-                                        <div class="p-2 bg-light rounded-3 text-secondary small fw-bold" style="font-size: 0.68rem;">
-                                            &#128701; Baño<br />
-                                            <span class="text-muted fw-normal">Privado</span>
-                                        </div>
+                                <div class="table-d"><div class="table-zone">MESA VIP</div></div>
+                                <div class="table-i"><div class="table-zone">MESA VIP</div></div>
+
+                                <div class="aisle-zone">
+                                    <span class="d-none d-md-inline">&larr; P A S I L L O &nbsp; C E N T R A L &rarr;</span>
+                                    <span class="d-inline d-md-none">PASILLO</span>
+                                </div>
+
+                                <div class="door-cell">
+                                    <div class="door-zone fw-semibold">
+                                        <span class="fs-6 mb-1">&#128682;</span>
+                                        <span>Acceso</span>
                                     </div>
+                                </div>
 
+                                <div class="popa-zone">
+                                    <div class="p-2 bg-white border border-light-subtle rounded-3 text-secondary small fw-bold text-center shadow-sm" style="font-size: 0.7rem; width: 100%;">
+                                        <span class="fs-6 d-block mb-1 text-dark">&#128701;</span>
+                                        Lavatorio VIP<br />
+                                        <span class="text-muted fw-normal">&amp; Equipaje</span>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <!-- Leyenda (siempre visible) -->
-                            <div class="d-flex flex-wrap justify-content-center align-items-center gap-3 mt-3 pt-3 border-top border-light-subtle small">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="d-inline-block rounded-2" style="width: 16px; height: 16px; background-color: #065f46;"></span>
-                                    <span class="text-secondary">Verde · Disponible</span>
-                                </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="d-inline-block rounded-2" style="width: 16px; height: 16px; background-color: #581c87;"></span>
-                                    <span class="text-secondary">Morado · Reservado</span>
-                                </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="d-inline-block rounded-2" style="width: 16px; height: 16px; background-color: #881337;"></span>
-                                    <span class="text-secondary">Rojo · Ocupado</span>
-                                </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="d-inline-block rounded-2" style="width: 16px; height: 16px; background-color: #0f172a; border: 2px solid #f59e0b;"></span>
-                                    <span class="text-secondary fw-semibold">&#10003; Su selección</span>
-                                </div>
                             </div>
                         </div>
+
                     </div>
                 }
             </div>
 
-            <!-- Columna derecha: resumen de la selección -->
+            <!-- Columna Derecha: Asignación y Botones de Eliminación -->
             <div class="col-12 col-lg-4">
                 <div class="card border border-light-subtle shadow-sm rounded-4 bg-white p-4">
 
                     <h2 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">
-                        Resumen de la selección (@totalPasajeros @(totalPasajeros == 1 ? "pasajero" : "pasajeros"))
+                        Asignación de asientos (@ViewBag.Pasajeros pasajero(s))
                     </h2>
 
-                    <div class="d-flex flex-column gap-2 mb-4" id="listaPasajeros">
-                        @for (int p = 1; p <= totalPasajeros; p++)
+                    <p class="text-secondary small mb-3">
+                        Haga clic sobre las butacas verdes en el avión para asignarlas a cada pasajero:
+                    </p>
+
+                    <!-- Lista de pasajeros con botón para desmarcar -->
+                    <div class="d-flex flex-column gap-2 mb-4">
+                        @for (int p = 1; p <= (int)ViewBag.Pasajeros; p++)
                         {
-                            <div class="passenger-slot p-3 border rounded-3 @(p == 1 ? "active" : "")" data-pasajero="@p" id="pasajero-card-@p">
-                                <span class="fw-bold text-dark d-block mb-1">Pasajero @p</span>
-                                @for (int k = 0; k < tramos.Count; k++)
-                                {
-                                    <div class="d-flex justify-content-between align-items-center small py-1">
-                                        <span class="text-muted">@(esItinerario ? "Tramo " + (k + 1) : "Asiento")</span>
-                                        <span class="d-flex align-items-center gap-2">
-                                            <span class="badge bg-light text-dark border fw-bold px-2" id="badge-@k-@p">&mdash;</span>
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-quitar d-none py-0 px-1"
-                                                    data-tramo="@k" data-pasajero="@p"
-                                                    title="Quitar selección" aria-label="Quitar selección del pasajero @p">
-                                                &times;
-                                            </button>
-                                        </span>
-                                    </div>
-                                    <input type="hidden" name="@(k == 0 ? "asientosSeleccionados" : "asientosTramo2")" id="input-@k-@p" value="" />
-                                }
+                            <div class="p-3 passenger-card d-flex justify-content-between align-items-center" id="slot-pasajero-@p">
+                                <div>
+                                    <strong class="text-dark d-block">Pasajero @p</strong>
+                                    <small class="text-muted" id="subtitulo-pasajero-@p">Pendiente de selección</small>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-light text-muted border px-3 py-2 fs-6 fw-bold" id="badge-pasajero-@p">&mdash;</span>
+                                    <button type="button"
+                                            class="btn-remove-seat d-none"
+                                            id="btn-quitar-@p"
+                                            data-index="@p"
+                                            title="Quitar este asiento"
+                                            aria-label="Quitar asiento del pasajero @p">
+                                        &times;
+                                    </button>
+                                </div>
                             </div>
                         }
                     </div>
 
                     <div class="alert alert-info py-2 px-3 small border-0 rounded-3 mb-3 text-secondary">
-                        &#9432; Su selección es temporal: la reserva se registra al confirmar en el paso 3.
-                        Disponibilidad calculada a las <strong>@ViewBag.HoraCorte</strong>.
+                        &#9432; Al pulsar continuar, el sistema registrará su selección temporal y avanzará al ingreso de los datos de cada pasajero.
                     </div>
 
                     <div class="d-grid gap-2">
                         <button type="submit" id="btnContinuar" class="btn btn-dark py-2 fw-semibold" disabled>
                             Continuar &rarr;
                         </button>
-                        <a href="@Url.Action("Disponibilidad", "Vuelos", new { id = Model.VueloId, pasajeros = totalPasajeros })" class="btn btn-outline-secondary py-2">
+                        <a href="@Url.Action("Disponibilidad", "Vuelos", new { id = Model.VueloId, pasajeros = ViewBag.Pasajeros })" class="btn btn-outline-secondary py-2">
                             Regresar
                         </a>
                     </div>
@@ -434,98 +594,107 @@
     </form>
 
 </main>
-
 @section Scripts {
-    <script>
-        $(function () {
-            var pasajeroActivo = 1;
-            var tramoActivo = 0;
-            var totalPasajeros = @totalPasajeros;
-            var totalTramos = @tramos.Count;
+    <script type="application/javascript">
+        // Cada tramo se valida por separado: en el itinerario de Galápagos cada pasajero
+        // necesita un asiento en el tramo 1 y otro en el tramo 2 (DP-09)
+        var maxPasajeros = parseInt('@ViewBag.Pasajeros', 10);
+        var totalTramos = parseInt('@ViewBag.Tramos.Count', 10);
 
-            function activarPasajero(p) {
-                pasajeroActivo = p;
-                $('.passenger-slot').removeClass('active');
-                $('#pasajero-card-' + p).addClass('active');
-            }
+        function marcadosDelTramo(k) {
+            return document.querySelectorAll('.seat-checkbox[data-tramo="' + k + '"]:checked');
+        }
 
-            function desmarcarAsiento(k, numero) {
-                var $b = $('.seat-btn[data-tramo="' + k + '"][data-numero="' + numero + '"]');
-                $b.removeClass('seat-seleccionado').attr('aria-pressed', 'false');
-                $b.find('.seat-check-mark').addClass('d-none');
-            }
-
-            function validarCompleto() {
-                var completo = true;
-                for (var k = 0; k < totalTramos; k++) {
-                    for (var p = 1; p <= totalPasajeros; p++) {
-                        if (!$('#input-' + k + '-' + p).val()) { completo = false; }
+        function actualizarEstadoAsientos(ultimoMarcado) {
+            // 1. No más asientos que pasajeros en cada tramo
+            for (var k = 0; k < totalTramos; k++) {
+                if (marcadosDelTramo(k).length > maxPasajeros) {
+                    if (ultimoMarcado) {
+                        ultimoMarcado.checked = false;
                     }
+                    alert('Solo puede seleccionar ' + maxPasajeros + ' asiento(s)' + (totalTramos > 1 ? ' en cada tramo.' : ' para este vuelo.'));
+                    break;
                 }
-                $('#btnContinuar').prop('disabled', !completo);
             }
 
-            // Pestañas por tramo
-            $('.tab-tramo').on('click', function () {
-                tramoActivo = parseInt($(this).data('tramo'));
-                $('.tab-tramo').removeClass('active').attr('aria-selected', 'false');
-                $(this).addClass('active').attr('aria-selected', 'true');
-                $('.panel-tramo').addClass('d-none');
-                $('#panel-tramo-' + tramoActivo).removeClass('d-none');
-                activarPasajero(1);
-            });
+            // 2. Tarjeta de cada pasajero: su asiento en cada tramo
+            for (var p = 1; p <= maxPasajeros; p++) {
+                var slot = document.getElementById('slot-pasajero-' + p);
+                var badge = document.getElementById('badge-pasajero-' + p);
+                var subtitulo = document.getElementById('subtitulo-pasajero-' + p);
+                var btnQuitar = document.getElementById('btn-quitar-' + p);
+                if (!slot || !badge || !subtitulo || !btnQuitar) continue;
 
-            // Elegir el pasajero activo
-            $('.passenger-slot').on('click', function () {
-                activarPasajero(parseInt($(this).data('pasajero')));
-            });
-
-            // Clic en un asiento verde
-            $('.seat-btn.seat-disponible').on('click', function () {
-                var k = parseInt($(this).data('tramo'));
-                var numero = String($(this).data('numero'));
-                var codigo = $(this).data('codigo');
-
-                // El mismo asiento no puede ser de dos pasajeros en el mismo tramo
-                for (var p = 1; p <= totalPasajeros; p++) {
-                    if (p !== pasajeroActivo && $('#input-' + k + '-' + p).val() === numero) {
-                        alert('El asiento ' + codigo + ' ya está asignado al Pasajero ' + p + '.');
-                        return;
+                var codigos = [];
+                var ids = [];
+                for (var t = 0; t < totalTramos; t++) {
+                    var marcados = marcadosDelTramo(t);
+                    if (p <= marcados.length) {
+                        codigos.push(marcados[p - 1].getAttribute('data-codigo') || '');
+                        ids.push(marcados[p - 1].id);
                     }
                 }
 
-                var previo = $('#input-' + k + '-' + pasajeroActivo).val();
-                if (previo) { desmarcarAsiento(k, previo); }
-
-                $('#input-' + k + '-' + pasajeroActivo).val(numero);
-                $('#badge-' + k + '-' + pasajeroActivo).text(codigo);
-                $('.btn-quitar[data-tramo="' + k + '"][data-pasajero="' + pasajeroActivo + '"]').removeClass('d-none');
-                $(this).addClass('seat-seleccionado').attr('aria-pressed', 'true');
-                $(this).find('.seat-check-mark').removeClass('d-none');
-
-                $('#ariaAnunciador').text('Asiento ' + codigo + ' seleccionado para el Pasajero ' + pasajeroActivo);
-
-                // Pasa al siguiente pasajero sin asiento en este tramo
-                for (var q = 1; q <= totalPasajeros; q++) {
-                    if (!$('#input-' + k + '-' + q).val()) { activarPasajero(q); break; }
+                if (codigos.length > 0) {
+                    badge.textContent = codigos.join(' / ');
+                    badge.className = 'badge bg-dark text-warning border px-3 py-2 fs-6 fw-bold shadow-sm';
+                    btnQuitar.setAttribute('data-target-ids', ids.join(','));
+                    btnQuitar.classList.remove('d-none');
+                } else {
+                    badge.innerHTML = '&mdash;';
+                    badge.className = 'badge bg-light text-muted border px-3 py-2 fs-6 fw-bold';
+                    btnQuitar.removeAttribute('data-target-ids');
+                    btnQuitar.classList.add('d-none');
                 }
 
-                validarCompleto();
-            });
+                if (codigos.length === totalTramos) {
+                    subtitulo.textContent = totalTramos > 1 ? 'Asientos asignados en ambos tramos' : 'Asiento asignado';
+                    subtitulo.className = 'text-success small fw-semibold';
+                    slot.classList.add('assigned');
+                } else {
+                    subtitulo.textContent = codigos.length === 0 ? 'Pendiente de selección' : 'Falta el asiento del tramo ' + (codigos.length + 1);
+                    subtitulo.className = 'text-muted small';
+                    slot.classList.remove('assigned');
+                }
+            }
 
-            // Quitar selección
-            $('.btn-quitar').on('click', function (e) {
-                e.stopPropagation();
-                var k = $(this).data('tramo');
-                var p = parseInt($(this).data('pasajero'));
-                var numero = $('#input-' + k + '-' + p).val();
-                if (numero) { desmarcarAsiento(k, numero); }
-                $('#input-' + k + '-' + p).val('');
-                $('#badge-' + k + '-' + p).html('&mdash;');
-                $(this).addClass('d-none');
-                activarPasajero(p);
-                validarCompleto();
-            });
+            // 3. Continuar solo con todos los asientos de todos los tramos
+            var completo = true;
+            for (var j = 0; j < totalTramos; j++) {
+                if (marcadosDelTramo(j).length !== maxPasajeros) completo = false;
+            }
+            var btn = document.getElementById('btnContinuar');
+            if (btn) {
+                if (completo) {
+                    btn.removeAttribute('disabled');
+                } else {
+                    btn.setAttribute('disabled', 'disabled');
+                }
+            }
+        }
+
+        // Al marcar o desmarcar una butaca del avión
+        document.addEventListener('change', function (ev) {
+            var target = ev.target;
+            if (target && target.classList && target.classList.contains('seat-checkbox')) {
+                actualizarEstadoAsientos(target.checked ? target : null);
+            }
+        });
+
+        // Botón «×» de un pasajero: libera sus asientos en todos los tramos
+        document.addEventListener('click', function (ev) {
+            var btn = ev.target;
+            if (btn && btn.classList && btn.classList.contains('btn-remove-seat')) {
+                ev.preventDefault();
+                var ids = (btn.getAttribute('data-target-ids') || '').split(',');
+                for (var i = 0; i < ids.length; i++) {
+                    var input = ids[i] ? document.getElementById(ids[i]) : null;
+                    if (input) {
+                        input.checked = false;   // también funciona con radios (1 pasajero)
+                    }
+                }
+                actualizarEstadoAsientos(null);
+            }
         });
     </script>
 }

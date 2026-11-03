@@ -284,23 +284,49 @@ namespace Con_Autenticacion.Controllers
             var ultimaSolicitud = Session["UltimaRecuperacion"] as DateTime?;
             if (ultimaSolicitud.HasValue && (DateTime.Now - ultimaSolicitud.Value).TotalSeconds < 60)
             {
-                ViewBag.Advertencia = "Ya se envió una solicitud recientemente. Intente más tarde.";
+                ViewBag.MostrarModal = true;
+                ViewBag.ModalTipo = "error";
+                ViewBag.ModalTitulo = "Espere un momento";
+                ViewBag.ModalMensaje = "Ya se procesó una solicitud hace menos de un minuto. Intente nuevamente en unos segundos.";
+                return View(model);
+            }
+            Session["UltimaRecuperacion"] = DateTime.Now;
+
+            // 2. Buscar el usuario por correo o nombre de usuario
+            var user = await UserManager.FindByEmailAsync(model.Email) ?? await UserManager.FindByNameAsync(model.Email);
+
+            if (user == null)
+            {
+                ViewBag.MostrarModal = true;
+                ViewBag.ModalTipo = "error";
+                ViewBag.ModalTitulo = "Usuario no registrado";
+                ViewBag.ModalMensaje = "No se encontró ninguna cuenta asociada al correo ingresado. Verifique la dirección e intente nuevamente.";
                 return View(model);
             }
 
-            // 2. Consulta en AspNetUsers de AerolineaVIP_Identity
-            var user = await UserManager.FindByEmailAsync(model.Email);
-            if (user != null)
+            // 3. Las cuentas del personal no se restablecen desde aquí: como no hay envío de correo,
+            //    el enlace se muestra en pantalla y cualquiera que conozca el correo podría usarlo.
+            if (await UserManager.IsInRoleAsync(user.Id, "SuperUsuario")
+                || await UserManager.IsInRoleAsync(user.Id, "Administrador")
+                || await UserManager.IsInRoleAsync(user.Id, "Counter"))
             {
-                // Genera el token criptográfico requerido
-                string code = await UserManager.GeneratePasswordResetTokenAsync(user.Id);
+                ViewBag.MostrarModal = true;
+                ViewBag.ModalTipo = "error";
+                ViewBag.ModalTitulo = "Cuenta del personal";
+                ViewBag.ModalMensaje = "Por seguridad, las cuentas del personal no pueden restablecerse desde esta pantalla. Solicite el cambio al SuperUsuario.";
+                return View(model);
             }
 
-            Session["UltimaRecuperacion"] = DateTime.Now;
+            // 4. Token oficial de ASP.NET Identity y enlace a la pantalla de nueva contraseña
+            //    (simulación académica del correo de recuperación: el enlace se muestra en un modal)
+            string code = await UserManager.GeneratePasswordResetTokenAsync(user.Id);
+            string callbackUrl = Url.Action("ResetPassword", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
 
-            // 3. Mensaje neutral obligatorio en la misma vista
-            ViewBag.SolicitudProcesada = true;
-            ViewBag.MensajeNeutral = "Si los datos corresponden a una cuenta registrada, recibirá las instrucciones para recuperar el acceso.";
+            ViewBag.MostrarModal = true;
+            ViewBag.ModalTipo = "exito";
+            ViewBag.ModalTitulo = "Recuperación de contraseña";
+            ViewBag.ModalMensaje = "Se ha validado su cuenta en el sistema. Presione el botón a continuación para crear su nueva contraseña.";
+            ViewBag.ResetUrl = callbackUrl;
 
             return View(model);
         }
@@ -316,9 +342,26 @@ namespace Con_Autenticacion.Controllers
         //
         // GET: /Account/ResetPassword
         [AllowAnonymous]
-        public ActionResult ResetPassword(string code)
+        public ActionResult ResetPassword(string code, string userId)
         {
-            return code == null ? View("Error") : View();
+            if (code == null)
+            {
+                return View("Error");
+            }
+
+            var model = new ResetPasswordViewModel { Code = code };
+
+            // Si viene el userId desde el enlace del modal, prellenamos el correo
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var user = UserManager.FindById(userId);
+                if (user != null)
+                {
+                    model.Email = user.Email;
+                }
+            }
+
+            return View(model);
         }
 
         //
@@ -332,19 +375,28 @@ namespace Con_Autenticacion.Controllers
             {
                 return View(model);
             }
-            var user = await UserManager.FindByNameAsync(model.Email);
+
+            // Buscar tanto por correo como por nombre de usuario
+            string emailOUser = model.Email.Trim();
+            var user = await UserManager.FindByEmailAsync(emailOUser) ?? await UserManager.FindByNameAsync(emailOUser);
+
             if (user == null)
             {
-                // No revelar que el usuario no existe
-                return RedirectToAction("ResetPasswordConfirmation", "Account");
+                ModelState.AddModelError("", "No se encontró ningún usuario asociado al correo o nombre de usuario ingresado.");
+                return View(model);
             }
+
+            // Restablecer la contraseña usando el token oficial de ASP.NET Identity
             var result = await UserManager.ResetPasswordAsync(user.Id, model.Code, model.Password);
             if (result.Succeeded)
             {
-                return RedirectToAction("ResetPasswordConfirmation", "Account");
+                TempData["Mensaje"] = "¡Contraseña actualizada exitosamente! Inicie sesión con su nueva clave.";
+                return RedirectToAction("Login", "Account");
             }
+
+            // No cumplió la política de contraseñas
             AddErrors(result);
-            return View();
+            return View(model);
         }
 
         //
