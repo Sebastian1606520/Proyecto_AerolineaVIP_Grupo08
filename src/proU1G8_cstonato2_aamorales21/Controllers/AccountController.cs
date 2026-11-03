@@ -225,6 +225,11 @@ namespace Con_Autenticacion.Controllers
                     {
                         // Si el rol aún no existe en la BD, no frena la creación del usuario
                     }
+                    if (User.Identity.IsAuthenticated && User.IsInRole("SuperUsuario"))
+                    {
+                        TempData["Exito"] = "Usuario " + user.UserName + " creado con rol " + model.Rol + ".";
+                        return RedirectToAction("Gestion", "Admin", new { tab = "usuarios" });
+                    }
 
                     await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
                     return RedirectToAction("Index", "Home");
@@ -232,6 +237,20 @@ namespace Con_Autenticacion.Controllers
 
                 AddErrors(result);
             }
+
+            var rolesDisponibles = new List<SelectListItem>();
+            if (User.Identity.IsAuthenticated && User.IsInRole("SuperUsuario"))
+            {
+                rolesDisponibles.Add(new SelectListItem { Value = "Cliente", Text = "Cliente" });
+                rolesDisponibles.Add(new SelectListItem { Value = "Counter", Text = "Counter" });
+                rolesDisponibles.Add(new SelectListItem { Value = "Administrador", Text = "Administrador" });
+                rolesDisponibles.Add(new SelectListItem { Value = "SuperUsuario", Text = "SuperUsuario" });
+            }
+            else
+            {
+                rolesDisponibles.Add(new SelectListItem { Value = "Cliente", Text = "Cliente", Selected = true });
+            }
+            ViewBag.RolesDisponibles = rolesDisponibles;
 
             return View(model);
         }
@@ -295,25 +314,18 @@ namespace Con_Autenticacion.Controllers
             // 2. Buscar el usuario por correo o nombre de usuario
             var user = await UserManager.FindByEmailAsync(model.Email) ?? await UserManager.FindByNameAsync(model.Email);
 
-            if (user == null)
-            {
-                ViewBag.MostrarModal = true;
-                ViewBag.ModalTipo = "error";
-                ViewBag.ModalTitulo = "Usuario no registrado";
-                ViewBag.ModalMensaje = "No se encontró ninguna cuenta asociada al correo ingresado. Verifique la dirección e intente nuevamente.";
-                return View(model);
-            }
+            const string mensajeNeutral = "Si los datos corresponden a una cuenta registrada, recibirá las instrucciones para recuperar el acceso.";
 
-            // 3. Las cuentas del personal no se restablecen desde aquí: como no hay envío de correo,
-            //    el enlace se muestra en pantalla y cualquiera que conozca el correo podría usarlo.
-            if (await UserManager.IsInRoleAsync(user.Id, "SuperUsuario")
+            // Cuenta inexistente o del personal: mismo mensaje, sin enlace (no revela qué cuentas existen)
+            if (user == null
+                || await UserManager.IsInRoleAsync(user.Id, "SuperUsuario")
                 || await UserManager.IsInRoleAsync(user.Id, "Administrador")
                 || await UserManager.IsInRoleAsync(user.Id, "Counter"))
             {
                 ViewBag.MostrarModal = true;
-                ViewBag.ModalTipo = "error";
-                ViewBag.ModalTitulo = "Cuenta del personal";
-                ViewBag.ModalMensaje = "Por seguridad, las cuentas del personal no pueden restablecerse desde esta pantalla. Solicite el cambio al SuperUsuario.";
+                ViewBag.ModalTipo = "exito";
+                ViewBag.ModalTitulo = "Solicitud recibida";
+                ViewBag.ModalMensaje = mensajeNeutral;
                 return View(model);
             }
 
