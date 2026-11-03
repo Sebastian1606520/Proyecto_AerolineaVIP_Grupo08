@@ -46,12 +46,13 @@
         font-weight: 700;
         border-radius: 6px;
         padding: 4px 10px;
+        display: inline-block;
     }
 </style>
 
 <main class="container py-5">
 
-    <!-- Indicador de pasos (paso 3) -->
+    <!-- Indicador de pasos -->
     <div class="d-flex align-items-center justify-content-center gap-4 text-muted small text-uppercase mb-4 pb-2 border-bottom border-light-subtle step-indicator">
         <span class="pb-2 text-secondary">1. Asientos</span>
         <span class="pb-2">&rarr;</span>
@@ -59,7 +60,7 @@
         <span class="pb-2">&rarr;</span>
         <span class="step-item active pb-2">3. Reserva</span>
         <span class="pb-2">&rarr;</span>
-        <span class="pb-2">4. Pago</span>
+        <span class="pb-2 text-secondary">4. Pago</span>
     </div>
 
     <!-- Encabezado -->
@@ -113,9 +114,9 @@
                                 <td class="fw-bold">@(k + 1)</td>
                                 <td>VIP@(t.VueloId.ToString("D5"))</td>
                                 <td>
-                                    <strong>@t.Frecuencia.Ruta.Aeropuerto.Localidad (@t.Frecuencia.Ruta.Aeropuerto.CodigoIATA)</strong>
-                                    &rarr;
                                     <strong>@t.Frecuencia.Ruta.Aeropuerto1.Localidad (@t.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)</strong>
+                                    &rarr;
+                                    <strong>@t.Frecuencia.Ruta.Aeropuerto.Localidad (@t.Frecuencia.Ruta.Aeropuerto.CodigoIATA)</strong>
                                 </td>
                                 <td>@t.FechaOperacion.ToString("dd/MM/yyyy")</td>
                                 <td>@t.Frecuencia.HoraSalida.ToString(@"hh\:mm") &ndash; @t.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</td>
@@ -146,7 +147,7 @@
                             {
                                 <th class="text-center">@(esItinerario ? "Asiento tramo " + (k + 1) : "Asiento")</th>
                             }
-                            <th class="text-end">Importe (ejemplo)</th>
+                            <th class="text-end">Importe</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -188,21 +189,20 @@
             <div class="alert alert-light border small text-secondary mt-3 mb-0">
                 <strong class="text-dark">&#9432; Retención (DP-07):</strong>
                 la reserva se conserva <em>pendiente de pago</em> durante <strong>@retencionMin minutos</strong>
-                (o hasta el cierre del check-in, si ocurre antes). Al vencer, los asientos se liberan.
+                (o hasta el cierre del check-in, si ocurre antes). Al vencer, los asientos se liberan inmediatamente.
             </div>
         </div>
     </div>
 
-    <!-- 3. Condiciones y botones -->
+    <!-- 3. Formulario de confirmación -->
     <form id="formConfirmarReserva" action="@Url.Action("Confirmar", "Reservas")" method="post">
         @Html.AntiForgeryToken()
-        <!-- El botón pulsado se guarda aquí: un botón deshabilitado no envía su valor -->
         <input type="hidden" name="accionBoton" id="accionBoton" value="Reservar" />
 
         <div class="confirm-card shadow-sm p-4 mb-4">
             <h2 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">Condiciones de la reserva</h2>
             <div class="small text-secondary mb-3 p-3 bg-light rounded-3" style="max-height: 120px; overflow-y: auto; line-height: 1.6;" tabindex="0">
-                La reserva queda pendiente de pago durante el plazo de retención indicado; si no se paga, los asientos se liberan.
+                La reserva queda pendiente de pago durante el plazo de retención indicado (120 minutos); si no se paga, los asientos se liberan automáticamente en el plano de cabina.
                 Las cancelaciones y reembolsos se rigen por la política aprobada (DP-08). Los datos de los pasajeros deben
                 coincidir con su documento de identidad. Los pagos son simulados con fines académicos.
             </div>
@@ -232,21 +232,37 @@
 </main>
 
 @section Scripts {
-    <script>
-                $(function () {
-                    $('#checkCondiciones').on('change', function () {
-                        $('.btn-accion').prop('disabled', !$(this).is(':checked'));
-                    });
+    <script type="application/javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+            var check = document.getElementById('checkCondiciones');
+            var botones = document.querySelectorAll('.btn-accion');
+            var inputAccion = document.getElementById('accionBoton');
+            var form = document.getElementById('formConfirmarReserva');
 
-                    // Se guarda qué botón se pulsó ANTES de deshabilitarlos
-                    $('.btn-accion').on('click', function () {
-                        $('#accionBoton').val($(this).data('accion'));
-                    });
-
-                    $('#formConfirmarReserva').on('submit', function () {
-                        $('.btn-accion').prop('disabled', true);
-                        $('.btn-accion[data-accion="' + $('#accionBoton').val() + '"]').text('Registrando…');
-                    });
+            if (check) {
+                check.addEventListener('change', function () {
+                    for (var i = 0; i < botones.length; i++) {
+                        botones[i].disabled = !check.checked;
+                    }
                 });
+            }
+
+            for (var j = 0; j < botones.length; j++) {
+                botones[j].addEventListener('click', function (e) {
+                    var accion = e.currentTarget.getAttribute('data-accion');
+                    if (inputAccion && accion) {
+                        inputAccion.value = accion;
+                    }
+                });
+            }
+
+            if (form) {
+                form.addEventListener('submit', function () {
+                    for (var k = 0; k < botones.length; k++) {
+                        botones[k].disabled = true;
+                    }
+                });
+            }
+        });
     </script>
 }

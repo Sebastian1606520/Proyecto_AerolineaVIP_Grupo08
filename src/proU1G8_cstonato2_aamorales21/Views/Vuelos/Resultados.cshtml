@@ -142,8 +142,7 @@
                         <div class="row align-items-center text-center g-1 my-2">
                             <div class="col-4 text-start">
                                 <div class="h4 fw-bold text-dark mb-0">@Model.First().Frecuencia.HoraSalida.ToString(@"hh\:mm")</div>
-                                <div class="text-secondary small fw-semibold">@Model.First().Frecuencia.Ruta.Aeropuerto.CodigoIATA</div>
-                                <small class="text-muted d-block" style="font-size: 0.72rem;">@Model.First().Frecuencia.Ruta.Aeropuerto.Localidad</small>
+                                <div class="text-secondary small fw-semibold">@ViewBag.CiudadOrigen</div>
                             </div>
                             <div class="col-4 position-relative">
                                 <div class="d-flex align-items-center">
@@ -157,8 +156,7 @@
                             </div>
                             <div class="col-4 text-end">
                                 <div class="h4 fw-bold text-dark mb-0">@Model.Last().Frecuencia.HoraLlegada.ToString(@"hh\:mm")</div>
-                                <div class="text-secondary small fw-semibold">@Model.Last().Frecuencia.Ruta.Aeropuerto1.CodigoIATA</div>
-                                <small class="text-muted d-block" style="font-size: 0.72rem;">@Model.Last().Frecuencia.Ruta.Aeropuerto1.Localidad</small>
+                                <div class="text-secondary small fw-semibold">@ViewBag.CiudadDestino</div>
                             </div>
                         </div>
 
@@ -170,7 +168,6 @@
                                     <span>
                                         <strong>Tramo:</strong> VIP@(tramo.VueloId.ToString("D5")) &middot;
                                         @tramo.Frecuencia.HoraSalida.ToString(@"hh\:mm")&ndash;@tramo.Frecuencia.HoraLlegada.ToString(@"hh\:mm")
-                                        (@tramo.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @tramo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)
                                     </span>
                                     <span class="d-flex align-items-center gap-2">
                                         <span class="badge bg-white text-dark border">@tramo.AsientosDisponibles disp.</span>
@@ -250,7 +247,7 @@
                         {
                             <div class="p-3 border rounded-3 mb-2 bg-light bg-opacity-50">
                                 <div class="fw-bold text-dark mb-1">
-                                    @tramo.Frecuencia.Ruta.Aeropuerto.Localidad (@tramo.Frecuencia.Ruta.Aeropuerto.CodigoIATA) &rarr; @tramo.Frecuencia.Ruta.Aeropuerto1.Localidad (@tramo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)
+                                    Vuelo VIP@(tramo.VueloId.ToString("D5"))
                                 </div>
                                 <div class="text-muted">Horario: @tramo.Frecuencia.HoraSalida.ToString(@"hh\:mm") a @tramo.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</div>
                                 <div class="text-muted">Aeronave asignada: @(tramo.Aeronave != null ? tramo.Aeronave.Matricula : "Pendiente")</div>
@@ -310,7 +307,7 @@
                             <div class="row align-items-center text-center g-1">
                                 <div class="col-4 text-start">
                                     <div class="h4 fw-bold @(vuelo.YaPartio ? "text-secondary" : "text-dark") mb-0">@vuelo.Frecuencia.HoraSalida.ToString(@"hh\:mm")</div>
-                                    <div class="text-secondary small fw-semibold">@vuelo.Frecuencia.Ruta.Aeropuerto.CodigoIATA</div>
+                                    <div class="text-secondary small fw-semibold">@ViewBag.CiudadOrigen</div>
                                 </div>
                                 <div class="col-4 position-relative">
                                     <div class="d-flex align-items-center">
@@ -324,7 +321,7 @@
                                 </div>
                                 <div class="col-4 text-end">
                                     <div class="h4 fw-bold @(vuelo.YaPartio ? "text-secondary" : "text-dark") mb-0">@vuelo.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</div>
-                                    <div class="text-secondary small fw-semibold">@vuelo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA</div>
+                                    <div class="text-secondary small fw-semibold">@ViewBag.CiudadDestino</div>
                                 </div>
                             </div>
                             <div class="mt-2 text-muted" style="font-size: 0.75rem;">
@@ -413,7 +410,7 @@
                                 <div class="mb-3">
                                     <span class="text-muted d-block">Ruta:</span>
                                     <strong class="text-dark">
-                                        @vuelo.Frecuencia.Ruta.Aeropuerto.Localidad (@vuelo.Frecuencia.Ruta.Aeropuerto.CodigoIATA) &rarr; @vuelo.Frecuencia.Ruta.Aeropuerto1.Localidad (@vuelo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)
+                                        @ViewBag.CiudadOrigen &rarr; @ViewBag.CiudadDestino
                                     </strong>
                                 </div>
                                 <div class="row g-2 mb-3">
@@ -461,40 +458,42 @@
 </main>
 
 @section Scripts {
-    <script>
-                document.addEventListener('DOMContentLoaded', function () {
-                    var botonesFiltro = document.querySelectorAll('.btn-filtro');
-                    var tarjetas = document.querySelectorAll('.tarjeta-vuelo');
-                    var labelConteo = document.getElementById('conteoVuelos');
+    <script type="application/javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+            var botonesFiltro = document.querySelectorAll('.btn-filtro');
+            var tarjetas = document.querySelectorAll('.tarjeta-vuelo');
+            var labelConteo = document.getElementById('conteoVuelos');
 
-                    botonesFiltro.forEach(function (btn) {
-                        btn.addEventListener('click', function () {
-                            botonesFiltro.forEach(function (b) {
-                                b.classList.remove('active');
-                            });
+            for (var i = 0; i < botonesFiltro.length; i++) {
+                botonesFiltro[i].addEventListener('click', function (e) {
+                    var btnActivo = e.currentTarget;
+                    if (!btnActivo) return;
 
-                            btn.classList.add('active');
+                    for (var b = 0; b < botonesFiltro.length; b++) {
+                        botonesFiltro[b].classList.remove('active');
+                    }
+                    btnActivo.classList.add('active');
 
-                            var filtro = btn.getAttribute('data-filtro');
-                            var contador = 0;
+                    var filtro = btnActivo.getAttribute('data-filtro');
+                    var contador = 0;
 
-                            tarjetas.forEach(function (tarjeta) {
-                                if (tarjeta instanceof HTMLElement) {
-                                    var jornada = tarjeta.getAttribute('data-jornada');
-                                    if (filtro === 'todos' || jornada === filtro) {
-                                        tarjeta.style.display = '';
-                                        contador++;
-                                    } else {
-                                        tarjeta.style.display = 'none';
-                                    }
-                                }
-                            });
+                    for (var t = 0; t < tarjetas.length; t++) {
+                        var tarjeta = tarjetas[t];
+                        var jornada = tarjeta.getAttribute('data-jornada');
 
-                            if (labelConteo) {
-                                labelConteo.textContent = contador.toString();
-                            }
-                        });
-                    });
+                        if (filtro === 'todos' || jornada === filtro) {
+                            tarjeta.style.display = '';
+                            contador++;
+                        } else {
+                            tarjeta.style.display = 'none';
+                        }
+                    }
+
+                    if (labelConteo) {
+                        labelConteo.textContent = contador.toString();
+                    }
                 });
+            }
+        });
     </script>
 }
