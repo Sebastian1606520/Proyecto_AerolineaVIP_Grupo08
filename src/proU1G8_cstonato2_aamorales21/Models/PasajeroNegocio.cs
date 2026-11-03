@@ -1,79 +1,124 @@
 ﻿using System;
-using System.Text.RegularExpressions;
+using System.Linq;
 
 namespace Con_Autenticacion.Models
 {
     public partial class Pasajero
     {
-        // Regla: Valida si el documento es válido según su tipo (Cédula ecuatoriana o Pasaporte)
-        public bool EsDocumentoValido(string tipoDocumento)
+        // 1. Nombre completo para mostrar en pantalla o boletos
+        public string NombreCompleto
         {
-            if (string.IsNullOrWhiteSpace(NumeroDocumento)) return false;
+            get { return (Nombres + " " + Apellidos).Trim(); }
+        }
+
+        // 2. Validador principal del documento (Cédula o Pasaporte)
+        public bool EsDocumentoValido()
+        {
+            if (string.IsNullOrWhiteSpace(NumeroDocumento))
+                return false;
 
             string doc = NumeroDocumento.Trim();
-            string tipo = (tipoDocumento ?? "").Trim().ToUpper();
 
-            if (tipo.Contains("CED") || tipo == "1")
+            // Si es cédula: valida 10 dígitos y el algoritmo Módulo 10
+            if (TipoDocumentoCodigo == "CEDULA")
             {
-                return ValidarCedulaEcuatoriana(doc);
+                return ValidarCedula(doc);
             }
 
-            if (tipo.Contains("PAS") || tipo == "2")
+            // Si es pasaporte: solo letras y números (entre 5 y 20 caracteres)
+            if (TipoDocumentoCodigo == "PASAPORTE")
             {
-                return Regex.IsMatch(doc, @"^[a-zA-Z0-9]{6,12}$");
+                return doc.Length >= 5 && doc.Length <= 20 && doc.All(char.IsLetterOrDigit);
             }
 
             return false;
         }
 
-        public bool EsDocumentoValidoAuto
+        // 3. Algoritmo Módulo 10 para cédulas ecuatorianas
+        public bool ValidarCedula(string cedula)
         {
-            get
-            {
-                if (string.IsNullOrWhiteSpace(NumeroDocumento)) return false;
-
-                string doc = NumeroDocumento.Trim();
-
-                // Si tiene 10 dígitos numéricos, se valida como cédula ecuatoriana
-                if (doc.Length == 10 && long.TryParse(doc, out _))
-                {
-                    return ValidarCedulaEcuatoriana(doc);
-                }
-
-                // De lo contrario, se evalúa formato estándar de pasaporte
-                return Regex.IsMatch(doc, @"^[a-zA-Z0-9]{6,12}$");
-            }
-        }
-
-        // Algoritmo Módulo 10 para cédulas ecuatorianas
-        private bool ValidarCedulaEcuatoriana(string cedula)
-        {
-            if (cedula.Length != 10 || !long.TryParse(cedula, out _))
+            // La cédula debe tener exactamente 10 dígitos numéricos
+            if (string.IsNullOrWhiteSpace(cedula) || cedula.Length != 10 || !cedula.All(char.IsDigit))
                 return false;
 
+            // Código de provincia: 01 al 24 o 30
             int provincia = int.Parse(cedula.Substring(0, 2));
-            if (provincia < 1 || (provincia > 24 && provincia != 30))
+            if ((provincia < 1 || provincia > 24) && provincia != 30)
                 return false;
 
+            // El tercer dígito para personas naturales debe ser menor a 6
             int tercerDigito = int.Parse(cedula.Substring(2, 1));
             if (tercerDigito >= 6)
                 return false;
 
+            // Coeficientes fijos para la multiplicación alterna
             int[] coeficientes = { 2, 1, 2, 1, 2, 1, 2, 1, 2 };
-            int total = 0;
+            int suma = 0;
 
             for (int i = 0; i < 9; i++)
             {
-                int valor = int.Parse(cedula[i].ToString()) * coeficientes[i];
-                total += (valor >= 10) ? valor - 9 : valor;
+                int digito = int.Parse(cedula[i].ToString());
+                int producto = digito * coeficientes[i];
+
+                // Si el producto es 10 o más, se le resta 9
+                if (producto >= 10)
+                {
+                    producto = producto - 9;
+                }
+
+                suma = suma + producto;
             }
 
+            // Se calcula el dígito verificador esperado con la decena superior
             int digitoVerificador = int.Parse(cedula[9].ToString());
-            int decenaSuperior = (int)Math.Ceiling(total / 10.0) * 10;
-            int calculo = decenaSuperior - total;
-            int resultado = (calculo == 10) ? 0 : calculo;
+            int residuo = suma % 10;
+            int resultado = (residuo == 0) ? 0 : 10 - residuo;
 
             return resultado == digitoVerificador;
+        }
+
+        // 4. Validación paso a paso antes de guardar
+        public string ValidarDatosCompletos(int numeroPasajero)
+        {
+            string prefijo = "Pasajero " + numeroPasajero + ": ";
+
+            // Limpieza básica de espacios
+            NumeroDocumento = (NumeroDocumento ?? "").Trim().ToUpper();
+            Nombres = (Nombres ?? "").Trim();
+            Apellidos = (Apellidos ?? "").Trim();
+            Correo = string.IsNullOrWhiteSpace(Correo) ? null : Correo.Trim();
+            Telefono = string.IsNullOrWhiteSpace(Telefono) ? null : Telefono.Trim();
+
+            // Validación de documento
+            if (!EsDocumentoValido())
+            {
+                if (TipoDocumentoCodigo == "CEDULA")
+                    return prefijo + "la cédula ingresada no es válida.";
+                else
+                    return prefijo + "el pasaporte debe tener entre 5 y 20 letras o números.";
+            }
+
+            // Obligatorios
+            if (string.IsNullOrWhiteSpace(Nombres))
+                return prefijo + "los nombres son obligatorios.";
+
+            if (string.IsNullOrWhiteSpace(Apellidos))
+                return prefijo + "los apellidos son obligatorios.";
+
+            // Fecha de nacimiento coherente
+            if (FechaNacimiento.HasValue)
+            {
+                if (FechaNacimiento.Value.Year < 1900 || FechaNacimiento.Value.Date > DateTime.Today)
+                    return prefijo + "la fecha de nacimiento no puede ser futura ni anterior a 1900.";
+            }
+
+            // Formato básico de correo
+            if (Correo != null && !Correo.Contains("@"))
+            {
+                return prefijo + "el correo electrónico debe contener un formato válido (ejemplo@correo.com).";
+            }
+
+            return null; // Todo correcto
         }
     }
 }
