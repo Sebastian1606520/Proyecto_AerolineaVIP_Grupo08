@@ -11,12 +11,20 @@ using System.Web.Mvc;
 
 namespace Con_Autenticacion.Controllers
 {
-    [Authorize]   // todo el controlador exige sesión (antes solo Index)
+    [Authorize]   // todo el controlador exige sesión
     public class ComprasController : Controller
     {
         private AerolineaVIP_Context db = new AerolineaVIP_Context();
 
+        // Mensaje real de la base de datos (triggers, restricciones)
+        private static string MensajeInterno(Exception ex)
+        {
+            while (ex.InnerException != null) ex = ex.InnerException;
+            return ex.Message;
+        }
+
         // GET: Compras  (CRUD de scaffolding)
+        [Authorize(Roles = "Details")]
         public ActionResult Index()
         {
             var compra = db.Compra.Include(c => c.EstadoCompra).Include(c => c.Moneda).Include(c => c.Reserva);
@@ -263,14 +271,12 @@ namespace Con_Autenticacion.Controllers
                     });
 
                     db.SaveChanges();
-                    transaccion.Commit();   // UN solo Commit (antes había dos y fallaba)
+                    transaccion.Commit();   // un solo Commit
                 }
                 catch (Exception ex)
                 {
                     transaccion.Rollback();
-                    Exception inner = ex;
-                    while (inner.InnerException != null) inner = inner.InnerException;
-                    return VolverAPagar(reservaId, "No se pudo procesar el pago: " + inner.Message);
+                    return VolverAPagar(reservaId, "No se pudo procesar el pago: " + MensajeInterno(ex));
                 }
             }
 
@@ -330,11 +336,11 @@ namespace Con_Autenticacion.Controllers
             CargarResumen(reserva);
             return View(reserva);
         }
+
         // =========================================================================
         // PANTALLA 16: VISUALIZACIÓN DE COMPROBANTES (/Compras/Comprobantes)
         // =========================================================================
         [HttpGet]
-        [Authorize]
         public ActionResult Comprobantes(DateTime? desde, DateTime? hasta, string tipo, int? ver)
         {
             string currentUserId = User.Identity.GetUserId() ?? User.Identity.Name;
@@ -455,7 +461,13 @@ namespace Con_Autenticacion.Controllers
 
             return View(comprobantes);
         }
+
+        // =========================================================================
+        // CRUD DE SCAFFOLDING (roles de permiso: Details, Create, Edit, Delete)
+        // =========================================================================
+
         // GET: Compras/Details/5
+        [Authorize(Roles = "Details")]
         public ActionResult Details(int? id)
         {
             if (id == null)
@@ -471,6 +483,7 @@ namespace Con_Autenticacion.Controllers
         }
 
         // GET: Compras/Create
+        [Authorize(Roles = "Create")]
         public ActionResult Create()
         {
             ViewBag.EstadoCompraCodigo = new SelectList(db.EstadoCompra, "Codigo", "Descripcion");
@@ -480,19 +493,30 @@ namespace Con_Autenticacion.Controllers
         }
 
         // POST: Compras/Create
-        // Para protegerse de ataques de publicación excesiva, habilite las propiedades específicas a las que quiere enlazarse. Para obtener 
-        // más detalles, vea https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Create")]
         public ActionResult Create([Bind(Include = "CompraId,ReservaId,FechaCompra,Importe,MonedaCodigo,EstadoCompraCodigo,ClaveIdempotencia")] Compra compra)
         {
+            // La clave la genera el sistema, no el usuario (UQ_Compra_ClaveIdempotencia)
             ModelState.Remove("ClaveIdempotencia");
             compra.ClaveIdempotencia = Guid.NewGuid();
+
             if (ModelState.IsValid)
             {
-                db.Compra.Add(compra);
-                db.SaveChanges();
-                return RedirectToAction("Index");
+                try
+                {
+                    db.Compra.Add(compra);
+                    db.SaveChanges();
+                    TempData["Exito"] = "Compra creada.";
+                    return RedirectToAction("Index");
+                }
+                catch (Exception ex)
+                {
+                    // Ej.: UX_Compra_ReservaVigente (una reserva con dos compras vigentes)
+                    db.Entry(compra).State = EntityState.Detached;
+                    ModelState.AddModelError("", "No se guardó la compra: " + MensajeInterno(ex));
+                }
             }
 
             ViewBag.EstadoCompraCodigo = new SelectList(db.EstadoCompra, "Codigo", "Descripcion", compra.EstadoCompraCodigo);
@@ -502,6 +526,7 @@ namespace Con_Autenticacion.Controllers
         }
 
         // GET: Compras/Edit/5
+        [Authorize(Roles = "Edit")]
         public ActionResult Edit(int? id)
         {
             if (id == null)
@@ -520,17 +545,24 @@ namespace Con_Autenticacion.Controllers
         }
 
         // POST: Compras/Edit/5
-        // Para protegerse de ataques de publicación excesiva, habilite las propiedades específicas a las que quiere enlazarse. Para obtener 
-        // más detalles, vea https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Edit")]
         public ActionResult Edit([Bind(Include = "CompraId,ReservaId,FechaCompra,Importe,MonedaCodigo,EstadoCompraCodigo,ClaveIdempotencia")] Compra compra)
         {
             if (ModelState.IsValid)
             {
-                db.Entry(compra).State = EntityState.Modified;
-                db.SaveChanges();
-                return RedirectToAction("Index");
+                try
+                {
+                    db.Entry(compra).State = EntityState.Modified;
+                    db.SaveChanges();
+                    TempData["Exito"] = "Cambios guardados.";
+                    return RedirectToAction("Index");
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", "No se guardaron los cambios: " + MensajeInterno(ex));
+                }
             }
             ViewBag.EstadoCompraCodigo = new SelectList(db.EstadoCompra, "Codigo", "Descripcion", compra.EstadoCompraCodigo);
             ViewBag.MonedaCodigo = new SelectList(db.Moneda, "Codigo", "Descripcion", compra.MonedaCodigo);
@@ -539,6 +571,7 @@ namespace Con_Autenticacion.Controllers
         }
 
         // GET: Compras/Delete/5
+        [Authorize(Roles = "Delete")]
         public ActionResult Delete(int? id)
         {
             if (id == null)
@@ -556,11 +589,20 @@ namespace Con_Autenticacion.Controllers
         // POST: Compras/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Delete")]
         public ActionResult DeleteConfirmed(int id)
         {
             Compra compra = db.Compra.Find(id);
-            db.Compra.Remove(compra);
-            db.SaveChanges();
+            try
+            {
+                db.Compra.Remove(compra);
+                db.SaveChanges();
+                TempData["Exito"] = "Compra eliminada.";
+            }
+            catch (Exception)
+            {
+                TempData["Error"] = "No se puede eliminar: la compra tiene pagos o comprobantes asociados (integridad referencial).";
+            }
             return RedirectToAction("Index");
         }
 

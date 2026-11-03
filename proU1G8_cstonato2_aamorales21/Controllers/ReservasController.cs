@@ -1,4 +1,7 @@
-﻿using System;
+﻿using Con_Autenticacion.Models;
+using Microsoft.AspNet.Identity;
+using Microsoft.AspNet.Identity.EntityFramework;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Entity;
@@ -6,8 +9,6 @@ using System.Linq;
 using System.Net;
 using System.Web;
 using System.Web.Mvc;
-using Con_Autenticacion.Models;
-using Microsoft.AspNet.Identity;
 
 namespace Con_Autenticacion.Controllers
 {
@@ -16,7 +17,8 @@ namespace Con_Autenticacion.Controllers
     {
         private AerolineaVIP_Context db = new AerolineaVIP_Context();
 
-        // GET: Reservas
+        // GET: Reservas  (CRUD de scaffolding)
+        [Authorize(Roles = "Details")]
         public ActionResult Index()
         {
             var reserva = db.Reserva.Include(r => r.EstadoReserva);
@@ -415,6 +417,8 @@ namespace Con_Autenticacion.Controllers
             ViewBag.ImportePorPasajero = importePorPasajero;
             ViewBag.TotalPagar = importePorPasajero * pasajeros.Count;
             ViewBag.RetencionMin = LeerParametro("RetencionReservaMin", 120);
+            ViewBag.EsCounter = User.IsInRole("Counter");
+            ViewBag.CorreoCliente = TempData["CorreoCliente"] as string ?? "";
 
             return View(tramos.First());
         }
@@ -422,7 +426,7 @@ namespace Con_Autenticacion.Controllers
         // POST: /Reservas/Confirmar
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Confirmar(bool? aceptarCondiciones, string accionBoton)
+        public ActionResult Confirmar(bool? aceptarCondiciones, string accionBoton, string correoCliente)
         {
             List<Vuelo> tramos;
             List<List<int>> asientosPorTramo;
@@ -489,6 +493,33 @@ namespace Con_Autenticacion.Controllers
             }
 
             string currentUserId = User.Identity.GetUserId();
+
+            if (User.IsInRole("Counter"))
+            {
+                correoCliente = (correoCliente ?? "").Trim();
+                if (correoCliente == "")
+                {
+                    TempData["Error"] = "Ingrese el correo del cliente al que pertenece la reserva.";
+                    return RedirectToAction("Confirmar");
+                }
+
+                using (var identity = new ApplicationDbContext())
+                {
+                    var userManager = new UserManager<ApplicationUser>(new UserStore<ApplicationUser>(identity));
+                    var cliente = userManager.FindByEmail(correoCliente);
+
+                    // Solo cuentas con rol Cliente: el counter no reserva a nombre de personal
+                    if (cliente == null || !userManager.IsInRole(cliente.Id, "Cliente"))
+                    {
+                        TempData["Error"] = "No existe un cliente registrado con el correo " + correoCliente
+                                          + ". Si no tiene cuenta, primero debe registrarse.";
+                        TempData["CorreoCliente"] = correoCliente;
+                        return RedirectToAction("Confirmar");
+                    }
+
+                    currentUserId = cliente.Id;
+                }
+            }
             Reserva reserva;
 
             // 3. Reserva y asientos en UNA transacción (no quedan reservas sin asientos)
@@ -1021,7 +1052,19 @@ namespace Con_Autenticacion.Controllers
             return RedirectToAction("CheckIn", new { codigo = codigo, documento = documento });
         }
 
+        // =========================================================================
+        // CRUD DE SCAFFOLDING (roles de permiso: Details, Create, Edit, Delete)
+        // =========================================================================
+
+        // Mensaje real de la base de datos (triggers, restricciones)
+        private static string MensajeInterno(Exception ex)
+        {
+            while (ex.InnerException != null) ex = ex.InnerException;
+            return ex.Message;
+        }
+
         // GET: Reservas/Details/5
+        [Authorize(Roles = "Details")]
         public ActionResult Details(int? id)
         {
             if (id == null)
@@ -1037,6 +1080,7 @@ namespace Con_Autenticacion.Controllers
         }
 
         // GET: Reservas/Create
+        [Authorize(Roles = "Create")]
         public ActionResult Create()
         {
             ViewBag.EstadoReservaCodigo = new SelectList(db.EstadoReserva, "Codigo", "Descripcion");
@@ -1044,17 +1088,25 @@ namespace Con_Autenticacion.Controllers
         }
 
         // POST: Reservas/Create
-        // Para protegerse de ataques de publicación excesiva, habilite las propiedades específicas a las que quiere enlazarse. Para obtener 
-        // más detalles, vea https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Create")]
         public ActionResult Create([Bind(Include = "ReservaId,CodigoReserva,UsuarioId,FechaCreacion,FechaExpiracion,EstadoReservaCodigo")] Reserva reserva)
         {
             if (ModelState.IsValid)
             {
-                db.Reserva.Add(reserva);
-                db.SaveChanges();
-                return RedirectToAction("Index");
+                try
+                {
+                    db.Reserva.Add(reserva);
+                    db.SaveChanges();
+                    TempData["Exito"] = "Reserva creada.";
+                    return RedirectToAction("Index");
+                }
+                catch (Exception ex)
+                {
+                    db.Entry(reserva).State = EntityState.Detached;
+                    ModelState.AddModelError("", "No se guardó la reserva: " + MensajeInterno(ex));
+                }
             }
 
             ViewBag.EstadoReservaCodigo = new SelectList(db.EstadoReserva, "Codigo", "Descripcion", reserva.EstadoReservaCodigo);
@@ -1062,6 +1114,7 @@ namespace Con_Autenticacion.Controllers
         }
 
         // GET: Reservas/Edit/5
+        [Authorize(Roles = "Edit")]
         public ActionResult Edit(int? id)
         {
             if (id == null)
@@ -1078,23 +1131,31 @@ namespace Con_Autenticacion.Controllers
         }
 
         // POST: Reservas/Edit/5
-        // Para protegerse de ataques de publicación excesiva, habilite las propiedades específicas a las que quiere enlazarse. Para obtener 
-        // más detalles, vea https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Edit")]
         public ActionResult Edit([Bind(Include = "ReservaId,CodigoReserva,UsuarioId,FechaCreacion,FechaExpiracion,EstadoReservaCodigo")] Reserva reserva)
         {
             if (ModelState.IsValid)
             {
-                db.Entry(reserva).State = EntityState.Modified;
-                db.SaveChanges();
-                return RedirectToAction("Index");
+                try
+                {
+                    db.Entry(reserva).State = EntityState.Modified;
+                    db.SaveChanges();
+                    TempData["Exito"] = "Cambios guardados.";
+                    return RedirectToAction("Index");
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", "No se guardaron los cambios: " + MensajeInterno(ex));
+                }
             }
             ViewBag.EstadoReservaCodigo = new SelectList(db.EstadoReserva, "Codigo", "Descripcion", reserva.EstadoReservaCodigo);
             return View(reserva);
         }
 
         // GET: Reservas/Delete/5
+        [Authorize(Roles = "Delete")]
         public ActionResult Delete(int? id)
         {
             if (id == null)
@@ -1112,11 +1173,20 @@ namespace Con_Autenticacion.Controllers
         // POST: Reservas/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Delete")]
         public ActionResult DeleteConfirmed(int id)
         {
             Reserva reserva = db.Reserva.Find(id);
-            db.Reserva.Remove(reserva);
-            db.SaveChanges();
+            try
+            {
+                db.Reserva.Remove(reserva);
+                db.SaveChanges();
+                TempData["Exito"] = "Reserva eliminada.";
+            }
+            catch (Exception)
+            {
+                TempData["Error"] = "No se puede eliminar: la reserva tiene asientos, compras o check-in asociados (integridad referencial).";
+            }
             return RedirectToAction("Index");
         }
 

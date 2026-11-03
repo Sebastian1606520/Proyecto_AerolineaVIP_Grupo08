@@ -14,7 +14,16 @@ namespace Con_Autenticacion.Controllers
     {
         private AerolineaVIP_Context db = new AerolineaVIP_Context();
 
-        // GET: Vuelos
+        // Mensaje real de la base de datos (triggers, restricciones)
+        private static string MensajeInterno(Exception ex)
+        {
+            while (ex.InnerException != null) ex = ex.InnerException;
+            return ex.Message;
+        }
+
+        // =========================================================================
+        // PANTALLA 5: BÚSQUEDA DE VUELOS (pública)
+        // =========================================================================
         public ActionResult Buscar()
         {
             var aeropuertos = db.Aeropuerto
@@ -31,7 +40,9 @@ namespace Con_Autenticacion.Controllers
             return View();
         }
 
-
+        // =========================================================================
+        // PANTALLA 6: RESULTADOS DE BÚSQUEDA (pública)
+        // =========================================================================
         [HttpGet]
         [AllowAnonymous]
         public ActionResult Resultados(int? origenId, int? destinoId, DateTime? fecha, int pasajeros = 1)
@@ -108,8 +119,9 @@ namespace Con_Autenticacion.Controllers
             return View(vuelosResultado);
         }
 
-
-
+        // =========================================================================
+        // PANTALLA 7: DISPONIBILIDAD DE ASIENTOS (pública)
+        // =========================================================================
         [HttpGet]
         [AllowAnonymous]
         public ActionResult Disponibilidad(int? id, int pasajeros = 1)
@@ -136,9 +148,10 @@ namespace Con_Autenticacion.Controllers
 
             ViewBag.HoraCorte = DateTime.Now.ToString("HH:mm");
 
-            // se conserva la cantidad de pasajeros de la búsqueda
+            // Se conserva la cantidad de pasajeros de la búsqueda
             ViewBag.Pasajeros = (pasajeros >= 1 && pasajeros <= 7) ? pasajeros : 1;
 
+            // «Regresar a resultados»: un tramo del domingo vuelve a la búsqueda
             // del itinerario completo (DP-09: los tramos del domingo no se venden sueltos)
             int origenBusqueda = vuelo.Frecuencia.Ruta.AeropuertoOrigenId;
             int destinoBusqueda = vuelo.Frecuencia.Ruta.AeropuertoDestinoId;
@@ -163,8 +176,11 @@ namespace Con_Autenticacion.Controllers
             return View(vuelo);
         }
 
+        // =========================================================================
+        // CRUD DE SCAFFOLDING (roles de permiso: Details, Create, Edit, Delete)
+        // =========================================================================
 
-        // GET: Vuelos  (CRUD de scaffolding)
+        // GET: Vuelos
         [Authorize(Roles = "Details")]
         public ActionResult Index()
         {
@@ -178,6 +194,7 @@ namespace Con_Autenticacion.Controllers
         }
 
         // GET: Vuelos/Details/5
+        [Authorize(Roles = "Details")]
         public ActionResult Details(int? id)
         {
             if (id == null)
@@ -193,6 +210,7 @@ namespace Con_Autenticacion.Controllers
         }
 
         // GET: Vuelos/Create
+        [Authorize(Roles = "Create")]
         public ActionResult Create()
         {
             ViewBag.AeronaveId = new SelectList(db.Aeronave, "AeronaveId", "Matricula");
@@ -202,17 +220,26 @@ namespace Con_Autenticacion.Controllers
         }
 
         // POST: Vuelos/Create
-        // Para protegerse de ataques de publicación excesiva, habilite las propiedades específicas a las que quiere enlazarse. Para obtener 
-        // más detalles, vea https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Create")]
         public ActionResult Create([Bind(Include = "VueloId,FrecuenciaId,FechaOperacion,AeronaveId,EstadoVueloCodigo")] Vuelo vuelo)
         {
             if (ModelState.IsValid)
             {
-                db.Vuelo.Add(vuelo);
-                db.SaveChanges();
-                return RedirectToAction("Index");
+                try
+                {
+                    db.Vuelo.Add(vuelo);
+                    db.SaveChanges();
+                    TempData["Exito"] = "Vuelo creado.";
+                    return RedirectToAction("Index");
+                }
+                catch (Exception ex)
+                {
+                    // Ej.: trigger trg_Vuelo_Validar (día de operación, aeronave, superposición)
+                    db.Entry(vuelo).State = EntityState.Detached;
+                    ModelState.AddModelError("", "No se guardó el vuelo: " + MensajeInterno(ex));
+                }
             }
 
             ViewBag.AeronaveId = new SelectList(db.Aeronave, "AeronaveId", "Matricula", vuelo.AeronaveId);
@@ -222,6 +249,7 @@ namespace Con_Autenticacion.Controllers
         }
 
         // GET: Vuelos/Edit/5
+        [Authorize(Roles = "Edit")]
         public ActionResult Edit(int? id)
         {
             if (id == null)
@@ -240,17 +268,24 @@ namespace Con_Autenticacion.Controllers
         }
 
         // POST: Vuelos/Edit/5
-        // Para protegerse de ataques de publicación excesiva, habilite las propiedades específicas a las que quiere enlazarse. Para obtener 
-        // más detalles, vea https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Edit")]
         public ActionResult Edit([Bind(Include = "VueloId,FrecuenciaId,FechaOperacion,AeronaveId,EstadoVueloCodigo")] Vuelo vuelo)
         {
             if (ModelState.IsValid)
             {
-                db.Entry(vuelo).State = EntityState.Modified;
-                db.SaveChanges();
-                return RedirectToAction("Index");
+                try
+                {
+                    db.Entry(vuelo).State = EntityState.Modified;
+                    db.SaveChanges();
+                    TempData["Exito"] = "Cambios guardados.";
+                    return RedirectToAction("Index");
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", "No se guardaron los cambios: " + MensajeInterno(ex));
+                }
             }
             ViewBag.AeronaveId = new SelectList(db.Aeronave, "AeronaveId", "Matricula", vuelo.AeronaveId);
             ViewBag.EstadoVueloCodigo = new SelectList(db.EstadoVuelo, "Codigo", "Descripcion", vuelo.EstadoVueloCodigo);
@@ -259,6 +294,7 @@ namespace Con_Autenticacion.Controllers
         }
 
         // GET: Vuelos/Delete/5
+        [Authorize(Roles = "Delete")]
         public ActionResult Delete(int? id)
         {
             if (id == null)
@@ -273,7 +309,6 @@ namespace Con_Autenticacion.Controllers
             return View(vuelo);
         }
 
-        // POST: Vuelos/Delete/5
         // POST: Vuelos/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]

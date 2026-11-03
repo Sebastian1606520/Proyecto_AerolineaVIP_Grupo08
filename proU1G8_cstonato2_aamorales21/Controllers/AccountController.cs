@@ -61,7 +61,12 @@ namespace Con_Autenticacion.Controllers
             // Pantalla 2 (punto 18): si ya hay sesión, redirigir a su área
             if (User.Identity.IsAuthenticated)
             {
-                return RedirigirPorRol(returnUrl);
+                // Ya tiene sesión: si llega con ReturnUrl es porque su rol no tiene permiso para esa página
+                if (!string.IsNullOrEmpty(returnUrl))
+                {
+                    TempData["Error"] = "Error de acceso: su usuario no tiene permisos para esa sección.";
+                }
+                return RedirigirPorRol(null);   // a su área, sin volver a la página prohibida
             }
 
             ViewBag.ReturnUrl = returnUrl;
