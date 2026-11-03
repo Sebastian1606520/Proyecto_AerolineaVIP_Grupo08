@@ -36,15 +36,12 @@ namespace Con_Autenticacion.Controllers
         [AllowAnonymous]
         public ActionResult Resultados(int? origenId, int? destinoId, DateTime? fecha, int pasajeros = 1)
         {
-            if (!origenId.HasValue || !destinoId.HasValue || !fecha.HasValue)
+            // 1. Validaciones básicas de entrada
+            if (!origenId.HasValue || !destinoId.HasValue || !fecha.HasValue || origenId.Value == destinoId.Value)
             {
-                TempData["Error"] = "Debe especificar origen, destino y fecha para consultar vuelos.";
-                return RedirectToAction("Buscar");
-            }
-
-            if (origenId.Value == destinoId.Value)
-            {
-                TempData["Error"] = "El aeropuerto de origen y destino deben ser diferentes.";
+                TempData["Error"] = origenId == destinoId && origenId.HasValue
+                    ? "El aeropuerto de origen y destino deben ser diferentes."
+                    : "Debe especificar origen, destino y fecha para consultar vuelos.";
                 return RedirectToAction("Buscar");
             }
 
@@ -52,66 +49,66 @@ namespace Con_Autenticacion.Controllers
             var aeroOrigen = db.Aeropuerto.Find(origenId.Value);
             var aeroDestino = db.Aeropuerto.Find(destinoId.Value);
 
-            string iataOrigen = aeroOrigen?.CodigoIATA ?? "";
-            string iataDestino = aeroDestino?.CodigoIATA ?? "";
+            string iataO = aeroOrigen?.CodigoIATA ?? "";
+            string iataD = aeroDestino?.CodigoIATA ?? "";
 
-            List<Vuelo> vuelosResultado = new List<Vuelo>();
+            // 2. Determinar si es ruta con escala (UIO <-> GPS) y validar el día
+            bool esItinerario = (iataO == "UIO" && iataD == "GPS") || (iataO == "GPS" && iataD == "UIO");
+            bool esDomingo = fechaBusqueda.DayOfWeek == DayOfWeek.Sunday;
 
-            // Ruta con escala obligatoria en GYE: UIO -> GPS o GPS -> UIO
-            bool esItinerario = (iataOrigen == "UIO" && iataDestino == "GPS")
-                             || (iataOrigen == "GPS" && iataDestino == "UIO");
+            if (esItinerario && !esDomingo)
+            {
+                TempData["Error"] = "La ruta con escala Quito – Galápagos opera exclusivamente los días domingo.";
+                return RedirectToAction("Buscar");
+            }
+            if (!esItinerario && esDomingo)
+            {
+                TempData["Error"] = "Los vuelos directos operan de lunes a sábado. Los domingos son exclusivos para Galápagos.";
+                return RedirectToAction("Buscar");
+            }
+
+            // 3. Consulta base única (sin duplicar Includes)
+            var consulta = db.Vuelo
+                .Include(v => v.Frecuencia.Ruta.Aeropuerto)
+                .Include(v => v.Frecuencia.Ruta.Aeropuerto1)
+                .Include(v => v.Aeronave)
+                .Include(v => v.ReservaPasajeroVuelo)
+                .Where(v => v.FechaOperacion == fechaBusqueda);
+
+            List<Vuelo> vuelosResultado;
 
             if (esItinerario)
             {
-                ViewBag.EsItinerarioEscala = true;
+                int gyeId = db.Aeropuerto.Where(a => a.CodigoIATA == "GYE").Select(a => a.AeropuertoId).FirstOrDefault();
+                int oId = origenId.Value, dId = destinoId.Value;
 
-                var gye = db.Aeropuerto.FirstOrDefault(a => a.CodigoIATA == "GYE");
-                int gyeId = gye != null ? gye.AeropuertoId : 0;
-                int oId = origenId.Value;
-                int dId = destinoId.Value;
-
-                // Cargar los 2 tramos del mismo día domingo
-                vuelosResultado = db.Vuelo
-                    .Include(v => v.Frecuencia.Ruta.Aeropuerto)
-                    .Include(v => v.Frecuencia.Ruta.Aeropuerto1)
-                    .Include(v => v.Aeronave)
-                    .Include(v => v.ReservaPasajeroVuelo)
-                    .Where(v => v.FechaOperacion == fechaBusqueda
-                             && ((v.Frecuencia.Ruta.AeropuertoOrigenId == oId && v.Frecuencia.Ruta.AeropuertoDestinoId == gyeId)
-                              || (v.Frecuencia.Ruta.AeropuertoOrigenId == gyeId && v.Frecuencia.Ruta.AeropuertoDestinoId == dId)))
+                vuelosResultado = consulta
+                    .Where(v => (v.Frecuencia.Ruta.AeropuertoOrigenId == oId && v.Frecuencia.Ruta.AeropuertoDestinoId == gyeId)
+                             || (v.Frecuencia.Ruta.AeropuertoOrigenId == gyeId && v.Frecuencia.Ruta.AeropuertoDestinoId == dId))
                     .OrderBy(v => v.Frecuencia.HoraSalida)
                     .ToList();
 
-                // Si no tiene los dos tramos coordinados no se comercializa
-                if (vuelosResultado.Count != 2)
-                {
-                    vuelosResultado = new List<Vuelo>();
-                }
+                // Si no existen los dos tramos coordinados, no se ofrece
+                if (vuelosResultado.Count != 2) vuelosResultado.Clear();
             }
             else
             {
-                ViewBag.EsItinerarioEscala = false;
-
-                // Vuelos directos ordinarios (no domingos)
-                vuelosResultado = db.Vuelo
-                    .Include(v => v.Frecuencia.Ruta.Aeropuerto)
-                    .Include(v => v.Frecuencia.Ruta.Aeropuerto1)
-                    .Include(v => v.Aeronave)
-                    .Include(v => v.ReservaPasajeroVuelo)
-                    .Where(v => v.FechaOperacion == fechaBusqueda
-                             && v.Frecuencia.DiaSemana != 7
+                vuelosResultado = consulta
+                    .Where(v => v.Frecuencia.DiaSemana != 7
                              && v.Frecuencia.Ruta.AeropuertoOrigenId == origenId.Value
                              && v.Frecuencia.Ruta.AeropuertoDestinoId == destinoId.Value)
                     .OrderBy(v => v.Frecuencia.HoraSalida)
                     .ToList();
             }
 
+            // 4. Parámetros para la vista
+            ViewBag.EsItinerarioEscala = esItinerario;
             ViewBag.OrigenId = origenId.Value;
             ViewBag.DestinoId = destinoId.Value;
-            ViewBag.CiudadOrigen = aeroOrigen != null ? $"{aeroOrigen.Localidad} ({aeroOrigen.CodigoIATA})" : "Origen";
-            ViewBag.CiudadDestino = aeroDestino != null ? $"{aeroDestino.Localidad} ({aeroDestino.CodigoIATA})" : "Destino";
+            ViewBag.CiudadOrigen = aeroOrigen != null ? $"{aeroOrigen.Localidad} ({iataO})" : "Origen";
+            ViewBag.CiudadDestino = aeroDestino != null ? $"{aeroDestino.Localidad} ({iataD})" : "Destino";
             ViewBag.Fecha = fechaBusqueda;
-            ViewBag.Pasajeros = (pasajeros >= 1 && pasajeros <= 7) ? pasajeros : 1;
+            ViewBag.Pasajeros = Math.Max(1, Math.Min(pasajeros, 7));
 
             return View(vuelosResultado);
         }

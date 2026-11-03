@@ -3,19 +3,21 @@ using System.Linq;
 
 namespace Con_Autenticacion.Models
 {
-    // La palabra 'partial' fusiona esta clase con la que genera el .edmx
     public partial class Vuelo
     {
-        // Regla: Asientos libres considerando la capacidad fija de 7 asientos (Embraer Phenom 300E)
+        // Capacidad ejecutiva estándar (Embraer Phenom 300E)
+        public const int CapacidadMaximaVIP = 7;
+
+        // Regla: Asientos libres considerando la capacidad fija de 7 asientos
         public int AsientosDisponibles
         {
             get
             {
-                if (ReservaPasajeroVuelo == null) return 7;
+                if (ReservaPasajeroVuelo == null) return CapacidadMaximaVIP;
                 int ocupados = ReservaPasajeroVuelo.Count(r =>
                     r.EstadoAsignacionCodigo == "PENDIENTE" ||
                     r.EstadoAsignacionCodigo == "CONFIRMADA");
-                return Math.Max(0, 7 - ocupados);
+                return Math.Max(0, CapacidadMaximaVIP - ocupados);
             }
         }
 
@@ -30,10 +32,22 @@ namespace Con_Autenticacion.Models
             }
         }
 
-        // Regla: Valida si es vendible (aeronave asignada, no cancelado, con asientos y no despegado)
+        // Regla: Bloqueo de venta con menos de 60 minutos de anticipación al despegue
+        public bool PermiteVentaPorHorario
+        {
+            get
+            {
+                if (Frecuencia == null) return false;
+                DateTime fechaSalida = FechaOperacion.Date.Add(Frecuencia.HoraSalida);
+                return (fechaSalida - DateTime.Now).TotalMinutes >= 60;
+            }
+        }
+
+        // Regla: Valida si es vendible (aeronave asignada, no cancelado, con asientos, no despegado y con tiempo)
         public bool EsVendible(int pasajerosSolicitados = 1)
         {
             return !YaPartio &&
+                   PermiteVentaPorHorario &&
                    EstadoVueloCodigo != "CANCELADO" &&
                    AeronaveId != null &&
                    AsientosDisponibles >= pasajerosSolicitados;
