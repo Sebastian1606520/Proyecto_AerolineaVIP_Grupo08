@@ -274,6 +274,7 @@
     <Compile Include="Models\Reserva.cs">
       <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
     </Compile>
+    <Compile Include="Models\ReservaNegocio.cs" />
     <Compile Include="Models\ReservaPasajeroVuelo.cs">
       <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
     </Compile>

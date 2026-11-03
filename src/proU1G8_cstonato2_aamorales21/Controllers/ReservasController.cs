@@ -33,15 +33,17 @@ namespace Con_Autenticacion.Controllers
             string origen = vuelo.Frecuencia.Ruta.Aeropuerto.CodigoIATA;
             string destino = vuelo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA;
             bool esIda = origen == "UIO" || destino == "GPS";
-            string[] rutasItinerario = esIda
-                ? new[] { "UIO-GYE", "GYE-GPS" }
-                : new[] { "GPS-GYE", "GYE-UIO" };
+            string[] rutas = esIda ? new[] { "UIO-GYE", "GYE-GPS" } : new[] { "GPS-GYE", "GYE-UIO" };
 
-            DateTime fecha = vuelo.FechaOperacion;
+            DateTime fecha = vuelo.FechaOperacion.Date;
             var tramos = db.Vuelo
+                .Include(v => v.Frecuencia.Ruta.Aeropuerto)
+                .Include(v => v.Frecuencia.Ruta.Aeropuerto1)
+                .Include(v => v.Aeronave)
+                .Include(v => v.ReservaPasajeroVuelo)
                 .Where(v => v.FechaOperacion == fecha)
                 .ToList()
-                .Where(v => rutasItinerario.Contains(v.Frecuencia.Ruta.Aeropuerto.CodigoIATA + "-" + v.Frecuencia.Ruta.Aeropuerto1.CodigoIATA))
+                .Where(v => rutas.Contains($"{v.Frecuencia.Ruta.Aeropuerto.CodigoIATA}-{v.Frecuencia.Ruta.Aeropuerto1.CodigoIATA}"))
                 .OrderBy(v => v.Frecuencia.HoraSalida)
                 .ToList();
 
@@ -76,42 +78,11 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("Buscar", "Vuelos");
             }
 
-            // Cada tramo debe estar operativo y con aeronave (RNP-01)
-            foreach (var t in tramos)
-            {
-                if (t.EstadoVueloCodigo == "CANCELADO")
-                {
-                    TempData["Error"] = "El vuelo seleccionado no está disponible o ha sido cancelado.";
-                    return RedirectToAction("Buscar", "Vuelos");
-                }
-                if (t.AeronaveId == null)
-                {
-                    TempData["Error"] = "El vuelo no tiene aeronave asignada; sus asientos no pueden reservarse.";
-                    return RedirectToAction("Buscar", "Vuelos");
-                }
-            }
-
-            int cantidadPasajeros = (pasajeros >= 1 && pasajeros <= 7) ? pasajeros : 1;
-
-            // Cupo suficiente en TODOS los tramos (mínimo entre tramos, DP-09)
-            int disponibles = tramos.Min(t => LibresEnVuelo(t));
-            if (disponibles < cantidadPasajeros)
-            {
-                TempData["Error"] = "No quedan suficientes asientos disponibles para la cantidad de pasajeros requerida.";
-                return RedirectToAction("Resultados", "Vuelos", new
-                {
-                    origenId = tramos.First().Frecuencia.Ruta.AeropuertoOrigenId,
-                    destinoId = tramos.Last().Frecuencia.Ruta.AeropuertoDestinoId,
-                    fecha = vuelo.FechaOperacion.ToString("yyyy-MM-dd"),
-                    pasajeros = cantidadPasajeros
-                });
-            }
-
-            ViewBag.Pasajeros = cantidadPasajeros;
-            ViewBag.HoraCorte = DateTime.Now.ToString("HH:mm");
             ViewBag.Tramos = tramos;
+            ViewBag.Pasajeros = (pasajeros >= 1 && pasajeros <= 7) ? pasajeros : 1;
+            ViewBag.EsItinerario = tramos.Count > 1;
+            ViewBag.UltimoTramo = tramos.Last();
 
-            // El modelo es siempre el primer tramo
             return View(tramos.First());
         }
 
