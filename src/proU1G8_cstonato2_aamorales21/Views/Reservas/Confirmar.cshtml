@@ -1,7 +1,17 @@
-﻿@model Con_Autenticacion.Models.Vuelo
+﻿@using Con_Autenticacion.Models;
+@model Vuelo
 @{
     ViewBag.Title = "Reserva de pasajes";
     Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var tramos = (List<Vuelo>)ViewBag.Tramos;
+    var pasajeros = (List<Pasajero>)ViewBag.Pasajeros;
+    var codigos = (List<List<string>>)ViewBag.CodigosPorPasajero;
+    var tarifas = (List<decimal>)ViewBag.TarifasTramo;
+    decimal importePorPasajero = (decimal)ViewBag.ImportePorPasajero;
+    decimal total = (decimal)ViewBag.TotalPagar;
+    int retencionMin = (int)ViewBag.RetencionMin;
+    bool esItinerario = tramos.Count > 1;
 }
 
 <style>
@@ -36,53 +46,52 @@
         font-weight: 700;
         border-radius: 6px;
         padding: 4px 10px;
+        display: inline-block;
     }
 </style>
 
 <main class="container py-5">
 
-    <!-- Indicador de Pasos del Flujo -->
+    <!-- Indicador de pasos -->
     <div class="d-flex align-items-center justify-content-center gap-4 text-muted small text-uppercase mb-4 pb-2 border-bottom border-light-subtle step-indicator">
         <span class="pb-2 text-secondary">1. Asientos</span>
         <span class="pb-2">&rarr;</span>
         <span class="pb-2 text-secondary">2. Pasajeros</span>
         <span class="pb-2">&rarr;</span>
-        <span class="step-item active pb-2">3. Confirmación</span>
+        <span class="step-item active pb-2">3. Reserva</span>
         <span class="pb-2">&rarr;</span>
-        <span class="pb-2 text-muted">4. Pago</span>
+        <span class="pb-2 text-secondary">4. Pago</span>
     </div>
 
-    <!-- Encabezado Corporativo -->
+    <!-- Encabezado -->
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-3 border-bottom border-light-subtle gap-3">
         <div>
             <span class="badge bg-dark text-warning px-3 py-2 text-uppercase fw-semibold mb-2" style="letter-spacing: 1px; font-size: 0.75rem;">
                 Aerolínea VIP &middot; Pantalla 10
             </span>
-            <h2 class="h3 fw-bold text-dark mb-1">Confirmación de Reserva</h2>
-            <p class="text-secondary small mb-0">
-                Revise el itinerario y los datos de cada boleto antes de formalizar la operación.
-            </p>
+            <h1 class="h3 fw-bold text-dark mb-1">Reserva de pasajes</h1>
+            <p class="text-secondary small mb-0">Revise el itinerario y los datos de cada pasajero antes de registrar la reserva.</p>
         </div>
         <a href="@Url.Action("Pasajeros", "Reservas")" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
-            &larr; Volver a modificar pasajeros
+            &larr; Volver a modificar
         </a>
     </div>
 
     @if (TempData["Error"] != null)
     {
-        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2">
+        <div class="alert alert-danger py-2 px-3 mb-4 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
             <span>&#9888;</span>
             <span>@TempData["Error"]</span>
         </div>
     }
 
-    <!-- 1. Bloque: Resumen del Itinerario -->
+    <!-- 1. Itinerario -->
     <div class="confirm-card shadow-sm mb-4">
         <div class="confirm-card-header d-flex justify-content-between align-items-center">
-            <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">
-                Itinerario de Vuelo
+            <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Itinerario</span>
+            <span class="badge bg-light text-secondary border small">
+                @(esItinerario ? "Con escala en GYE · " + tramos.Count + " tramos" : "Vuelo directo")
             </span>
-            <span class="badge bg-light text-secondary border small">Vuelo Directo</span>
         </div>
         <div class="p-4">
             <div class="table-responsive">
@@ -98,33 +107,33 @@
                         </tr>
                     </thead>
                     <tbody class="small">
-                        <tr>
-                            <td class="fw-bold">1</td>
-                            <td>VIP@(Model.VueloId.ToString("D5"))</td>
-                            <td>
-                                <strong>@Model.Frecuencia.Ruta.Aeropuerto.Localidad (@Model.Frecuencia.Ruta.Aeropuerto.CodigoIATA)</strong>
-                                &rarr;
-                                <strong>@Model.Frecuencia.Ruta.Aeropuerto1.Localidad (@Model.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)</strong>
-                            </td>
-                            <td>@Model.FechaOperacion.ToString("dd/MM/yyyy")</td>
-                            <td>@Model.Frecuencia.HoraSalida.ToString(@"hh\:mm") &ndash; @Model.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</td>
-                            <td>@(Model.Aeronave != null ? Model.Aeronave.Matricula : "AV-02") &middot; Embraer Phenom 300E</td>
-                        </tr>
+                        @for (int k = 0; k < tramos.Count; k++)
+                        {
+                            var t = tramos[k];
+                            <tr>
+                                <td class="fw-bold">@(k + 1)</td>
+                                <td>VIP@(t.VueloId.ToString("D5"))</td>
+                                <td>
+                                    <strong>@t.Frecuencia.Ruta.Aeropuerto1.Localidad (@t.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)</strong>
+                                    &rarr;
+                                    <strong>@t.Frecuencia.Ruta.Aeropuerto.Localidad (@t.Frecuencia.Ruta.Aeropuerto.CodigoIATA)</strong>
+                                </td>
+                                <td>@t.FechaOperacion.ToString("dd/MM/yyyy")</td>
+                                <td>@t.Frecuencia.HoraSalida.ToString(@"hh\:mm") &ndash; @t.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</td>
+                                <td>@(t.Aeronave != null ? t.Aeronave.Matricula : "Sin asignar") &middot; Embraer Phenom 300E</td>
+                            </tr>
+                        }
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- 2. Bloque: Pasajeros y Asientos Asignados -->
+    <!-- 2. Pasajeros y asientos -->
     <div class="confirm-card shadow-sm mb-4">
-        <div class="confirm-card-header d-flex justify-content-between align-items-center">
-            <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">
-                Pasajeros, Asientos e Importes
-            </span>
-            <span class="badge bg-purple text-white px-2 py-1 small" style="background-color: #581c87;">
-                Estado resultante: Pendiente de pago
-            </span>
+        <div class="confirm-card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Pasajeros y asientos</span>
+            <span class="badge text-white px-2 py-1 small" style="background-color: #581c87;">Estado tras confirmar: Reserva pendiente de pago</span>
         </div>
         <div class="p-4">
             <div class="table-responsive">
@@ -132,68 +141,75 @@
                     <thead class="table-light small text-secondary">
                         <tr>
                             <th>#</th>
-                            <th>Nombre Completo</th>
-                            <th>Identificación</th>
-                            <th class="text-center">Asiento</th>
-                            <th class="text-end">Importe Unitario</th>
+                            <th>Pasajero</th>
+                            <th>Documento</th>
+                            @for (int k = 0; k < tramos.Count; k++)
+                            {
+                                <th class="text-center">@(esItinerario ? "Asiento tramo " + (k + 1) : "Asiento")</th>
+                            }
+                            <th class="text-end">Importe</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @for (int p = 0; p < ((List<Con_Autenticacion.Models.Pasajero>)ViewBag.Pasajeros).Count; p++)
+                        @for (int i = 0; i < pasajeros.Count; i++)
                         {
-                            var pas = ((List<Con_Autenticacion.Models.Pasajero>)ViewBag.Pasajeros)[p];
+                            var pas = pasajeros[i];
                             <tr>
-                                <td class="text-muted small">@(p + 1)</td>
+                                <td class="text-muted small">@(i + 1)</td>
                                 <td class="fw-semibold text-dark">@pas.Nombres @pas.Apellidos</td>
                                 <td class="small text-secondary">
-                                    <span class="badge bg-light text-dark border me-1">@pas.TipoDocumentoCodigo</span>
+                                    <span class="badge bg-light text-dark border me-1">@(pas.TipoDocumentoCodigo == "PASAPORTE" ? "Pasaporte" : "Cédula")</span>
                                     @pas.NumeroDocumento
                                 </td>
-                                <td class="text-center">
-                                    <span class="seat-badge-purple">
-                                        @(((List<string>)ViewBag.CodigosAsientos)[p])
-                                    </span>
-                                </td>
-                                <td class="text-end fw-semibold text-dark">
-                                    $@(((decimal)ViewBag.TarifaIndividual).ToString("N2")) USD
-                                </td>
+                                @for (int k = 0; k < tramos.Count; k++)
+                                {
+                                    <td class="text-center"><span class="seat-badge-purple">@codigos[i][k]</span></td>
+                                }
+                                <td class="text-end fw-semibold text-dark text-nowrap">$@importePorPasajero.ToString("N2") USD</td>
                             </tr>
                         }
                     </tbody>
                     <tfoot class="table-group-divider">
                         <tr class="table-light">
-                            <td colspan="4" class="text-end fw-bold py-3 text-dark">Total estimado a pagar:</td>
-                            <td class="text-end fw-bold py-3 fs-5 text-dark">
-                                $@(((decimal)ViewBag.TotalPagar).ToString("N2")) USD
+                            <td colspan="@(3 + tramos.Count)" class="text-end fw-bold py-3 text-dark">
+                                Total estimado
+                                @if (esItinerario)
+                                {
+                                    <small class="d-block fw-normal text-muted">
+                                        Por pasajero: @string.Join(" + ", tarifas.Select(x => x.ToString("N2"))) = @importePorPasajero.ToString("N2") USD
+                                    </small>
+                                }
                             </td>
+                            <td class="text-end fw-bold py-3 fs-5 text-dark text-nowrap">$@total.ToString("N2") USD</td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
 
             <div class="alert alert-light border small text-secondary mt-3 mb-0">
-                <strong class="text-dark">&#9432; Nota de retención (DP-07):</strong>
-                Una vez confirmada, la reserva se conservará en estado <em>Pendiente de pago</em> durante <strong>2 horas</strong>. Al vencer este plazo, los asientos se liberarán automáticamente.
+                <strong class="text-dark">&#9432; Retención (DP-07):</strong>
+                la reserva se conserva <em>pendiente de pago</em> durante <strong>@retencionMin minutos</strong>
+                (o hasta el cierre del check-in, si ocurre antes). Al vencer, los asientos se liberan inmediatamente.
             </div>
         </div>
     </div>
 
-    <!-- 3. Formulario de Formalización -->
+    <!-- 3. Formulario de confirmación -->
     <form id="formConfirmarReserva" action="@Url.Action("Confirmar", "Reservas")" method="post">
         @Html.AntiForgeryToken()
+        <input type="hidden" name="accionBoton" id="accionBoton" value="Reservar" />
 
         <div class="confirm-card shadow-sm p-4 mb-4">
-            <h5 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">
-                Condiciones del Servicio y Transporte Aéreo
-            </h5>
-            <p class="small text-secondary mb-3" style="line-height: 1.6;">
-                Al formalizar esta solicitud, usted certifica que la información de los pasajeros coincide con sus documentos oficiales de identidad. Las tarifas ejecutivas garantizan equipaje de mano de hasta 10 kg y servicio de cabina exclusivo en el Embraer Phenom 300E.
-            </p>
-
+            <h2 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">Condiciones de la reserva</h2>
+            <div class="small text-secondary mb-3 p-3 bg-light rounded-3" style="max-height: 120px; overflow-y: auto; line-height: 1.6;" tabindex="0">
+                La reserva queda pendiente de pago durante el plazo de retención indicado (120 minutos); si no se paga, los asientos se liberan automáticamente en el plano de cabina.
+                Las cancelaciones y reembolsos se rigen por la política aprobada (DP-08). Los datos de los pasajeros deben
+                coincidir con su documento de identidad. Los pagos son simulados con fines académicos.
+            </div>
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" name="aceptarCondiciones" id="checkCondiciones" value="true" required>
                 <label class="form-check-label small fw-semibold text-dark" for="checkCondiciones">
-                    Acepto las condiciones de la reserva y las políticas de retención de pasajes <span class="text-danger">*</span>
+                    Acepto las condiciones de la reserva <span class="text-danger">*</span>
                 </label>
             </div>
         </div>
@@ -202,14 +218,12 @@
             <a href="@Url.Action("Pasajeros", "Reservas")" class="btn btn-outline-secondary px-3 py-2 fw-semibold small">
                 &larr; Volver a modificar
             </a>
-
-            <div class="d-flex gap-2">
-                <button type="submit" name="accionBoton" value="Reservar" id="btnSoloReservar" class="btn btn-outline-dark px-4 py-2 fw-semibold" disabled>
-                    Confirmar reserva (Pendiente de pago)
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" data-accion="Reservar" class="btn btn-outline-dark px-4 py-2 fw-semibold btn-accion" disabled>
+                    Confirmar reserva
                 </button>
-
-                <button type="submit" name="accionBoton" value="Pagar" id="btnConfirmarPagar" class="btn btn-dark px-4 py-2 fw-semibold" disabled>
-                    Confirmar y proceder al pago &rarr;
+                <button type="submit" data-accion="Pagar" class="btn btn-dark px-4 py-2 fw-semibold btn-accion" disabled>
+                    Confirmar y pagar &rarr;
                 </button>
             </div>
         </div>
@@ -218,23 +232,37 @@
 </main>
 
 @section Scripts {
-    <script>
-        $(document).ready(function () {
-            $('#checkCondiciones').on('change', function () {
-                var aceptado = $(this).is(':checked');
-                if (aceptado) {
-                    $('#btnSoloReservar').removeAttr('disabled');
-                    $('#btnConfirmarPagar').removeAttr('disabled');
-                } else {
-                    $('#btnSoloReservar').attr('disabled', 'disabled');
-                    $('#btnConfirmarPagar').attr('disabled', 'disabled');
-                }
-            });
+    <script type="application/javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+            var check = document.getElementById('checkCondiciones');
+            var botones = document.querySelectorAll('.btn-accion');
+            var inputAccion = document.getElementById('accionBoton');
+            var form = document.getElementById('formConfirmarReserva');
 
-            $('#formConfirmarReserva').on('submit', function () {
-                $('#btnSoloReservar').attr('disabled', 'disabled').text('Registrando reserva...');
-                $('#btnConfirmarPagar').attr('disabled', 'disabled').text('Procesando...');
-            });
+            if (check) {
+                check.addEventListener('change', function () {
+                    for (var i = 0; i < botones.length; i++) {
+                        botones[i].disabled = !check.checked;
+                    }
+                });
+            }
+
+            for (var j = 0; j < botones.length; j++) {
+                botones[j].addEventListener('click', function (e) {
+                    var accion = e.currentTarget.getAttribute('data-accion');
+                    if (inputAccion && accion) {
+                        inputAccion.value = accion;
+                    }
+                });
+            }
+
+            if (form) {
+                form.addEventListener('submit', function () {
+                    for (var k = 0; k < botones.length; k++) {
+                        botones[k].disabled = true;
+                    }
+                });
+            }
         });
     </script>
 }

@@ -871,7 +871,7 @@ namespace Con_Autenticacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult EliminarPasajero(int pasajeroId)
         {
-            if (!EsAdministrativo())
+            if (!User.IsInRole("Delete"))
             {
                 TempData["Error"] = "No tiene permisos para modificar pasajeros.";
                 return RedirectToAction("Gestion", new { tab = "pasajeros" });
