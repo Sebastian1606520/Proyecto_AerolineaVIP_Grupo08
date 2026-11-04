@@ -10,7 +10,7 @@
     bool puedeCancelar = (bool)ViewBag.PuedeCancelar;
     bool conReembolso = (bool)ViewBag.ConReembolso;
     double horasRestantes = (double)ViewBag.HorasRestantes;
-    bool requiereMotivo = Model.EstadoReservaCodigo == "CONFIRMADA";
+    bool requiereMotivo = Model.RequiereMotivoCancelacion;   // regla en ReservaNegocio (DP-08)
 
     // Tramos ordenados (un vuelo = un tramo)
     var vuelos = Model.ReservaPasajeroVuelo
@@ -232,7 +232,7 @@
                                         <td class="fw-bold">@(vuelos.IndexOf(v) + 1)</td>
                                         <td class="small">VIP@(v.VueloId.ToString("D5"))</td>
                                         <td>
-                                            <strong>@v.Frecuencia.Ruta.Aeropuerto.Localidad</strong> &rarr; <strong>@v.Frecuencia.Ruta.Aeropuerto1.Localidad</strong>
+                                            <strong>@v.CiudadOrigen</strong> &rarr; <strong>@v.CiudadDestino</strong>
                                         </td>
                                         <td class="small">
                                             @v.FechaOperacion.ToString("dd/MM/yyyy")<br />

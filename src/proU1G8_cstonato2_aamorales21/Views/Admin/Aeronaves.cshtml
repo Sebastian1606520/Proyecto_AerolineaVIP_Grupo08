@@ -6,7 +6,7 @@
     var proximos = (Dictionary<int, int>)ViewBag.Proximos;
     var sel = ViewBag.Seleccionada as Con_Autenticacion.Models.Aeronave;
     bool editar = (bool)ViewBag.Editar;
-    var asientos = ViewBag.Asientos as List<Con_Autenticacion.Models.Asiento>;
+    var asientos = ViewBag.Asientos as List<Con_Autenticacion.Models.vw_AsientoAeronave>;
     var asignaciones = ViewBag.Asignaciones as List<Con_Autenticacion.Models.Vuelo>;
 }
 
@@ -253,9 +253,9 @@
                                     @foreach (var v in asignaciones)
                                     {
                                         <tr>
-                                            <td class="ps-4 fw-semibold">VIP@(v.VueloId.ToString("D5"))</td>
+                                            <td class="ps-4 fw-semibold">@v.CodigoVuelo</td>
                                             <td>@v.FechaOperacion.ToString("dd/MM/yyyy")</td>
-                                            <td>@v.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @v.Frecuencia.Ruta.Aeropuerto1.CodigoIATA</td>
+                                            <td>@v.CodigoOrigen &rarr; @v.CodigoDestino</td>
                                             <td>@v.Frecuencia.HoraSalida.ToString(@"hh\:mm")&ndash;@v.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</td>
                                             <td class="pe-4">@v.EstadoVueloCodigo</td>
                                         </tr>
@@ -283,7 +283,7 @@
                                 <div class="cabina-fila">
                                     @if (izq != null)
                                     {
-                                        <div class="asiento-ro" title="@izq.Ubicacion">@izq.Codigo</div>
+                                        <div class="asiento-ro" title="@izq.Ubicacion">@izq.CodigoAsiento</div>
                                     }
                                     else
                                     {
@@ -292,7 +292,7 @@
                                     <div class="zona-texto">@(fila == 2 || fila == 3 ? "Pasillo" : "")</div>
                                     @if (der != null)
                                     {
-                                        <div class="asiento-ro" title="@der.Ubicacion">@der.Codigo</div>
+                                        <div class="asiento-ro" title="@der.Ubicacion">@der.CodigoAsiento</div>
                                     }
                                     else
                                     {
@@ -303,7 +303,7 @@
                             <div class="zona-texto mt-2">Baño &middot; Cola</div>
                         </div>
                         <p class="small text-muted text-center mt-3 mb-0">
-                            @asientos.Count asientos (D = derecho, I = izquierdo). Nomenclatura propuesta, pendiente de aprobación (DP-11).
+                            @asientos.Count asientos (D = derecho, I = izquierdo). Nomenclatura propuesta, pendiente de aprobación (DP-11). Fuente: vista vw_AsientoAeronave.
                         </p>
                     </div>
                 </div>
@@ -314,21 +314,21 @@
 
 @section scripts {
     <script>
-        $(function () {
-            $('#matricula').on('input', function () {
-                $(this).val($(this).val().toUpperCase());
-            });
+                $(function () {
+                    $('#matricula').on('input', function () {
+                        $(this).val($(this).val().toUpperCase());
+                    });
 
-            $('#formAeronave').on('submit', function (e) {
-                var matricula = $.trim($('#matricula').val());
-                if (matricula.length === 0 || matricula.length > 15) {
-                    e.preventDefault();
-                    $('#errorMatricula').removeClass('d-none');
-                    $('#matricula').addClass('is-invalid').focus();
-                    return;
-                }
-                $('#btnGuardar').attr('disabled', 'disabled').text('Guardando…');
-            });
-        });
+                    $('#formAeronave').on('submit', function (e) {
+                        var matricula = $.trim($('#matricula').val());
+                        if (matricula.length === 0 || matricula.length > 15) {
+                            e.preventDefault();
+                            $('#errorMatricula').removeClass('d-none');
+                            $('#matricula').addClass('is-invalid').focus();
+                            return;
+                        }
+                        $('#btnGuardar').attr('disabled', 'disabled').text('Guardando…');
+                    });
+                });
     </script>
 }

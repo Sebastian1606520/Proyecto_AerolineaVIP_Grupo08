@@ -88,7 +88,9 @@ namespace Con_Autenticacion.Models
             Apellidos = (Apellidos ?? "").Trim();
             Correo = string.IsNullOrWhiteSpace(Correo) ? null : Correo.Trim();
             Telefono = string.IsNullOrWhiteSpace(Telefono) ? null : Telefono.Trim();
-
+            // Tipo de documento obligatorio
+            if (TipoDocumentoCodigo != "CEDULA" && TipoDocumentoCodigo != "PASAPORTE")
+                return prefijo + "seleccione el tipo de documento.";
             // Validación de documento
             if (!EsDocumentoValido())
             {
@@ -98,12 +100,14 @@ namespace Con_Autenticacion.Models
                     return prefijo + "el pasaporte debe tener entre 5 y 20 letras o números.";
             }
 
-            // Obligatorios
-            if (string.IsNullOrWhiteSpace(Nombres))
-                return prefijo + "los nombres son obligatorios.";
+            // Nombres y apellidos: obligatorios, solo letras y espacios (máx. 100)
+            var soloLetras = new System.Text.RegularExpressions.Regex(@"^[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]{1,100}$");
 
-            if (string.IsNullOrWhiteSpace(Apellidos))
-                return prefijo + "los apellidos son obligatorios.";
+            if (!soloLetras.IsMatch(Nombres))
+                return prefijo + "los nombres son obligatorios y solo admiten letras y espacios.";
+
+            if (!soloLetras.IsMatch(Apellidos))
+                return prefijo + "los apellidos son obligatorios y solo admiten letras y espacios.";
 
             // Fecha de nacimiento coherente
             if (FechaNacimiento.HasValue)
@@ -112,10 +116,16 @@ namespace Con_Autenticacion.Models
                     return prefijo + "la fecha de nacimiento no puede ser futura ni anterior a 1900.";
             }
 
-            // Formato básico de correo
-            if (Correo != null && !Correo.Contains("@"))
+            // Correo (opcional): formato válido y máximo 256 caracteres
+            if (Correo != null && (Correo.Length > 256 || !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(Correo)))
             {
                 return prefijo + "el correo electrónico debe contener un formato válido (ejemplo@correo.com).";
+            }
+
+            // Teléfono (opcional): dígitos, espacios y «+», máximo 20
+            if (Telefono != null && !System.Text.RegularExpressions.Regex.IsMatch(Telefono, @"^[0-9 +]{1,20}$"))
+            {
+                return prefijo + "el teléfono solo admite dígitos, espacios y «+» (máximo 20).";
             }
 
             return null; // Todo correcto

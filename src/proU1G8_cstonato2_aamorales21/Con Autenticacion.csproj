@@ -172,7 +172,9 @@
     <Compile Include="App_Start\Startup.Auth.cs" />
     <Compile Include="Controllers\AccountController.cs" />
     <Compile Include="Controllers\AdminController.cs" />
+    <Compile Include="Controllers\CheckInController.cs" />
     <Compile Include="Controllers\ComprasController.cs" />
+    <Compile Include="Controllers\ComprobantesController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\ManageController.cs" />
     <Compile Include="Controllers\ReservasController.cs" />
@@ -243,6 +245,7 @@
     <Compile Include="Models\MetodoPago.cs">
       <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
     </Compile>
+    <Compile Include="Models\MisReservasViewModel.cs" />
     <Compile Include="Models\ModelAerolinaVip.Context.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -270,10 +273,16 @@
     <Compile Include="Models\Pasajero.cs">
       <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
     </Compile>
+    <Compile Include="Models\AeronaveServicio.cs" />
+    <Compile Include="Models\CheckInServicio.cs" />
+    <Compile Include="Models\PagoServicio.cs" />
     <Compile Include="Models\PasajeroNegocio.cs" />
+    <Compile Include="Models\ReportesViewModel.cs" />
     <Compile Include="Models\Reserva.cs">
       <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
     </Compile>
+    <Compile Include="Models\PasajeroServicio.cs" />
+    <Compile Include="Models\ReporteServicio.cs" />
     <Compile Include="Models\ReservaNegocio.cs" />
     <Compile Include="Models\ReservaPasajeroVuelo.cs">
       <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
@@ -293,7 +302,26 @@
     <Compile Include="Models\Vuelo.cs">
       <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
     </Compile>
+    <Compile Include="Models\ReservaServicio.cs" />
+    <Compile Include="Models\UsuarioServicio.cs" />
+    <Compile Include="Models\Utilidades.cs" />
     <Compile Include="Models\VueloNegocio.cs" />
+    <Compile Include="Models\VueloServicio.cs" />
+    <Compile Include="Models\vw_AsientoAeronave.cs">
+      <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Models\vw_ComprobanteDetalle.cs">
+      <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Models\vw_DisponibilidadVuelo.cs">
+      <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Models\vw_EstadoAsientoVuelo.cs">
+      <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Models\vw_VueloDetalle.cs">
+      <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Startup.cs" />
   </ItemGroup>
@@ -410,13 +438,13 @@
     <Content Include="Views\Compras\Confirmacion.cshtml" />
     <Content Include="Views\Reservas\MisReservas.cshtml" />
     <Content Include="Views\Reservas\Gestionar.cshtml" />
-    <Content Include="Views\Reservas\CheckIn.cshtml" />
-    <Content Include="Views\Compras\Comprobantes.cshtml" />
     <Content Include="Views\Admin\Index.cshtml" />
     <Content Include="Views\Admin\Vuelos.cshtml" />
     <Content Include="Views\Admin\Aeronaves.cshtml" />
     <Content Include="Views\Admin\Gestion.cshtml" />
     <Content Include="Views\Admin\Reportes.cshtml" />
+    <Content Include="Views\CheckIn\Index.cshtml" />
+    <Content Include="Views\Comprobantes\Index.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

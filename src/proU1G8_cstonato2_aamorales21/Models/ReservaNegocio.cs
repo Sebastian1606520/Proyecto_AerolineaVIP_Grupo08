@@ -14,6 +14,33 @@ namespace Con_Autenticacion.Models
         public string EstadoEfectivo =>
             EstaVencida ? "EXPIRADA" : EstadoReservaCodigo;
 
+        // DP-07: las reservas pendientes vencidas pasan a EXPIRADA y sus asientos a LIBERADA.
+        // Así el asiento que el mapa ya muestra en verde también queda libre en la base
+        // (si no, el índice UX_RPV_AsientoActivo impediría reservarlo de nuevo).
+        public static void LiberarVencidas(AerolineaVIP_Context db)
+        {
+            DateTime ahora = DateTime.Now;
+            var vencidas = db.Reserva
+                .Where(r => r.EstadoReservaCodigo == "PENDIENTE"
+                         && r.FechaExpiracion.HasValue && r.FechaExpiracion < ahora)
+                .ToList();
+
+            if (!vencidas.Any()) return;
+
+            foreach (var r in vencidas)
+            {
+                foreach (var a in r.ReservaPasajeroVuelo.Where(x => x.EstadoAsignacionCodigo == "PENDIENTE"))
+                {
+                    a.EstadoAsignacionCodigo = "LIBERADA";
+                }
+                r.EstadoReservaCodigo = "EXPIRADA";
+            }
+            db.SaveChanges();
+        }
+
+        // DP-08: para cancelar una reserva pagada (CONFIRMADA) el motivo es obligatorio
+        public bool RequiereMotivoCancelacion => EstadoReservaCodigo == "CONFIRMADA";
+
         public string EvaluarCancelacion(out bool conReembolso, out double horasRestantes)
         {
             conReembolso = false;

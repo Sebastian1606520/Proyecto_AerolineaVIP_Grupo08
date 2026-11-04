@@ -8,8 +8,9 @@
     string fTipo = ViewBag.Tipo;
 
     var sel = ViewBag.Seleccionado as Con_Autenticacion.Models.Comprobante;
-    var emisor = ViewBag.Emisor as Con_Autenticacion.Models.DatosEmisor;
-    var pago = ViewBag.Pago as Con_Autenticacion.Models.Pago;
+    // Encabezado del comprobante: vista SQL vw_ComprobanteDetalle
+    var enc = ViewBag.Encabezado as Con_Autenticacion.Models.vw_ComprobanteDetalle;
+    bool hayPago = (ViewBag.HayPago as bool?) ?? false;   // lo decide PagoServicio.TienePagoVigente
     var detalle = ViewBag.Detalle as List<Con_Autenticacion.Models.ReservaPasajeroVuelo>;
     var codigos = ViewBag.CodigosAsiento as Dictionary<int, string>;
 
@@ -128,7 +129,7 @@
             </button>
         </div>
         <div class="collapse d-md-block" id="panelFiltros">
-            <form id="formFiltros" action="@Url.Action("Comprobantes", "Compras")" method="get" class="p-4" novalidate>
+            <form id="formFiltros" action="@Url.Action("Index", "Comprobantes")" method="get" class="p-4" novalidate>
                 <div class="row g-3 align-items-end">
                     <div class="col-12 col-md-3">
                         <label for="desde" class="form-label small fw-semibold text-secondary mb-1">Desde (opcional)</label>
@@ -149,7 +150,7 @@
                     </div>
                     <div class="col-12 col-md-3 d-flex gap-2">
                         <button type="submit" class="btn btn-dark btn-sm px-4 py-2 fw-semibold flex-grow-1">Filtrar</button>
-                        <a href="@Url.Action("Comprobantes", "Compras")" class="btn btn-outline-secondary btn-sm px-3 py-2">Limpiar</a>
+                        <a href="@Url.Action("Index", "Comprobantes")" class="btn btn-outline-secondary btn-sm px-3 py-2">Limpiar</a>
                     </div>
                 </div>
                 <small id="errorRango" class="text-danger mt-2 @(ViewBag.ErrorFiltro == null ? "d-none" : "d-block")" role="alert" style="font-size: 0.8rem;">
@@ -167,7 +168,7 @@
             @if ((bool)ViewBag.HayFiltros)
             {
                 <h3 class="h5 fw-bold text-dark mt-3 mb-2">No hay comprobantes para los filtros seleccionados.</h3>
-                <a href="@Url.Action("Comprobantes", "Compras")" class="btn btn-outline-dark fw-semibold px-4 py-2 mt-2">Quitar filtros</a>
+                <a href="@Url.Action("Index", "Comprobantes")" class="btn btn-outline-dark fw-semibold px-4 py-2 mt-2">Quitar filtros</a>
             }
             else
             {
@@ -224,7 +225,7 @@
                                     }
                                 </td>
                                 <td class="text-end pe-4">
-                                    <a href="@Url.Action("Comprobantes", "Compras", new { desde = fDesde, hasta = fHasta, tipo = fTipo, ver = c.ComprobanteId })#vistaPrevia"
+                                    <a href="@Url.Action("Index", "Comprobantes", new { desde = fDesde, hasta = fHasta, tipo = fTipo, ver = c.ComprobanteId })#vistaPrevia"
                                        class="btn @(activa ? "btn-dark" : "btn-outline-secondary") btn-sm px-2 py-1">
                                         Visualizar
                                     </a>
@@ -247,7 +248,7 @@
             <h3 class="h6 fw-bold text-dark text-uppercase mb-0" style="letter-spacing: 0.5px;">Vista previa</h3>
             <div class="d-flex gap-2">
                 <button type="button" id="btnImprimir" class="btn btn-dark btn-sm px-3 fw-semibold">Imprimir / Guardar PDF</button>
-                <a href="@Url.Action("Comprobantes", "Compras", new { desde = fDesde, hasta = fHasta, tipo = fTipo })" class="btn btn-outline-secondary btn-sm px-3">Cerrar</a>
+                <a href="@Url.Action("Index", "Comprobantes", new { desde = fDesde, hasta = fHasta, tipo = fTipo })" class="btn btn-outline-secondary btn-sm px-3">Cerrar</a>
             </div>
         </div>
 
@@ -273,9 +274,9 @@
                 <div class="row g-4 mb-4 small">
                     <div class="col-12 col-md-6">
                         <div class="text-secondary text-uppercase fw-semibold mb-2" style="font-size: 0.7rem; letter-spacing: 0.5px;">Emisor</div>
-                        <div class="fw-bold text-dark">@(emisor != null ? emisor.NombreComercial : "Aerolínea VIP")</div>
-                        <div>Identificación: @(emisor != null ? emisor.Identificacion : "PENDIENTE (DP-05)")</div>
-                        <div>Dirección: @(emisor != null ? emisor.Direccion : "PENDIENTE")</div>
+                        <div class="fw-bold text-dark">@(enc != null ? enc.EmisorNombre : "Aerolínea VIP")</div>
+                        <div>Identificación: @(enc != null ? enc.EmisorIdentificacion : "PENDIENTE (DP-05)")</div>
+                        <div>Dirección: @(enc != null ? enc.EmisorDireccion : "PENDIENTE")</div>
                     </div>
                     <div class="col-12 col-md-6">
                         <div class="text-secondary text-uppercase fw-semibold mb-2" style="font-size: 0.7rem; letter-spacing: 0.5px;">Cliente y operación</div>
@@ -284,13 +285,13 @@
                         {
                             <div>@ViewBag.ClienteCorreo</div>
                         }
-                        <div>Reserva: <strong>@reserva.CodigoReserva</strong></div>
+                        <div>Reserva: <strong>@(enc != null ? enc.CodigoReserva : reserva.CodigoReserva)</strong></div>
                         <div>
                             Pago simulado:
-                            @if (pago != null)
+                            @if (hayPago)
                             {
-                                <span>@pago.MarcaTarjetaCodigo **** @pago.UltimosCuatroDigitos &middot; @pago.CodigoOperacion</span>
-                                if (pago.EstadoPagoCodigo == "REVERSADO")
+                                <span>@enc.MetodoPago &middot; @enc.MarcaTarjeta @enc.TarjetaEnmascarada &middot; @enc.CodigoOperacion</span>
+                                if (enc.EstadoPagoCodigo == "REVERSADO")
                                 {
                                     <span class="text-danger">(reversado)</span>
                                 }
@@ -321,8 +322,8 @@
                             {
                                 <tr>
                                     <td>@a.Pasajero.Nombres @a.Pasajero.Apellidos</td>
-                                    <td>VIP@(a.VueloId.ToString("D5"))</td>
-                                    <td>@a.Vuelo.Frecuencia.Ruta.Aeropuerto.Localidad &rarr; @a.Vuelo.Frecuencia.Ruta.Aeropuerto1.Localidad</td>
+                                    <td>@a.Vuelo.CodigoVuelo</td>
+                                    <td>@a.Vuelo.CiudadOrigen &rarr; @a.Vuelo.CiudadDestino</td>
                                     <td>@a.Vuelo.FechaOperacion.ToString("dd/MM/yyyy")</td>
                                     <td class="text-center">@codigos[a.AsignacionId]</td>
                                     <td class="text-end">@a.ImporteTramo.ToString("N2")</td>
@@ -338,7 +339,10 @@
                                 <td colspan="5" class="text-end fw-bold">
                                     @(sel.TipoComprobanteCodigo == "NOTA_CREDITO" ? "Total reembolsado (simulado)" : "Total")
                                 </td>
-                                <td class="text-end fw-bold">@compra.Importe.ToString("N2") @compra.MonedaCodigo</td>
+                                <td class="text-end fw-bold">
+                                    @(enc != null ? enc.TotalOperacion.ToString("N2") : compra.Importe.ToString("N2"))
+                                    @(enc != null ? enc.MonedaCodigo : compra.MonedaCodigo)
+                                </td>
                             </tr>
                         </tfoot>
                     </table>
@@ -347,7 +351,7 @@
                 <!-- Leyenda académica (RG-13) -->
                 <div class="alert alert-light border small text-secondary mt-4 mb-0">
                     <strong class="text-dark">&#9432;</strong>
-                    @(emisor != null ? emisor.LeyendaComprobante : "Comprobante académico de una operación simulada. No constituye factura tributaria ni documento autorizado.")
+                    @(enc != null && !string.IsNullOrEmpty(enc.LeyendaComprobante) ? enc.LeyendaComprobante : "Comprobante académico de una operación simulada. No constituye factura tributaria ni documento autorizado.")
                 </div>
             </div>
         </div>
@@ -356,33 +360,33 @@
 
 @section scripts {
     <script>
-        $(function () {
-            // Validación del rango de fechas
-            function rangoValido() {
-                var desde = $('#desde').val();
-                var hasta = $('#hasta').val();
-                return !(desde && hasta && hasta < desde);
-            }
+                $(function () {
+                    // Validación del rango de fechas
+                    function rangoValido() {
+                        var desde = $('#desde').val();
+                        var hasta = $('#hasta').val();
+                        return !(desde && hasta && hasta < desde);
+                    }
 
-            $('#desde, #hasta').on('change', function () {
-                if (rangoValido()) {
-                    $('#errorRango').addClass('d-none').removeClass('d-block');
-                    $('#hasta').removeClass('is-invalid');
-                }
-            });
+                    $('#desde, #hasta').on('change', function () {
+                        if (rangoValido()) {
+                            $('#errorRango').addClass('d-none').removeClass('d-block');
+                            $('#hasta').removeClass('is-invalid');
+                        }
+                    });
 
-            $('#formFiltros').on('submit', function (e) {
-                if (!rangoValido()) {
-                    e.preventDefault();
-                    $('#errorRango').removeClass('d-none').addClass('d-block');
-                    $('#hasta').addClass('is-invalid').focus();
-                }
-            });
+                    $('#formFiltros').on('submit', function (e) {
+                        if (!rangoValido()) {
+                            e.preventDefault();
+                            $('#errorRango').removeClass('d-none').addClass('d-block');
+                            $('#hasta').addClass('is-invalid').focus();
+                        }
+                    });
 
-            // Imprimir o guardar como PDF desde el navegador
-            $('#btnImprimir').on('click', function () {
-                window.print();
-            });
-        });
+                    // Imprimir o guardar como PDF desde el navegador
+                    $('#btnImprimir').on('click', function () {
+                        window.print();
+                    });
+                });
     </script>
 }

@@ -66,6 +66,11 @@
         <AssociationConnector Association="AerolineaVIPModel.FK_RPV_Reserva" ManuallyRouted="false" />
         <AssociationConnector Association="AerolineaVIPModel.FK_RPV_Vuelo" ManuallyRouted="false" />
         <AssociationConnector Association="AerolineaVIPModel.FK_Tramo_Vuelo" ManuallyRouted="false" />
+        <EntityTypeShape EntityType="AerolineaVIPModel.vw_AsientoAeronave" Width="1.5" PointX="0.75" PointY="0.75" />
+        <EntityTypeShape EntityType="AerolineaVIPModel.vw_ComprobanteDetalle" Width="1.5" PointX="0.75" PointY="14.75" />
+        <EntityTypeShape EntityType="AerolineaVIPModel.vw_DisponibilidadVuelo" Width="1.5" PointX="13.75" PointY="11.75" />
+        <EntityTypeShape EntityType="AerolineaVIPModel.vw_EstadoAsientoVuelo" Width="1.5" PointX="14.75" PointY="0.75" />
+        <EntityTypeShape EntityType="AerolineaVIPModel.vw_VueloDetalle" Width="1.5" PointX="2.75" PointY="14.75" />
       </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>

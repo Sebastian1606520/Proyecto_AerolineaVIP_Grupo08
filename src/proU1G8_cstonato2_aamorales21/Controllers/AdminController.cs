@@ -7,6 +7,7 @@ using System.Net;
 using System.Web;
 using System.Web.Mvc;
 using Con_Autenticacion.Models;
+using Con_Autenticacion.Negocio;
 using Microsoft.AspNet.Identity;
 
 namespace Con_Autenticacion.Controllers
@@ -43,75 +44,6 @@ namespace Con_Autenticacion.Controllers
         // =========================================================================
         // PANTALLA 18: ADMINISTRACIÓN DE VUELOS E ITINERARIOS (/Admin/Vuelos)
         // =========================================================================
-
-        // Lee un parámetro entero de Web.config (appSettings) o usa el valor por defecto
-        private int LeerParametro(string clave, int valorPorDefecto)
-        {
-            int valor;
-            if (int.TryParse(System.Configuration.ConfigurationManager.AppSettings[clave], out valor))
-            {
-                return valor;
-            }
-            return valorPorDefecto;
-        }
-
-        private DateTime Salida(Vuelo v)
-        {
-            return v.FechaOperacion.Add(v.Frecuencia.HoraSalida);
-        }
-
-        private DateTime Llegada(Vuelo v)
-        {
-            return v.FechaOperacion.Add(v.Frecuencia.HoraLlegada);
-        }
-
-        // Revisa los vuelos de cada aeronave y devuelve la lista de conflictos y advertencias.
-        // Cada elemento: [0] = "CONFLICTO" o "ADVERTENCIA", [1] = texto.
-        private List<string[]> BuscarConflictos(List<Vuelo> vuelos)
-        {
-            int tiempoEnTierra = LeerParametro("TiempoMinimoEnTierraMin", 45);
-            var resultado = new List<string[]>();
-
-            var porAeronave = vuelos
-                .Where(v => v.AeronaveId != null && v.EstadoVueloCodigo != "CANCELADO")
-                .GroupBy(v => v.Aeronave.Matricula);
-
-            foreach (var grupo in porAeronave)
-            {
-                var lista = grupo.OrderBy(v => Salida(v)).ToList();
-                for (int i = 1; i < lista.Count; i++)
-                {
-                    var anterior = lista[i - 1];
-                    var actual = lista[i];
-                    string codAnt = "VIP" + anterior.VueloId.ToString("D5");
-                    string codAct = "VIP" + actual.VueloId.ToString("D5");
-                    string destinoAnt = anterior.Frecuencia.Ruta.Aeropuerto1.CodigoIATA;
-                    string origenAct = actual.Frecuencia.Ruta.Aeropuerto.CodigoIATA;
-
-                    if (anterior.FechaOperacion == actual.FechaOperacion)
-                    {
-                        double minutos = (Salida(actual) - Llegada(anterior)).TotalMinutes;
-                        if (minutos < tiempoEnTierra)
-                        {
-                            resultado.Add(new[] { "CONFLICTO", "La aeronave " + grupo.Key + " tiene " + codAnt + " y " + codAct
-                                + " el " + actual.FechaOperacion.ToString("dd/MM/yyyy") + " con solo " + minutos + " min en tierra (mínimo " + tiempoEnTierra + ")." });
-                        }
-                        if (destinoAnt != origenAct)
-                        {
-                            resultado.Add(new[] { "CONFLICTO", "La aeronave " + grupo.Key + " termina " + codAnt + " en " + destinoAnt
-                                + " pero " + codAct + " sale de " + origenAct + " el mismo día." });
-                        }
-                    }
-                    else if (destinoAnt != origenAct)
-                    {
-                        resultado.Add(new[] { "ADVERTENCIA", "La aeronave " + grupo.Key + " pernocta en " + destinoAnt + " tras " + codAnt
-                            + " (" + anterior.FechaOperacion.ToString("dd/MM") + ") y su siguiente vuelo " + codAct + " sale de " + origenAct
-                            + " (" + actual.FechaOperacion.ToString("dd/MM") + "). Requiere traslado sin pasajeros." });
-                    }
-                }
-            }
-            return resultado;
-        }
 
         // GET: /Admin/Vuelos
         [HttpGet]
@@ -171,7 +103,7 @@ namespace Con_Autenticacion.Controllers
                     .Include(v => v.Aeronave)
                     .Where(v => v.FechaOperacion >= fDesde && v.FechaOperacion <= fHasta)
                     .ToList();
-                ViewBag.Conflictos = BuscarConflictos(todos);
+                ViewBag.Conflictos = new VueloServicio(db).BuscarConflictos(todos);
             }
 
             // ---- Vuelo en edición ----
@@ -212,7 +144,7 @@ namespace Con_Autenticacion.Controllers
 
             // Listas de filtros
             ViewBag.RutasLista = new SelectList(
-                db.Ruta.ToList().Select(r => new { r.RutaId, Texto = r.Aeropuerto.CodigoIATA + " → " + r.Aeropuerto1.CodigoIATA }),
+                db.Ruta.ToList().Select(r => new { r.RutaId, Texto = r.Aeropuerto1.CodigoIATA + " → " + r.Aeropuerto.CodigoIATA }),
                 "RutaId", "Texto", rutaId);
             ViewBag.EstadosFiltro = new SelectList(db.EstadoVuelo.ToList(), "Codigo", "Descripcion", estado);
 
@@ -223,10 +155,19 @@ namespace Con_Autenticacion.Controllers
             ViewBag.Estado = estado ?? "";
             ViewBag.MostrarConflictos = conflictos;
 
+            // Código y ruta de los vuelos desde la vista SQL vw_VueloDetalle
+            var vuelosDetalle = new List<Vuelo>(vuelos);
+            var vEditar = ViewBag.VueloEditar as Vuelo;
+            if (vEditar != null) vuelosDetalle.Add(vEditar);
+            var its = ViewBag.Itinerarios as List<Itinerario>;
+            if (its != null) vuelosDetalle.AddRange(its.SelectMany(i => i.TramoItinerario.Select(t => t.Vuelo)));
+            new VueloServicio(db).CargarDetalle(vuelosDetalle);
+
             return View(vuelos);
         }
 
         // POST: /Admin/EditarVuelo  (cambiar aeronave o estado)
+        // Las reglas operativas están en Negocio/VueloServicio.cs
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult EditarVuelo(int vueloId, int? aeronaveId, string estadoVueloCodigo, string desde, string hasta)
@@ -237,101 +178,19 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("Index");
             }
 
-            var vuelo = db.Vuelo.Find(vueloId);
-            if (vuelo == null)
+            string mensajeExito;
+            bool volverAEdicion;
+            string error = new VueloServicio(db).ActualizarVuelo(vueloId, aeronaveId, estadoVueloCodigo,
+                                                                 out mensajeExito, out volverAEdicion);
+            if (error != null)
             {
-                TempData["Error"] = "El vuelo no existe.";
-                return RedirectToAction("Vuelos", new { desde = desde, hasta = hasta });
+                TempData["Error"] = error;
+                return volverAEdicion
+                    ? RedirectToAction("Vuelos", new { desde = desde, hasta = hasta, editar = vueloId })
+                    : RedirectToAction("Vuelos", new { desde = desde, hasta = hasta });
             }
 
-            string codigo = "VIP" + vuelo.VueloId.ToString("D5");
-
-            // No se modifican vuelos COMPLETADOS
-            if (vuelo.EstadoVueloCodigo == "COMPLETADO")
-            {
-                TempData["Error"] = "El vuelo " + codigo + " está completado y no puede modificarse.";
-                return RedirectToAction("Vuelos", new { desde = desde, hasta = hasta });
-            }
-
-            if (string.IsNullOrEmpty(estadoVueloCodigo) || !db.EstadoVuelo.Any(e => e.Codigo == estadoVueloCodigo))
-            {
-                TempData["Error"] = "Seleccione un estado válido.";
-                return RedirectToAction("Vuelos", new { desde = desde, hasta = hasta, editar = vueloId });
-            }
-
-            bool cambiaAeronave = vuelo.AeronaveId != aeronaveId;
-
-            // RG-05: un vuelo cancelado no admite cambio de aeronave
-            if (cambiaAeronave && vuelo.EstadoVueloCodigo == "CANCELADO")
-            {
-                TempData["Error"] = "El vuelo " + codigo + " está cancelado y no admite cambios de aeronave.";
-                return RedirectToAction("Vuelos", new { desde = desde, hasta = hasta, editar = vueloId });
-            }
-
-            // Un vuelo con asientos vendidos no puede quedar sin aeronave (RG-03 / RG-04)
-            int asientosVigentes = vuelo.ReservaPasajeroVuelo.Count(a => a.EstadoAsignacionCodigo == "PENDIENTE" || a.EstadoAsignacionCodigo == "CONFIRMADA");
-            if (!aeronaveId.HasValue && asientosVigentes > 0)
-            {
-                TempData["Error"] = "El vuelo " + codigo + " tiene " + asientosVigentes + " asientos vigentes; no puede quedar sin aeronave.";
-                return RedirectToAction("Vuelos", new { desde = desde, hasta = hasta, editar = vueloId });
-            }
-
-            // RG-06 y RG-07: tiempo en tierra y continuidad con los vuelos del mismo día de esa aeronave
-            if (aeronaveId.HasValue && cambiaAeronave && estadoVueloCodigo != "CANCELADO")
-            {
-                int tiempoEnTierra = LeerParametro("TiempoMinimoEnTierraMin", 45);
-                var mismoDia = db.Vuelo
-                    .Where(v => v.AeronaveId == aeronaveId.Value && v.FechaOperacion == vuelo.FechaOperacion
-                             && v.VueloId != vuelo.VueloId && v.EstadoVueloCodigo != "CANCELADO")
-                    .ToList();
-
-                var anterior = mismoDia.Where(v => Salida(v) < Salida(vuelo)).OrderByDescending(v => Salida(v)).FirstOrDefault();
-                var siguiente = mismoDia.Where(v => Salida(v) > Salida(vuelo)).OrderBy(v => Salida(v)).FirstOrDefault();
-                string matricula = db.Aeronave.Find(aeronaveId.Value).Matricula;
-
-                if (anterior != null)
-                {
-                    double minutos = (Salida(vuelo) - Llegada(anterior)).TotalMinutes;
-                    if (minutos < tiempoEnTierra || anterior.Frecuencia.Ruta.AeropuertoDestinoId != vuelo.Frecuencia.Ruta.AeropuertoOrigenId)
-                    {
-                        TempData["Error"] = "Conflicto operativo: la aeronave " + matricula + " ya tiene el vuelo VIP" + anterior.VueloId.ToString("D5")
-                            + " (" + anterior.Frecuencia.HoraSalida.ToString(@"hh\:mm") + "–" + anterior.Frecuencia.HoraLlegada.ToString(@"hh\:mm")
-                            + ") y no cumple el tiempo en tierra o la continuidad de aeropuerto. No se guardó la asignación.";
-                        return RedirectToAction("Vuelos", new { desde = desde, hasta = hasta, editar = vueloId });
-                    }
-                }
-                if (siguiente != null)
-                {
-                    double minutos = (Salida(siguiente) - Llegada(vuelo)).TotalMinutes;
-                    if (minutos < tiempoEnTierra || vuelo.Frecuencia.Ruta.AeropuertoDestinoId != siguiente.Frecuencia.Ruta.AeropuertoOrigenId)
-                    {
-                        TempData["Error"] = "Conflicto operativo: la aeronave " + matricula + " ya tiene el vuelo VIP" + siguiente.VueloId.ToString("D5")
-                            + " (" + siguiente.Frecuencia.HoraSalida.ToString(@"hh\:mm") + "–" + siguiente.Frecuencia.HoraLlegada.ToString(@"hh\:mm")
-                            + ") y no cumple el tiempo en tierra o la continuidad de aeropuerto. No se guardó la asignación.";
-                        return RedirectToAction("Vuelos", new { desde = desde, hasta = hasta, editar = vueloId });
-                    }
-                }
-            }
-
-            vuelo.AeronaveId = aeronaveId;
-            vuelo.EstadoVueloCodigo = estadoVueloCodigo;
-
-            try
-            {
-                db.SaveChanges();   // el trigger trg_Vuelo_Validar revalida día, aeronave disponible y superposición
-            }
-            catch (Exception ex)
-            {
-                Exception inner = ex;
-                while (inner.InnerException != null) inner = inner.InnerException;
-                TempData["Error"] = "No se guardó el cambio: " + inner.Message;
-                return RedirectToAction("Vuelos", new { desde = desde, hasta = hasta, editar = vueloId });
-            }
-
-            string aviso = (estadoVueloCodigo == "CANCELADO" && asientosVigentes > 0)
-                ? " Atención: el vuelo tiene " + asientosVigentes + " asientos vigentes; revise las reservas afectadas en la pantalla 20."
-                : "";
-            TempData["Exito"] = "Cambios guardados en el vuelo " + codigo + "." + aviso;
+            TempData["Exito"] = mensajeExito;
             return RedirectToAction("Vuelos", new { desde = desde, hasta = hasta });
         }
 
@@ -346,33 +205,17 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("Index");
             }
 
-            if (!desde.HasValue || !hasta.HasValue || hasta.Value < desde.Value || (hasta.Value - desde.Value).TotalDays > 365)
-            {
-                TempData["Error"] = "Indique un rango de fechas válido (máximo 366 días) para generar vuelos.";
+            string mensajeExito;
+            string error = new VueloServicio(db).GenerarVuelos(desde, hasta, out mensajeExito);
+            if (error != null)
+                TempData["Error"] = error;
+            else
+                TempData["Exito"] = mensajeExito;
+
+            if (!desde.HasValue || !hasta.HasValue)
                 return RedirectToAction("Vuelos");
-            }
 
-            DateTime d = desde.Value.Date;
-            DateTime h = hasta.Value.Date;
-
-            try
-            {
-                int antes = db.Vuelo.Count();
-                db.Database.ExecuteSqlCommand("EXEC dbo.usp_GenerarVuelos @p0, @p1", d, h);
-                int generados = db.Vuelo.Count() - antes;
-
-                TempData["Exito"] = generados > 0
-                    ? "Se generaron " + generados + " vuelos. Quedan PROGRAMADOS y sin aeronave hasta que se asignen."
-                    : "No se generaron vuelos nuevos: el rango ya estaba programado.";
-            }
-            catch (Exception ex)
-            {
-                Exception inner = ex;
-                while (inner.InnerException != null) inner = inner.InnerException;
-                TempData["Error"] = "No se pudieron generar los vuelos: " + inner.Message;
-            }
-
-            return RedirectToAction("Vuelos", new { desde = d.ToString("yyyy-MM-dd"), hasta = h.ToString("yyyy-MM-dd") });
+            return RedirectToAction("Vuelos", new { desde = desde.Value.ToString("yyyy-MM-dd"), hasta = hasta.Value.ToString("yyyy-MM-dd") });
         }
         // =========================================================================
         // PANTALLA 19: ADMINISTRACIÓN DE AERONAVES (/Admin/Aeronaves)
@@ -413,10 +256,8 @@ namespace Con_Autenticacion.Controllers
                     return RedirectToAction("Aeronaves");
                 }
 
-                ViewBag.Asientos = db.Asiento
-                    .Where(s => s.ModeloAeronaveId == seleccionada.ModeloAeronaveId)
-                    .OrderBy(s => s.Fila).ThenBy(s => s.Lado)
-                    .ToList();
+                // Distribución de asientos desde la vista SQL vw_AsientoAeronave
+                ViewBag.Asientos = new AeronaveServicio(db).ObtenerAsientos(seleccionada.AeronaveId);
 
                 ViewBag.Asignaciones = db.Vuelo
                     .Include(v => v.Frecuencia.Ruta.Aeropuerto)
@@ -424,8 +265,11 @@ namespace Con_Autenticacion.Controllers
                     .Where(v => v.AeronaveId == seleccionada.AeronaveId && v.FechaOperacion >= hoy
                              && v.EstadoVueloCodigo != "CANCELADO")
                     .ToList()
-                    .OrderBy(v => Salida(v))
+                    .OrderBy(v => VueloServicio.Salida(v))
                     .ToList();
+
+                // Ruta de las próximas asignaciones desde la vista SQL vw_VueloDetalle
+                new VueloServicio(db).CargarDetalle((List<Vuelo>)ViewBag.Asignaciones);
 
                 if (editar)
                 {
@@ -442,6 +286,7 @@ namespace Con_Autenticacion.Controllers
         }
 
         // POST: /Admin/EditarAeronave
+        // Las validaciones están en Negocio/AeronaveServicio.cs
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult EditarAeronave(int aeronaveId, string matricula, int modeloAeronaveId, string estadoAeronaveCodigo)
@@ -452,76 +297,25 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("Index");
             }
 
-            var aeronave = db.Aeronave.Find(aeronaveId);
-            if (aeronave == null)
+            string mensajeExito;
+            bool noExiste;
+            string error = new AeronaveServicio(db).EditarAeronave(aeronaveId, matricula, modeloAeronaveId, estadoAeronaveCodigo,
+                                                                   out mensajeExito, out noExiste);
+            if (error != null)
             {
-                TempData["Error"] = "La aeronave solicitada no existe.";
-                return RedirectToAction("Aeronaves");
+                TempData["Error"] = error;
+                return noExiste
+                    ? RedirectToAction("Aeronaves")
+                    : RedirectToAction("Aeronaves", new { id = aeronaveId, editar = true });
             }
 
-            matricula = (matricula ?? "").Trim().ToUpper();
-
-            // Validaciones del servidor
-            if (matricula.Length == 0 || matricula.Length > 15)
-            {
-                TempData["Error"] = "El identificador es obligatorio y admite hasta 15 caracteres.";
-                return RedirectToAction("Aeronaves", new { id = aeronaveId, editar = true });
-            }
-            if (db.Aeronave.Any(a => a.Matricula == matricula && a.AeronaveId != aeronaveId))
-            {
-                TempData["Error"] = "Ya existe otra aeronave con el identificador " + matricula + ".";
-                return RedirectToAction("Aeronaves", new { id = aeronaveId, editar = true });
-            }
-            var modelo = db.ModeloAeronave.Find(modeloAeronaveId);
-            if (modelo == null || modelo.CapacidadAsientos > 7)
-            {
-                TempData["Error"] = "Seleccione un modelo válido (capacidad máxima de siete asientos, RN-03).";
-                return RedirectToAction("Aeronaves", new { id = aeronaveId, editar = true });
-            }
-            if (string.IsNullOrEmpty(estadoAeronaveCodigo) || !db.EstadoAeronave.Any(e => e.Codigo == estadoAeronaveCodigo))
-            {
-                TempData["Error"] = "Seleccione un estado operativo válido.";
-                return RedirectToAction("Aeronaves", new { id = aeronaveId, editar = true });
-            }
-
-            // Vuelos próximos que quedarían afectados si pasa a NO_DISPONIBLE
-            DateTime hoy = DateTime.Today;
-            int vuelosProximos = db.Vuelo.Count(v => v.AeronaveId == aeronaveId && v.FechaOperacion >= hoy
-                                                  && v.EstadoVueloCodigo != "CANCELADO" && v.EstadoVueloCodigo != "COMPLETADO");
-
-            aeronave.Matricula = matricula;
-            aeronave.ModeloAeronaveId = modeloAeronaveId;
-            aeronave.EstadoAeronaveCodigo = estadoAeronaveCodigo;
-
-            try
-            {
-                db.SaveChanges();
-            }
-            catch (Exception ex)
-            {
-                Exception inner = ex;
-                while (inner.InnerException != null) inner = inner.InnerException;
-                TempData["Error"] = "No se guardaron los cambios: " + inner.Message;
-                return RedirectToAction("Aeronaves", new { id = aeronaveId, editar = true });
-            }
-
-            string aviso = (estadoAeronaveCodigo == "NO_DISPONIBLE" && vuelosProximos > 0)
-                ? " Atención: tiene " + vuelosProximos + " vuelos próximos asignados; reasígnelos en la pantalla 18."
-                : "";
-            TempData["Exito"] = "Cambios guardados en la aeronave " + matricula + "." + aviso;
+            TempData["Exito"] = mensajeExito;
             return RedirectToAction("Aeronaves", new { id = aeronaveId });
         }
 
         // =========================================================================
         // PANTALLA 20: GESTIÓN DE USUARIOS, PASAJEROS Y RESERVAS (/Admin/Gestion)
         // =========================================================================
-
-        private static readonly string[] RolesPrincipales = { "SuperUsuario", "Administrador", "Counter", "Cliente" };
-
-        private UserManager<ApplicationUser> CrearUserManager(ApplicationDbContext identity)
-        {
-            return new UserManager<ApplicationUser>(new Microsoft.AspNet.Identity.EntityFramework.UserStore<ApplicationUser>(identity));
-        }
 
         // GET: /Admin/Gestion
         [HttpGet]
@@ -578,7 +372,7 @@ namespace Con_Autenticacion.Controllers
                     foreach (var u in usuarios)
                     {
                         var nombres = u.Roles.Select(r => nombreRol[r.RoleId]).ToList();
-                        string principal = RolesPrincipales.FirstOrDefault(rp => nombres.Contains(rp)) ?? "Sin rol";
+                        string principal = UsuarioServicio.RolesPrincipales.FirstOrDefault(rp => nombres.Contains(rp)) ?? "Sin rol";
                         rolesUsuario[u.Id] = principal;
                     }
                     if (filtro != "")
@@ -684,6 +478,7 @@ namespace Con_Autenticacion.Controllers
         }
 
         // POST: /Admin/EditarUsuario  (correo electrónico)
+        // Las reglas están en Negocio/UsuarioServicio.cs
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult EditarUsuario(string userId, string email)
@@ -694,41 +489,19 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("Index");
             }
 
-            email = (email ?? "").Trim();
-            if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            string mensajeExito;
+            bool volverAEdicion;
+            string error = new UsuarioServicio().EditarCorreo(userId, email, User.IsInRole("SuperUsuario"),
+                                                              out mensajeExito, out volverAEdicion);
+            if (error != null)
             {
-                TempData["Error"] = "Ingrese un correo electrónico válido.";
-                return RedirectToAction("Gestion", new { tab = "usuarios", editarUsuario = userId });
+                TempData["Error"] = error;
+                return volverAEdicion
+                    ? RedirectToAction("Gestion", new { tab = "usuarios", editarUsuario = userId })
+                    : RedirectToAction("Gestion", new { tab = "usuarios" });
             }
 
-            using (var identity = new ApplicationDbContext())
-            {
-                var userManager = CrearUserManager(identity);
-                var usuario = userManager.FindById(userId);
-                if (usuario == null)
-                {
-                    TempData["Error"] = "El usuario no existe.";
-                    return RedirectToAction("Gestion", new { tab = "usuarios" });
-                }
-
-                // Un Administrador solo edita cuentas de Cliente o Counter
-                bool cuentaElevada = userManager.IsInRole(userId, "SuperUsuario") || userManager.IsInRole(userId, "Administrador");
-                if (cuentaElevada && !User.IsInRole("SuperUsuario"))
-                {
-                    TempData["Error"] = "Solo el SuperUsuario puede modificar cuentas administrativas.";
-                    return RedirectToAction("Gestion", new { tab = "usuarios" });
-                }
-
-                usuario.Email = email;
-                var resultado = userManager.Update(usuario);   // valida correo único (RequireUniqueEmail)
-                if (!resultado.Succeeded)
-                {
-                    TempData["Error"] = "No se guardaron los cambios: " + string.Join(" ", resultado.Errors);
-                    return RedirectToAction("Gestion", new { tab = "usuarios", editarUsuario = userId });
-                }
-
-                TempData["Exito"] = "Cambios guardados para " + usuario.UserName + ".";
-            }
+            TempData["Exito"] = mensajeExito;
             return RedirectToAction("Gestion", new { tab = "usuarios" });
         }
 
@@ -737,50 +510,24 @@ namespace Con_Autenticacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult AsignarRol(string userId, string rol)
         {
-            if (!User.IsInRole("SuperUsuario"))
+            string mensajeExito;
+            bool volverAEdicion;
+            string error = new UsuarioServicio().AsignarRol(userId, rol, User.Identity.GetUserId(), User.IsInRole("SuperUsuario"),
+                                                            out mensajeExito, out volverAEdicion);
+            if (error != null)
             {
-                TempData["Error"] = "Solo el SuperUsuario puede asignar roles.";
-                return RedirectToAction("Gestion", new { tab = "usuarios" });
+                TempData["Error"] = error;
+                return volverAEdicion
+                    ? RedirectToAction("Gestion", new { tab = "usuarios", editarUsuario = userId })
+                    : RedirectToAction("Gestion", new { tab = "usuarios" });
             }
 
-            if (!RolesPrincipales.Contains(rol))
-            {
-                TempData["Error"] = "Seleccione un rol válido.";
-                return RedirectToAction("Gestion", new { tab = "usuarios", editarUsuario = userId });
-            }
-
-            // El SuperUsuario no puede quitarse su propio rol (evita quedar sin acceso)
-            if (userId == User.Identity.GetUserId() && rol != "SuperUsuario")
-            {
-                TempData["Error"] = "No puede quitarse su propio rol de SuperUsuario.";
-                return RedirectToAction("Gestion", new { tab = "usuarios", editarUsuario = userId });
-            }
-
-            using (var identity = new ApplicationDbContext())
-            {
-                var userManager = CrearUserManager(identity);
-                var usuario = userManager.FindById(userId);
-                if (usuario == null)
-                {
-                    TempData["Error"] = "El usuario no existe.";
-                    return RedirectToAction("Gestion", new { tab = "usuarios" });
-                }
-
-                // Quita los otros roles principales y asigna el nuevo (los roles CRUD no se tocan)
-                foreach (var r in RolesPrincipales)
-                {
-                    if (r != rol && userManager.IsInRole(userId, r))
-                        userManager.RemoveFromRole(userId, r);
-                }
-                if (!userManager.IsInRole(userId, rol))
-                    userManager.AddToRole(userId, rol);
-
-                TempData["Exito"] = "Rol de " + usuario.UserName + " actualizado a " + rol + ". El cambio se aplica en su próximo inicio de sesión.";
-            }
+            TempData["Exito"] = mensajeExito;
             return RedirectToAction("Gestion", new { tab = "usuarios" });
         }
 
         // POST: /Admin/GuardarPasajero  (crear o editar)
+        // Las validaciones están en Negocio/PasajeroServicio.cs
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult GuardarPasajero(int? pasajeroId, string tipoDocumentoCodigo, string numeroDocumento, string nombres,
@@ -792,32 +539,9 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("Gestion", new { tab = "pasajeros" });
             }
 
-            numeroDocumento = (numeroDocumento ?? "").Trim().ToUpper();
-            nombres = (nombres ?? "").Trim();
-            apellidos = (apellidos ?? "").Trim();
-            correo = string.IsNullOrWhiteSpace(correo) ? null : correo.Trim();
-            telefono = string.IsNullOrWhiteSpace(telefono) ? null : telefono.Trim();
-
-            // Validaciones del servidor (coinciden con las restricciones CHECK de la tabla Pasajero)
-            string error = null;
-            if (tipoDocumentoCodigo != "CEDULA" && tipoDocumentoCodigo != "PASAPORTE")
-                error = "Seleccione el tipo de documento.";
-            else if (tipoDocumentoCodigo == "CEDULA" && !System.Text.RegularExpressions.Regex.IsMatch(numeroDocumento, @"^\d{10}$"))
-                error = "La cédula debe contener exactamente 10 dígitos numéricos.";
-            else if (numeroDocumento.Length < 5 || numeroDocumento.Length > 20)
-                error = "El número de documento debe tener entre 5 y 20 caracteres.";
-            else if (nombres.Length == 0 || nombres.Length > 100 || apellidos.Length == 0 || apellidos.Length > 100)
-                error = "Nombres y apellidos son obligatorios (máximo 100 caracteres).";
-            else if (correo != null && !System.Text.RegularExpressions.Regex.IsMatch(correo, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
-                error = "El correo electrónico no tiene un formato válido.";
-            else if (telefono != null && !System.Text.RegularExpressions.Regex.IsMatch(telefono, @"^[0-9+ ]{7,20}$"))
-                error = "El teléfono solo admite dígitos, espacios y el signo + (7 a 20 caracteres).";
-            else if (fechaNacimiento.HasValue && (fechaNacimiento.Value.Year <= 1900 || fechaNacimiento.Value.Date > DateTime.Today))
-                error = "La fecha de nacimiento no es válida.";
-            else if (db.Pasajero.Any(p => p.TipoDocumentoCodigo == tipoDocumentoCodigo && p.NumeroDocumento == numeroDocumento
-                                       && (!pasajeroId.HasValue || p.PasajeroId != pasajeroId.Value)))
-                error = "Ya existe un pasajero con ese documento.";
-
+            string documento;
+            string error = new PasajeroServicio(db).GuardarPasajero(pasajeroId, tipoDocumentoCodigo, numeroDocumento, nombres,
+                                                                    apellidos, fechaNacimiento, correo, telefono, out documento);
             if (error != null)
             {
                 TempData["Error"] = error;
@@ -826,47 +550,11 @@ namespace Con_Autenticacion.Controllers
                     : RedirectToAction("Gestion", new { tab = "pasajeros", nuevoPasajero = true });
             }
 
-            Pasajero pasajero;
-            if (pasajeroId.HasValue)
-            {
-                pasajero = db.Pasajero.Find(pasajeroId.Value);
-                if (pasajero == null)
-                {
-                    TempData["Error"] = "El pasajero no existe.";
-                    return RedirectToAction("Gestion", new { tab = "pasajeros" });
-                }
-            }
-            else
-            {
-                pasajero = new Pasajero { FechaRegistro = DateTime.Now };
-                db.Pasajero.Add(pasajero);
-            }
-
-            pasajero.TipoDocumentoCodigo = tipoDocumentoCodigo;
-            pasajero.NumeroDocumento = numeroDocumento;
-            pasajero.Nombres = nombres;
-            pasajero.Apellidos = apellidos;
-            pasajero.FechaNacimiento = fechaNacimiento;
-            pasajero.Correo = correo;
-            pasajero.Telefono = telefono;
-
-            try
-            {
-                db.SaveChanges();
-            }
-            catch (Exception ex)
-            {
-                Exception inner = ex;
-                while (inner.InnerException != null) inner = inner.InnerException;
-                TempData["Error"] = "No se guardó el pasajero: " + inner.Message;
-                return RedirectToAction("Gestion", new { tab = "pasajeros" });
-            }
-
             TempData["Exito"] = "Cambios guardados.";
-            return RedirectToAction("Gestion", new { tab = "pasajeros", buscar = numeroDocumento });
+            return RedirectToAction("Gestion", new { tab = "pasajeros", buscar = documento });
         }
 
-        // POST: /Admin/EliminarPasajero
+        // POST: /Admin/EliminarPasajero  (solo quien tiene el permiso Delete)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult EliminarPasajero(int pasajeroId)
@@ -877,23 +565,13 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("Gestion", new { tab = "pasajeros" });
             }
 
-            var pasajero = db.Pasajero.Find(pasajeroId);
-            if (pasajero == null)
-            {
-                TempData["Error"] = "El pasajero no existe.";
-                return RedirectToAction("Gestion", new { tab = "pasajeros" });
-            }
+            string mensajeExito;
+            string error = new PasajeroServicio(db).EliminarPasajero(pasajeroId, out mensajeExito);
+            if (error != null)
+                TempData["Error"] = error;
+            else
+                TempData["Exito"] = mensajeExito;
 
-            // Integridad referencial: no se elimina un pasajero con reservas
-            if (db.ReservaPasajeroVuelo.Any(a => a.PasajeroId == pasajeroId))
-            {
-                TempData["Error"] = "No se puede eliminar: el pasajero tiene reservas asociadas.";
-                return RedirectToAction("Gestion", new { tab = "pasajeros" });
-            }
-
-            db.Pasajero.Remove(pasajero);
-            db.SaveChanges();
-            TempData["Exito"] = "Pasajero " + pasajero.Nombres + " " + pasajero.Apellidos + " eliminado.";
             return RedirectToAction("Gestion", new { tab = "pasajeros" });
         }
 
@@ -909,118 +587,16 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("Index");
             }
 
-            consulta = (consulta == "reservas" || consulta == "pagos") ? consulta : "ocupacion";
-            DateTime fDesde = (desde ?? DateTime.Today.AddDays(-30)).Date;
-            DateTime fHasta = (hasta ?? DateTime.Today.AddDays(30)).Date;
-            estado = estado ?? "";
+            // El servicio consulta y calcula cada fila del reporte (ReportesViewModel)
+            var modelo = new ReporteServicio(db).ArmarReporte(consulta, desde, hasta, rutaId, aeronaveId, estado);
 
-            if (fHasta < fDesde)
-            {
-                ViewBag.ErrorFiltro = "La fecha «Hasta» no puede ser anterior a la fecha «Desde».";
-                fHasta = fDesde.AddDays(30);
-            }
-            if ((fHasta - fDesde).TotalDays > 366)
-            {
-                ViewBag.ErrorFiltro = "El rango no puede superar 366 días.";
-                fHasta = fDesde.AddDays(366);
-            }
-            DateTime hastaExclusivo = fHasta.AddDays(1);   // incluye todo el día "hasta"
-
-            // ---------------- OCUPACIÓN POR VUELO ----------------
-            if (consulta == "ocupacion")
-            {
-                var vuelos = db.Vuelo
-                    .Include(v => v.Frecuencia.Ruta.Aeropuerto)
-                    .Include(v => v.Frecuencia.Ruta.Aeropuerto1)
-                    .Include(v => v.Aeronave.ModeloAeronave)
-                    .Where(v => v.FechaOperacion >= fDesde && v.FechaOperacion <= fHasta);
-
-                if (rutaId.HasValue) vuelos = vuelos.Where(v => v.Frecuencia.RutaId == rutaId.Value);
-                if (aeronaveId.HasValue) vuelos = vuelos.Where(v => v.AeronaveId == aeronaveId.Value);
-                if (estado != "") vuelos = vuelos.Where(v => v.EstadoVueloCodigo == estado);
-
-                var lista = vuelos.ToList()
-                    .OrderBy(v => v.FechaOperacion).ThenBy(v => v.Frecuencia.HoraSalida)
-                    .ToList();
-
-                // Reservados (PENDIENTE) y ocupados (CONFIRMADA) por vuelo
-                var ids = lista.Select(v => v.VueloId).ToList();
-                var asignaciones = db.ReservaPasajeroVuelo
-                    .Where(a => ids.Contains(a.VueloId) && (a.EstadoAsignacionCodigo == "PENDIENTE" || a.EstadoAsignacionCodigo == "CONFIRMADA"))
-                    .Select(a => new { a.VueloId, a.EstadoAsignacionCodigo })
-                    .ToList();
-
-                ViewBag.Reservados = asignaciones.Where(a => a.EstadoAsignacionCodigo == "PENDIENTE")
-                    .GroupBy(a => a.VueloId).ToDictionary(g => g.Key, g => g.Count());
-                ViewBag.OcupadosConfirmados = asignaciones.Where(a => a.EstadoAsignacionCodigo == "CONFIRMADA")
-                    .GroupBy(a => a.VueloId).ToDictionary(g => g.Key, g => g.Count());
-                ViewBag.Vuelos = lista;
-            }
-
-            // ---------------- RESERVAS POR ESTADO ----------------
-            if (consulta == "reservas")
-            {
-                var reservas = db.Reserva
-                    .Include(r => r.Compra)
-                    .Where(r => r.FechaCreacion >= fDesde && r.FechaCreacion < hastaExclusivo);
-
-                if (rutaId.HasValue)
-                    reservas = reservas.Where(r => r.ReservaPasajeroVuelo.Any(a => a.Vuelo.Frecuencia.RutaId == rutaId.Value));
-                if (aeronaveId.HasValue)
-                    reservas = reservas.Where(r => r.ReservaPasajeroVuelo.Any(a => a.Vuelo.AeronaveId == aeronaveId.Value));
-                if (estado != "")
-                    reservas = reservas.Where(r => r.EstadoReservaCodigo == estado);
-
-                var lista = reservas.OrderByDescending(r => r.FechaCreacion).ToList();
-                ViewBag.Reservas = lista;
-
-                // Resumen por estado: [estado, cantidad, pasajeros, importe]
-                ViewBag.ResumenReservas = lista
-                    .GroupBy(r => r.EstadoReservaCodigo)
-                    .Select(g => new object[]
-                    {
-                        g.Key,
-                        g.Count(),
-                        g.Sum(r => r.ReservaPasajeroVuelo.Select(a => a.PasajeroId).Distinct().Count()),
-                        g.Sum(r => r.ReservaPasajeroVuelo.Sum(a => a.ImporteTramo))
-                    })
-                    .OrderBy(x => (string)x[0])
-                    .ToList();
-            }
-
-            // ---------------- COMPRAS Y PAGOS SIMULADOS ----------------
-            if (consulta == "pagos")
-            {
-                var compras = db.Compra
-                    .Include(c => c.Reserva)
-                    .Include(c => c.Pago)
-                    .Where(c => c.FechaCompra >= fDesde && c.FechaCompra < hastaExclusivo);
-
-                if (rutaId.HasValue)
-                    compras = compras.Where(c => c.Reserva.ReservaPasajeroVuelo.Any(a => a.Vuelo.Frecuencia.RutaId == rutaId.Value));
-                if (aeronaveId.HasValue)
-                    compras = compras.Where(c => c.Reserva.ReservaPasajeroVuelo.Any(a => a.Vuelo.AeronaveId == aeronaveId.Value));
-                if (estado != "")
-                    compras = compras.Where(c => c.EstadoCompraCodigo == estado);
-
-                ViewBag.Compras = compras.OrderByDescending(c => c.FechaCompra).ToList();
-            }
-
-            // Listas de filtros
-            ViewBag.RutasLista = new SelectList(
-                db.Ruta.ToList().Select(r => new { r.RutaId, Texto = r.Aeropuerto.CodigoIATA + " → " + r.Aeropuerto1.CodigoIATA }),
+            // Listas desplegables de los filtros
+            modelo.RutasLista = new SelectList(
+                db.Ruta.ToList().Select(r => new { r.RutaId, Texto = r.Aeropuerto1.CodigoIATA + " → " + r.Aeropuerto.CodigoIATA }),
                 "RutaId", "Texto", rutaId);
-            ViewBag.AeronavesLista = new SelectList(db.Aeronave.OrderBy(a => a.Matricula).ToList(), "AeronaveId", "Matricula", aeronaveId);
+            modelo.AeronavesLista = new SelectList(db.Aeronave.OrderBy(a => a.Matricula).ToList(), "AeronaveId", "Matricula", aeronaveId);
 
-            ViewBag.Consulta = consulta;
-            ViewBag.Desde = fDesde.ToString("yyyy-MM-dd");
-            ViewBag.Hasta = fHasta.ToString("yyyy-MM-dd");
-            ViewBag.RutaId = rutaId;
-            ViewBag.AeronaveId = aeronaveId;
-            ViewBag.Estado = estado;
-            ViewBag.FechaCorte = DateTime.Now;
-
-            return View();
+            return View(modelo);
         }
 
         protected override void Dispose(bool disposing)

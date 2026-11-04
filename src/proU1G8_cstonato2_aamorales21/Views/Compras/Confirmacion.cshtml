@@ -13,11 +13,12 @@
         letter-spacing: 0.8px;
         color: #94a3b8;
     }
-    .step-item.active {
-        color: #0f172a;
-        font-weight: 700;
-        border-bottom: 2px solid #0f172a;
-    }
+
+        .step-item.active {
+            color: #0f172a;
+            font-weight: 700;
+            border-bottom: 2px solid #0f172a;
+        }
 
     /* ==========================================================================
        BANNERS DE RESULTADO (CARD EXECUTIVE)
@@ -306,11 +307,11 @@
                                                 T-@(((List<int>)ViewBag.TramosIds).IndexOf(a.VueloId) + 1)
                                             </span>
                                         </td>
-                                        <td class="text-nowrap fw-bold text-dark">VIP@(a.Vuelo.VueloId.ToString("D5"))</td>
+                                        <td class="text-nowrap fw-bold text-dark">@a.Vuelo.CodigoVuelo</td>
                                         <td class="text-nowrap">
-                                            <strong>@a.Vuelo.Frecuencia.Ruta.Aeropuerto.CodigoIATA</strong>
+                                            <strong>@a.Vuelo.CodigoOrigen</strong>
                                             <span class="text-muted">&rarr;</span>
-                                            <strong>@a.Vuelo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA</strong>
+                                            <strong>@a.Vuelo.CodigoDestino</strong>
                                         </td>
                                         <td class="text-nowrap">@a.Vuelo.FechaOperacion.ToString("dd/MM/yyyy")</td>
                                         <td class="text-nowrap text-secondary">
@@ -403,7 +404,7 @@
 
             @if ((bool)ViewBag.EsPagada && (ViewBag.ComprobanteId as int?).HasValue)
             {
-                <a href="@Url.Action("Comprobantes", "Compras", new { ver = ((int?)ViewBag.ComprobanteId).Value })#vistaPrevia" class="btn btn-dark px-4 py-2 fw-semibold small rounded-2 shadow-sm">
+                <a href="@Url.Action("Index", "Comprobantes", new { ver = ((int?)ViewBag.ComprobanteId).Value })#vistaPrevia" class="btn btn-dark px-4 py-2 fw-semibold small rounded-2 shadow-sm">
                     Consultar comprobante oficial &rarr;
                 </a>
             }

@@ -1,4 +1,8 @@
-﻿using System;
+﻿using Con_Autenticacion.Models;
+using Con_Autenticacion.Negocio;
+using Microsoft.AspNet.Identity;
+using Microsoft.AspNet.Identity.EntityFramework;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Entity;
@@ -6,8 +10,6 @@ using System.Linq;
 using System.Net;
 using System.Web;
 using System.Web.Mvc;
-using Con_Autenticacion.Models;
-using Microsoft.AspNet.Identity;
 
 namespace Con_Autenticacion.Controllers
 {
@@ -16,43 +18,12 @@ namespace Con_Autenticacion.Controllers
     {
         private AerolineaVIP_Context db = new AerolineaVIP_Context();
 
-        // GET: Reservas
+        // GET: Reservas  (CRUD de scaffolding)
+        [Authorize(Roles = "Details")]
         public ActionResult Index()
         {
             var reserva = db.Reserva.Include(r => r.EstadoReserva);
             return View(reserva.ToList());
-        }
-
-        private List<Vuelo> ObtenerTramos(Vuelo vuelo)
-        {
-            if (vuelo.Frecuencia.DiaSemana != 7)
-            {
-                return new List<Vuelo> { vuelo };
-            }
-
-            string origen = vuelo.Frecuencia.Ruta.Aeropuerto.CodigoIATA;
-            string destino = vuelo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA;
-            bool esIda = origen == "UIO" || destino == "GPS";
-            string[] rutas = esIda ? new[] { "UIO-GYE", "GYE-GPS" } : new[] { "GPS-GYE", "GYE-UIO" };
-
-            DateTime fecha = vuelo.FechaOperacion.Date;
-            var tramos = db.Vuelo
-                .Include(v => v.Frecuencia.Ruta.Aeropuerto)
-                .Include(v => v.Frecuencia.Ruta.Aeropuerto1)
-                .Include(v => v.Aeronave)
-                .Include(v => v.ReservaPasajeroVuelo)
-                .Where(v => v.FechaOperacion == fecha)
-                .ToList()
-                .Where(v => rutas.Contains($"{v.Frecuencia.Ruta.Aeropuerto.CodigoIATA}-{v.Frecuencia.Ruta.Aeropuerto1.CodigoIATA}"))
-                .OrderBy(v => v.Frecuencia.HoraSalida)
-                .ToList();
-
-            return tramos.Count == 2 ? tramos : null;
-        }
-
-        private int LibresEnVuelo(Vuelo v)
-        {
-            return 7 - v.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA");
         }
 
         [HttpGet]
@@ -71,15 +42,40 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("Buscar", "Vuelos");
             }
 
-            var tramos = ObtenerTramos(vuelo);
+            var tramos = new ReservaServicio(db).ObtenerTramos(vuelo);
             if (tramos == null)
             {
                 TempData["Error"] = "El itinerario de este vuelo no está completo; no puede reservarse.";
                 return RedirectToAction("Buscar", "Vuelos");
             }
 
+            int cantidadPasajeros = (pasajeros >= 1 && pasajeros <= 7) ? pasajeros : 1;
+
+            // Estado de los asientos (vw_EstadoAsientoVuelo) y disponibles (vw_DisponibilidadVuelo)
+            // de cada tramo. Se cargan antes de EsVendible, que usa los disponibles.
+            var servicioVuelos = new VueloServicio(db);
+            foreach (var t in tramos)
+            {
+                servicioVuelos.CargarEstadoAsientos(t);
+            }
+            servicioVuelos.CargarDisponibilidad(tramos);
+
+            // Misma regla que usa Resultados (VueloNegocio.EsVendible), repetida en el servidor:
+            // no cancelado, con aeronave, sin partir, con 60 min de anticipación y cupo en TODOS los tramos
+            if (tramos.Any(t => !t.EsVendible(cantidadPasajeros)))
+            {
+                TempData["Error"] = "Este vuelo ya no está disponible para " + cantidadPasajeros + " pasajero(s): está cancelado, sin aeronave, sin cupo suficiente o muy próximo a salir.";
+                return RedirectToAction("Resultados", "Vuelos", new
+                {
+                    origenId = tramos.First().Frecuencia.Ruta.AeropuertoOrigenId,
+                    destinoId = tramos.Last().Frecuencia.Ruta.AeropuertoDestinoId,
+                    fecha = vuelo.FechaOperacion.ToString("yyyy-MM-dd"),
+                    pasajeros = cantidadPasajeros
+                });
+            }
+
             ViewBag.Tramos = tramos;
-            ViewBag.Pasajeros = (pasajeros >= 1 && pasajeros <= 7) ? pasajeros : 1;
+            ViewBag.Pasajeros = cantidadPasajeros;
             ViewBag.EsItinerario = tramos.Count > 1;
             ViewBag.UltimoTramo = tramos.Last();
 
@@ -91,8 +87,9 @@ namespace Con_Autenticacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult SeleccionAsiento(int vueloId, int pasajeros, List<int> asientosSeleccionados, List<int> asientosTramo2)
         {
+            Reserva.LiberarVencidas(db);
             var vuelo = db.Vuelo.Find(vueloId);
-            var tramos = vuelo != null ? ObtenerTramos(vuelo) : null;
+            var tramos = vuelo != null ? new ReservaServicio(db).ObtenerTramos(vuelo) : null;
             if (tramos == null)
             {
                 TempData["Error"] = "Debe seleccionar un vuelo válido para continuar.";
@@ -181,6 +178,7 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("Buscar", "Vuelos");
             }
 
+            // Códigos de asiento por pasajero: [pasajero][tramo]
             var codigosPorPasajero = new List<List<string>>();
             for (int i = 0; i < asientosTramo1.Count; i++)
             {
@@ -202,6 +200,7 @@ namespace Con_Autenticacion.Controllers
             return View(tramos.First());
         }
 
+        // POST: /Reservas/Pasajeros
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Pasajeros(List<Pasajero> pasajeros)
@@ -219,7 +218,7 @@ namespace Con_Autenticacion.Controllers
                 return VolverAPasajeros(pasajeros, "Debe completar la información de todos los pasajeros.");
             }
 
-            // --- AQUÍ EL CAMBIO: Validación delegada a la clase parcial ---
+            // 1. Validaciones del wireframe (pantalla 9), en la clase de negocio Pasajero
             for (int i = 0; i < pasajeros.Count; i++)
             {
                 string error = pasajeros[i].ValidarDatosCompletos(i + 1);
@@ -228,16 +227,15 @@ namespace Con_Autenticacion.Controllers
                     return VolverAPasajeros(pasajeros, error);
                 }
             }
-            // -------------------------------------------------------------
 
-            // 2. Control de documentos duplicados en la misma reserva
+            // 2. El mismo documento no puede repetirse en la reserva
             var documentos = pasajeros.Select(p => p.TipoDocumentoCodigo + "|" + p.NumeroDocumento).ToList();
             if (documentos.Distinct().Count() != documentos.Count)
             {
                 return VolverAPasajeros(pasajeros, "No puede ingresar el mismo número de documento para más de un pasajero.");
             }
 
-            // 3. Reutilización o registro en la base de datos (se mantiene igual)
+            // 3. Reutilización o registro en la base de datos
             List<int> pasajerosIds = new List<int>();
 
             foreach (var p in pasajeros)
@@ -265,7 +263,7 @@ namespace Con_Autenticacion.Controllers
                         FechaNacimiento = p.FechaNacimiento,
                         Correo = p.Correo,
                         Telefono = p.Telefono,
-                        FechaRegistro = DateTime.Now
+                        FechaRegistro = DateTime.Now      // antes quedaba en 01/01/0001
                     };
 
                     db.Pasajero.Add(nuevo);
@@ -275,13 +273,8 @@ namespace Con_Autenticacion.Controllers
             }
 
             Session["Reserva_PasajerosIds"] = pasajerosIds;
-            return RedirectToAction("Confirmar", "Reservas");
-        }
 
-        // Tarifa de ejemplo de un tramo (DP-04): Ruta.TarifaReferencial
-        private decimal TarifaTramo(Vuelo v)
-        {
-            return v.Frecuencia.Ruta.TarifaReferencial > 0 ? v.Frecuencia.Ruta.TarifaReferencial : 150.00m;
+            return RedirectToAction("Confirmar", "Reservas");
         }
 
         // Lee de la sesión la operación armada en las pantallas 8 y 9
@@ -346,24 +339,28 @@ namespace Con_Autenticacion.Controllers
                 codigos.Add(asientosPorTramo.Select(a => CodigoAsiento(a[i])).ToList());
             }
 
-            decimal importePorPasajero = tramos.Sum(t => TarifaTramo(t));
+            decimal importePorPasajero = tramos.Sum(t => ReservaServicio.TarifaTramo(t));
 
             ViewBag.Tramos = tramos;
             ViewBag.Pasajeros = pasajeros;
             ViewBag.CodigosPorPasajero = codigos;
-            ViewBag.TarifasTramo = tramos.Select(t => TarifaTramo(t)).ToList();
+            ViewBag.TarifasTramo = tramos.Select(t => ReservaServicio.TarifaTramo(t)).ToList();
             ViewBag.ImportePorPasajero = importePorPasajero;
             ViewBag.TotalPagar = importePorPasajero * pasajeros.Count;
-            ViewBag.RetencionMin = LeerParametro("RetencionReservaMin", 120);
+            ViewBag.RetencionMin = Utilidades.LeerParametro("RetencionReservaMin", 120);
+            ViewBag.EsCounter = User.IsInRole("Counter");
+            ViewBag.CorreoCliente = TempData["CorreoCliente"] as string ?? "";
 
             return View(tramos.First());
         }
 
         // POST: /Reservas/Confirmar
+        // La lógica de la confirmación está en Negocio/ReservaServicio.cs
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Confirmar(bool? aceptarCondiciones, string accionBoton)
+        public ActionResult Confirmar(bool? aceptarCondiciones, string accionBoton, string correoCliente)
         {
+            Reserva.LiberarVencidas(db);
             List<Vuelo> tramos;
             List<List<int>> asientosPorTramo;
             List<int> pasajerosIds;
@@ -380,101 +377,51 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("Confirmar");
             }
 
+            var servicio = new ReservaServicio(db);
+
             // 1. Revalidar cada tramo en el servidor (RNP-04)
-            for (int k = 0; k < tramos.Count; k++)
+            string volverA;
+            string error = servicio.RevalidarTramos(tramos, asientosPorTramo, pasajerosIds, out volverA);
+            if (error != null)
             {
-                var t = tramos[k];
-                string codVuelo = "VIP" + t.VueloId.ToString("D5");
-
-                if ((t.EstadoVueloCodigo != "PROGRAMADO" && t.EstadoVueloCodigo != "CONFIRMADO") || t.AeronaveId == null)
-                {
-                    TempData["Error"] = "El vuelo " + codVuelo + " ya no admite reservas.";
+                TempData["Error"] = error;
+                if (volverA == "Buscar")
                     return RedirectToAction("Buscar", "Vuelos");
-                }
-
-                int idTramo = t.VueloId;
-                var activos = db.ReservaPasajeroVuelo
-                    .Where(r => r.VueloId == idTramo && (r.EstadoAsignacionCodigo == "PENDIENTE" || r.EstadoAsignacionCodigo == "CONFIRMADA"))
-                    .Select(r => new { r.NumeroAsiento, r.PasajeroId })
-                    .ToList();
-
-                // Asiento tomado por otra persona mientras se llenaban los datos
-                if (asientosPorTramo[k].Any(n => activos.Any(a => a.NumeroAsiento == n)))
-                {
-                    TempData["Error"] = "Uno de los asientos elegidos en el vuelo " + codVuelo + " acaba de ser reservado. Elija otros asientos.";
+                if (volverA == "SeleccionAsiento")
                     return RedirectToAction("SeleccionAsiento", new { id = tramos[0].VueloId, pasajeros = pasajerosIds.Count });
-                }
-
-                // Pasajero que ya tiene un asiento activo en ese vuelo (UX_RPV_PasajeroActivo)
-                int repetido = pasajerosIds.FirstOrDefault(pid => activos.Any(a => a.PasajeroId == pid));
-                if (repetido != 0)
-                {
-                    var pas = db.Pasajero.Find(repetido);
-                    TempData["Error"] = "El pasajero " + (pas != null ? pas.Nombres + " " + pas.Apellidos : "") + " ya tiene un asiento reservado o comprado en el vuelo " + codVuelo + ".";
-                    return RedirectToAction("Confirmar");
-                }
+                return RedirectToAction("Confirmar");
             }
 
-            // 2. Vencimiento de la retención (DP-07 / RG-19): parámetro, con tope en el cierre del check-in
+            // 2. Vencimiento de la retención (DP-07 / RG-19)
             DateTime ahora = DateTime.Now;
-            DateTime expiracion = ahora.AddMinutes(LeerParametro("RetencionReservaMin", 120));
-            DateTime salida = tramos[0].FechaOperacion.Add(tramos[0].Frecuencia.HoraSalida);
-            DateTime cierreCheckIn = salida.AddMinutes(-LeerParametro("CheckInCierreMin", 90));
-            if (cierreCheckIn < expiracion) expiracion = cierreCheckIn;
-
-            if (expiracion <= ahora.AddMinutes(1))
+            DateTime expiracion;
+            error = servicio.CalcularExpiracion(tramos, ahora, out expiracion);
+            if (error != null)
             {
-                TempData["Error"] = "El vuelo sale muy pronto y ya no admite reservas.";
+                TempData["Error"] = error;
                 return RedirectToAction("Buscar", "Vuelos");
             }
 
-            string currentUserId = User.Identity.GetUserId();
-            Reserva reserva;
-
-            // 3. Reserva y asientos en UNA transacción (no quedan reservas sin asientos)
-            using (var transaccion = db.Database.BeginTransaction())
+            // Titular: el usuario autenticado, o el cliente indicado por el Counter
+            string usuarioId = User.Identity.GetUserId();
+            if (User.IsInRole("Counter"))
             {
-                try
+                error = servicio.BuscarClienteParaCounter(correoCliente, out usuarioId);
+                if (error != null)
                 {
-                    reserva = new Reserva
-                    {
-                        UsuarioId = currentUserId,
-                        FechaCreacion = ahora,
-                        FechaExpiracion = expiracion,
-                        EstadoReservaCodigo = "PENDIENTE"
-                    };
-                    db.Reserva.Add(reserva);
-                    db.SaveChanges();   // genera ReservaId y CodigoReserva (columna calculada)
-
-                    // Una asignación por pasajero y por tramo (DP-09), en morado (PENDIENTE)
-                    for (int k = 0; k < tramos.Count; k++)
-                    {
-                        for (int i = 0; i < pasajerosIds.Count; i++)
-                        {
-                            db.ReservaPasajeroVuelo.Add(new ReservaPasajeroVuelo
-                            {
-                                ReservaId = reserva.ReservaId,
-                                PasajeroId = pasajerosIds[i],
-                                VueloId = tramos[k].VueloId,
-                                NumeroAsiento = (byte)asientosPorTramo[k][i],
-                                EstadoAsignacionCodigo = "PENDIENTE",
-                                ImporteTramo = TarifaTramo(tramos[k]),
-                                FechaAsignacion = ahora
-                            });
-                        }
-                    }
-
-                    db.SaveChanges();
-                    transaccion.Commit();
-                }
-                catch (Exception ex)
-                {
-                    transaccion.Rollback();
-                    Exception inner = ex;
-                    while (inner.InnerException != null) inner = inner.InnerException;
-                    TempData["Error"] = "No se pudo registrar la reserva: " + inner.Message;
+                    TempData["Error"] = error;
+                    TempData["CorreoCliente"] = (correoCliente ?? "").Trim();
                     return RedirectToAction("Confirmar");
                 }
+            }
+
+            // 3. Reserva y asientos en UNA transacción
+            Reserva reserva;
+            error = servicio.CrearReserva(usuarioId, tramos, asientosPorTramo, pasajerosIds, ahora, expiracion, out reserva);
+            if (error != null)
+            {
+                TempData["Error"] = error;
+                return RedirectToAction("Confirmar");
             }
 
             // 4. Fin de la selección temporal
@@ -495,131 +442,15 @@ namespace Con_Autenticacion.Controllers
         public ActionResult MisReservas(DateTime? desde, DateTime? hasta, string estado, int pagina = 1)
         {
             // Siempre se filtra por el usuario autenticado, nunca por un parámetro de la URL
-            string currentUserId = User.Identity.GetUserId() ?? User.Identity.Name;
+            string usuarioId = User.Identity.GetUserId() ?? User.Identity.Name;
 
-            // Rango de fechas inválido: se avisa junto al filtro y no se aplica el "hasta"
-            if (desde.HasValue && hasta.HasValue && hasta.Value.Date < desde.Value.Date)
-            {
-                ViewBag.ErrorFiltro = "La fecha «Hasta» no puede ser anterior a la fecha «Desde».";
-                hasta = null;
-            }
-
-            // Estados válidos del filtro
-            var estadosValidos = new List<string> { "PENDIENTE", "CONFIRMADA", "CANCELADA", "EXPIRADA" };
-            if (!string.IsNullOrEmpty(estado) && !estadosValidos.Contains(estado))
-            {
-                estado = null;
-            }
-
-            var reservas = db.Reserva
-                .Include(r => r.Compra)
-                .Include(r => r.ReservaPasajeroVuelo.Select(a => a.Vuelo.Frecuencia.Ruta.Aeropuerto))
-                .Include(r => r.ReservaPasajeroVuelo.Select(a => a.Vuelo.Frecuencia.Ruta.Aeropuerto1))
-                .Where(r => r.UsuarioId == currentUserId)
-                .OrderByDescending(r => r.FechaCreacion)
-                .ToList();
-
-            DateTime ahora = DateTime.Now;
-
-            // Filtro por fecha de viaje (fecha del primer tramo de la reserva)
-            if (desde.HasValue)
-            {
-                reservas = reservas
-                    .Where(r => r.ReservaPasajeroVuelo.Any() && r.ReservaPasajeroVuelo.Min(a => a.Vuelo.FechaOperacion) >= desde.Value.Date)
-                    .ToList();
-            }
-            if (hasta.HasValue)
-            {
-                reservas = reservas
-                    .Where(r => r.ReservaPasajeroVuelo.Any() && r.ReservaPasajeroVuelo.Min(a => a.Vuelo.FechaOperacion) <= hasta.Value.Date)
-                    .ToList();
-            }
-
-            // Filtro por estado (una reserva PENDIENTE con el plazo vencido se considera EXPIRADA - DP-07)
-            if (!string.IsNullOrEmpty(estado))
-            {
-                reservas = reservas.Where(r =>
-                {
-                    bool vencida = r.EstadoReservaCodigo == "PENDIENTE" && r.FechaExpiracion.HasValue && r.FechaExpiracion.Value < ahora;
-                    string estadoEfectivo = vencida ? "EXPIRADA" : r.EstadoReservaCodigo;
-                    return estadoEfectivo == estado;
-                }).ToList();
-            }
-
-            // Paginación simple (8 reservas por página)
-            int tamanoPagina = 8;
-            int totalRegistros = reservas.Count;
-            int totalPaginas = (int)Math.Ceiling(totalRegistros / (double)tamanoPagina);
-            if (totalPaginas < 1) totalPaginas = 1;
-            if (pagina < 1) pagina = 1;
-            if (pagina > totalPaginas) pagina = totalPaginas;
-
-            var paginaActual = reservas
-                .Skip((pagina - 1) * tamanoPagina)
-                .Take(tamanoPagina)
-                .ToList();
-
-            // Datos para conservar los filtros en la vista
-            ViewBag.Desde = desde.HasValue ? desde.Value.ToString("yyyy-MM-dd") : "";
-            ViewBag.Hasta = hasta.HasValue ? hasta.Value.ToString("yyyy-MM-dd") : "";
-            ViewBag.Estado = estado ?? "";
-            ViewBag.Pagina = pagina;
-            ViewBag.TotalPaginas = totalPaginas;
-            ViewBag.TotalRegistros = totalRegistros;
-            ViewBag.HayFiltros = desde.HasValue || hasta.HasValue || !string.IsNullOrEmpty(estado);
-            ViewBag.Ahora = ahora;
-
-            return View(paginaActual);
+            // El servicio filtra, pagina y calcula cada fila (MisReservasViewModel)
+            var modelo = new ReservaServicio(db).ObtenerMisReservas(usuarioId, desde, hasta, estado, pagina);
+            return View(modelo);
         }
         // =========================================================================
         // PANTALLA 14: GESTIÓN DE RESERVAS Y CANCELACIONES (/Reservas/Gestionar/{id})
         // =========================================================================
-
-        // Revisa si la reserva se puede cancelar y con qué tratamiento.
-        // Devuelve null si se puede cancelar, o el motivo por el que no se puede.
-        private string EvaluarCancelacion(Reserva reserva, out bool conReembolso, out double horasRestantes)
-        {
-            conReembolso = false;
-            horasRestantes = 0;
-
-            int limiteHoras = 48;
-            int valorConfig;
-            if (int.TryParse(System.Configuration.ConfigurationManager.AppSettings["LimiteReembolsoHoras"], out valorConfig))
-            {
-                limiteHoras = valorConfig;
-            }
-
-            var primerVuelo = reserva.ReservaPasajeroVuelo
-                .Select(a => a.Vuelo)
-                .OrderBy(v => v.FechaOperacion).ThenBy(v => v.Frecuencia.HoraSalida)
-                .FirstOrDefault();
-
-            if (primerVuelo == null)
-                return "La reserva no tiene tramos asociados.";
-
-            DateTime salida = primerVuelo.FechaOperacion.Add(primerVuelo.Frecuencia.HoraSalida);
-            horasRestantes = (salida - DateTime.Now).TotalHours;
-
-            if (reserva.EstadoReservaCodigo == "CANCELADA")
-                return "La reserva ya se encuentra cancelada.";
-
-            if (reserva.EstadoReservaCodigo == "EXPIRADA" ||
-                (reserva.EstadoReservaCodigo == "PENDIENTE" && reserva.FechaExpiracion.HasValue && reserva.FechaExpiracion.Value < DateTime.Now))
-                return "La reserva expiró; sus asientos ya fueron liberados.";
-
-            if (horasRestantes <= 0)
-                return "El vuelo ya salió; la reserva no puede cancelarse.";
-
-            bool tieneCheckIn = reserva.ReservaPasajeroVuelo
-                .Any(a => a.CheckIn.Any(c => c.EstadoCheckInCodigo == "COMPLETADO"));
-            if (tieneCheckIn)
-                return "La reserva tiene check-in completado; ya no puede cancelarse.";
-
-            if (reserva.EstadoReservaCodigo == "CONFIRMADA")
-                conReembolso = horasRestantes >= limiteHoras;
-
-            return null;
-        }
 
         // Verifica que el usuario sea el titular o un rol autorizado
         private bool PuedeGestionar(Reserva reserva)
@@ -671,16 +502,20 @@ namespace Con_Autenticacion.Controllers
             // Evaluación de la política DP-08
             bool conReembolso;
             double horasRestantes;
-            string motivoNoCancelable = EvaluarCancelacion(reserva, out conReembolso, out horasRestantes);
+            string motivoNoCancelable = reserva.EvaluarCancelacion(out conReembolso, out horasRestantes);
             ViewBag.PuedeCancelar = motivoNoCancelable == null;
             ViewBag.MotivoNoCancelable = motivoNoCancelable;
             ViewBag.ConReembolso = conReembolso;
             ViewBag.HorasRestantes = horasRestantes;
 
+            // Ruta de cada tramo desde la vista SQL vw_VueloDetalle
+            new VueloServicio(db).CargarDetalle(reserva.ReservaPasajeroVuelo.Select(a => a.Vuelo));
+
             return View(reserva);
         }
 
         // POST: /Reservas/Gestionar/5  (Confirmar solicitud de cancelación)
+        // La lógica de la cancelación está en Negocio/ReservaServicio.cs
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Gestionar(int id, string motivo)
@@ -692,276 +527,31 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("MisReservas");
             }
 
-            // Se vuelve a evaluar en el servidor: el estado pudo cambiar mientras se revisaba
-            bool conReembolso;
-            double horasRestantes;
-            string motivoNoCancelable = EvaluarCancelacion(reserva, out conReembolso, out horasRestantes);
-            if (motivoNoCancelable != null)
+            string mensajeExito;
+            string error = new ReservaServicio(db).CancelarReserva(reserva, motivo, out mensajeExito);
+            if (error != null)
             {
-                TempData["Error"] = motivoNoCancelable;
-                return RedirectToAction("Gestionar", new { id = id });
+                TempData["Error"] = error;
             }
-
-            // Motivo obligatorio (10-300 caracteres) para reservas pagadas
-            motivo = (motivo ?? "").Trim();
-            if (reserva.EstadoReservaCodigo == "CONFIRMADA" && (motivo.Length < 10 || motivo.Length > 300))
+            else
             {
-                TempData["Error"] = "Describa el motivo de la cancelación (entre 10 y 300 caracteres).";
-                return RedirectToAction("Gestionar", new { id = id });
+                TempData["Exito"] = mensajeExito;
             }
-
-            var compra = reserva.Compra.OrderByDescending(c => c.FechaCompra).FirstOrDefault();
-            bool estabaPagada = compra != null && compra.EstadoCompraCodigo == "PAGADA";
-
-            using (var transaccion = db.Database.BeginTransaction())
-            {
-                try
-                {
-                    // 1. Liberar asientos (vuelven a verde)
-                    foreach (var a in reserva.ReservaPasajeroVuelo)
-                    {
-                        if (a.EstadoAsignacionCodigo == "PENDIENTE" || a.EstadoAsignacionCodigo == "CONFIRMADA")
-                        {
-                            a.EstadoAsignacionCodigo = "CANCELADA";
-                        }
-                    }
-
-                    // 2. Tratamiento de la compra y el pago simulado
-                    if (compra != null)
-                    {
-                        if (compra.EstadoCompraCodigo == "PENDIENTE")
-                        {
-                            compra.EstadoCompraCodigo = "ANULADA";
-                        }
-                        else if (compra.EstadoCompraCodigo == "PAGADA" && conReembolso)
-                        {
-                            var pagoAprobado = compra.Pago.FirstOrDefault(p => p.EstadoPagoCodigo == "APROBADO");
-                            if (pagoAprobado != null)
-                            {
-                                pagoAprobado.EstadoPagoCodigo = "REVERSADO";
-                                string mensaje = "Reembolso simulado por cancelación: " + motivo;
-                                pagoAprobado.MensajeResultado = mensaje.Length > 200 ? mensaje.Substring(0, 200) : mensaje;
-                            }
-                            compra.EstadoCompraCodigo = "ANULADA";
-
-                            // Nota de crédito académica (DP-05)
-                            int siguiente = db.Comprobante.Count(c => c.TipoComprobanteCodigo == "NOTA_CREDITO") + 1;
-                            db.Comprobante.Add(new Comprobante
-                            {
-                                CompraId = compra.CompraId,
-                                TipoComprobanteCodigo = "NOTA_CREDITO",
-                                NumeroComprobante = "NC-ACAD-" + siguiente.ToString("D6"),
-                                FechaEmision = DateTime.Now,
-                                EstadoComprobanteCodigo = "EMITIDO"
-                            });
-                        }
-                        // PAGADA sin reembolso (< 48 h): la compra se mantiene PAGADA como penalidad
-                    }
-
-                    // 3. Reserva cancelada
-                    reserva.EstadoReservaCodigo = "CANCELADA";
-
-                    db.SaveChanges();
-                    transaccion.Commit();
-                }
-                catch (Exception ex)
-                {
-                    transaccion.Rollback();
-                    Exception inner = ex;
-                    while (inner.InnerException != null) inner = inner.InnerException;
-                    TempData["Error"] = "No se pudo cancelar la reserva: " + inner.Message;
-                    return RedirectToAction("Gestionar", new { id = id });
-                }
-            }
-
-            string detalle = "";
-            if (estabaPagada)
-            {
-                detalle = conReembolso
-                    ? " Se registró un reembolso simulado total y una nota de crédito académica."
-                    : " Por la cercanía del vuelo, la cancelación no genera reembolso.";
-            }
-            TempData["Exito"] = "Reserva " + reserva.CodigoReserva + " cancelada. Los asientos fueron liberados." + detalle;
             return RedirectToAction("Gestionar", new { id = id });
         }
         // =========================================================================
-        // PANTALLA 15: CHECK-IN (/Reservas/CheckIn)
+        // CRUD DE SCAFFOLDING (roles de permiso: Details, Create, Edit, Delete)
         // =========================================================================
 
-        // Lee un parámetro entero de Web.config (appSettings) o usa el valor por defecto
-        private int LeerParametro(string clave, int valorPorDefecto)
+        // Mensaje real de la base de datos (triggers, restricciones)
+        private static string MensajeInterno(Exception ex)
         {
-            int valor;
-            if (int.TryParse(System.Configuration.ConfigurationManager.AppSettings[clave], out valor))
-            {
-                return valor;
-            }
-            return valorPorDefecto;
-        }
-
-        // Devuelve la elegibilidad de una asignación para el check-in.
-        // Retorna "ELEGIBLE" o el texto que explica por qué no es elegible.
-        private string EvaluarCheckIn(ReservaPasajeroVuelo a)
-        {
-            int aperturaHoras = LeerParametro("CheckInAperturaHoras", 48);
-            int cierreMin = LeerParametro("CheckInCierreMin", 90);
-
-            DateTime salida = a.Vuelo.FechaOperacion.Add(a.Vuelo.Frecuencia.HoraSalida);
-            DateTime apertura = salida.AddHours(-aperturaHoras);
-            DateTime cierre = salida.AddMinutes(-cierreMin);
-            DateTime ahora = DateTime.Now;
-
-            var checkInVigente = a.CheckIn.FirstOrDefault(c => c.EstadoCheckInCodigo == "COMPLETADO");
-            if (checkInVigente != null)
-                return "Registrado el " + checkInVigente.FechaRegistro.ToString("dd/MM/yyyy HH:mm");
-
-            if (a.Vuelo.EstadoVueloCodigo == "CANCELADO")
-                return "Vuelo cancelado";
-
-            if (a.EstadoAsignacionCodigo != "CONFIRMADA")
-                return "Requiere compra pagada";
-
-            if (ahora < apertura)
-                return "Aún no habilitado (abre el " + apertura.ToString("dd/MM/yyyy HH:mm") + ")";
-
-            if (ahora > cierre)
-                return "Check-in cerrado";
-
-            return "ELEGIBLE";
-        }
-
-        // Usa PuedeGestionar(...) de la pantalla 14: titular o Counter / Administrador / SuperUsuario.
-
-        // GET: /Reservas/CheckIn?codigo=RV00000006&documento=1710000015
-        [HttpGet]
-        public ActionResult CheckIn(string codigo, string documento)
-        {
-            codigo = (codigo ?? "").Trim().ToUpper();
-            documento = (documento ?? "").Trim().ToUpper();
-            ViewBag.Codigo = codigo;
-            ViewBag.Documento = documento;
-
-            // Paso 1: sin datos todavía, solo se muestra el formulario
-            if (codigo == "" && documento == "")
-            {
-                return View((Reserva)null);
-            }
-
-            // Validación de formato en el servidor
-            if (!System.Text.RegularExpressions.Regex.IsMatch(codigo, @"^RV\d{8}$"))
-            {
-                ViewBag.ErrorBusqueda = "El código de reserva debe tener el formato RV seguido de 8 dígitos.";
-                return View((Reserva)null);
-            }
-            if (documento.Length < 5 || documento.Length > 20)
-            {
-                ViewBag.ErrorBusqueda = "El número de documento debe tener entre 5 y 20 caracteres.";
-                return View((Reserva)null);
-            }
-
-            // RG-37: el código y el documento deben corresponder a la misma reserva
-            var reserva = db.Reserva.FirstOrDefault(r => r.CodigoReserva == codigo);
-            bool documentoCoincide = reserva != null &&
-                reserva.ReservaPasajeroVuelo.Any(a => a.Pasajero.NumeroDocumento.ToUpper() == documento);
-
-            if (reserva == null || !documentoCoincide || !PuedeGestionar(reserva))
-            {
-                // Mensaje neutral: no se revela si la reserva existe
-                ViewBag.ErrorBusqueda = "No se encontró una reserva con esos datos.";
-                return View((Reserva)null);
-            }
-
-            // Elegibilidad y código de asiento por asignación
-            var elegibilidad = new Dictionary<int, string>();
-            var codigosAsiento = new Dictionary<int, string>();
-            var asientos = db.Asiento.ToList();
-
-            foreach (var a in reserva.ReservaPasajeroVuelo)
-            {
-                elegibilidad[a.AsignacionId] = EvaluarCheckIn(a);
-
-                int modeloId = a.Vuelo.Aeronave != null ? a.Vuelo.Aeronave.ModeloAeronaveId : 0;
-                var asiento = asientos.FirstOrDefault(s => s.NumeroAsiento == a.NumeroAsiento && (modeloId == 0 || s.ModeloAeronaveId == modeloId));
-                codigosAsiento[a.AsignacionId] = asiento != null ? asiento.Codigo : a.NumeroAsiento.ToString();
-            }
-
-            ViewBag.Elegibilidad = elegibilidad;
-            ViewBag.CodigosAsiento = codigosAsiento;
-            return View(reserva);
-        }
-
-        // POST: /Reservas/CheckIn  (Confirmar check-in de las asignaciones marcadas)
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult CheckIn(string codigo, string documento, List<int> asignaciones)
-        {
-            codigo = (codigo ?? "").Trim().ToUpper();
-            documento = (documento ?? "").Trim().ToUpper();
-
-            var reserva = db.Reserva.FirstOrDefault(r => r.CodigoReserva == codigo);
-            bool documentoCoincide = reserva != null &&
-                reserva.ReservaPasajeroVuelo.Any(a => a.Pasajero.NumeroDocumento.ToUpper() == documento);
-
-            if (reserva == null || !documentoCoincide || !PuedeGestionar(reserva))
-            {
-                TempData["Error"] = "No se encontró una reserva con esos datos.";
-                return RedirectToAction("CheckIn");
-            }
-
-            if (asignaciones == null || asignaciones.Count == 0)
-            {
-                TempData["Error"] = "Seleccione al menos un pasajero para registrar el check-in.";
-                return RedirectToAction("CheckIn", new { codigo = codigo, documento = documento });
-            }
-
-            var registrados = new List<string>();
-            var rechazados = new List<string>();
-
-            foreach (int asignacionId in asignaciones.Distinct())
-            {
-                // Solo asignaciones que pertenecen a esta reserva
-                var a = reserva.ReservaPasajeroVuelo.FirstOrDefault(x => x.AsignacionId == asignacionId);
-                if (a == null) continue;
-
-                string nombre = a.Pasajero.Nombres + " " + a.Pasajero.Apellidos + " en VIP" + a.VueloId.ToString("D5");
-
-                // Se vuelve a validar en el servidor (la ventana pudo cerrarse)
-                if (EvaluarCheckIn(a) != "ELEGIBLE")
-                {
-                    rechazados.Add(nombre);
-                    continue;
-                }
-
-                db.CheckIn.Add(new Con_Autenticacion.Models.CheckIn   // nombre completo: la acción también se llama CheckIn
-                {
-                    AsignacionId = a.AsignacionId,
-                    FechaRegistro = DateTime.Now,
-                    EstadoCheckInCodigo = "COMPLETADO"
-                });
-                registrados.Add(nombre);
-            }
-
-            try
-            {
-                db.SaveChanges();
-            }
-            catch (Exception ex)
-            {
-                Exception inner = ex;
-                while (inner.InnerException != null) inner = inner.InnerException;
-                TempData["Error"] = "No se pudo registrar el check-in: " + inner.Message;
-                return RedirectToAction("CheckIn", new { codigo = codigo, documento = documento });
-            }
-
-            if (registrados.Any())
-                TempData["Exito"] = "Check-in completado para " + string.Join(", ", registrados) + ".";
-            if (rechazados.Any())
-                TempData["Error"] = "No se pudo registrar el check-in de " + string.Join(", ", rechazados) + " porque ya no es elegible.";
-
-            return RedirectToAction("CheckIn", new { codigo = codigo, documento = documento });
+            while (ex.InnerException != null) ex = ex.InnerException;
+            return ex.Message;
         }
 
         // GET: Reservas/Details/5
+        [Authorize(Roles = "Details")]
         public ActionResult Details(int? id)
         {
             if (id == null)
@@ -977,6 +567,7 @@ namespace Con_Autenticacion.Controllers
         }
 
         // GET: Reservas/Create
+        [Authorize(Roles = "Create")]
         public ActionResult Create()
         {
             ViewBag.EstadoReservaCodigo = new SelectList(db.EstadoReserva, "Codigo", "Descripcion");
@@ -984,17 +575,25 @@ namespace Con_Autenticacion.Controllers
         }
 
         // POST: Reservas/Create
-        // Para protegerse de ataques de publicación excesiva, habilite las propiedades específicas a las que quiere enlazarse. Para obtener 
-        // más detalles, vea https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Create")]
         public ActionResult Create([Bind(Include = "ReservaId,CodigoReserva,UsuarioId,FechaCreacion,FechaExpiracion,EstadoReservaCodigo")] Reserva reserva)
         {
             if (ModelState.IsValid)
             {
-                db.Reserva.Add(reserva);
-                db.SaveChanges();
-                return RedirectToAction("Index");
+                try
+                {
+                    db.Reserva.Add(reserva);
+                    db.SaveChanges();
+                    TempData["Exito"] = "Reserva creada.";
+                    return RedirectToAction("Index");
+                }
+                catch (Exception ex)
+                {
+                    db.Entry(reserva).State = EntityState.Detached;
+                    ModelState.AddModelError("", "No se guardó la reserva: " + MensajeInterno(ex));
+                }
             }
 
             ViewBag.EstadoReservaCodigo = new SelectList(db.EstadoReserva, "Codigo", "Descripcion", reserva.EstadoReservaCodigo);
@@ -1002,6 +601,7 @@ namespace Con_Autenticacion.Controllers
         }
 
         // GET: Reservas/Edit/5
+        [Authorize(Roles = "Edit")]
         public ActionResult Edit(int? id)
         {
             if (id == null)
@@ -1018,23 +618,31 @@ namespace Con_Autenticacion.Controllers
         }
 
         // POST: Reservas/Edit/5
-        // Para protegerse de ataques de publicación excesiva, habilite las propiedades específicas a las que quiere enlazarse. Para obtener 
-        // más detalles, vea https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Edit")]
         public ActionResult Edit([Bind(Include = "ReservaId,CodigoReserva,UsuarioId,FechaCreacion,FechaExpiracion,EstadoReservaCodigo")] Reserva reserva)
         {
             if (ModelState.IsValid)
             {
-                db.Entry(reserva).State = EntityState.Modified;
-                db.SaveChanges();
-                return RedirectToAction("Index");
+                try
+                {
+                    db.Entry(reserva).State = EntityState.Modified;
+                    db.SaveChanges();
+                    TempData["Exito"] = "Cambios guardados.";
+                    return RedirectToAction("Index");
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", "No se guardaron los cambios: " + MensajeInterno(ex));
+                }
             }
             ViewBag.EstadoReservaCodigo = new SelectList(db.EstadoReserva, "Codigo", "Descripcion", reserva.EstadoReservaCodigo);
             return View(reserva);
         }
 
         // GET: Reservas/Delete/5
+        [Authorize(Roles = "Delete")]
         public ActionResult Delete(int? id)
         {
             if (id == null)
@@ -1052,11 +660,20 @@ namespace Con_Autenticacion.Controllers
         // POST: Reservas/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Delete")]
         public ActionResult DeleteConfirmed(int id)
         {
             Reserva reserva = db.Reserva.Find(id);
-            db.Reserva.Remove(reserva);
-            db.SaveChanges();
+            try
+            {
+                db.Reserva.Remove(reserva);
+                db.SaveChanges();
+                TempData["Exito"] = "Reserva eliminada.";
+            }
+            catch (Exception)
+            {
+                TempData["Error"] = "No se puede eliminar: la reserva tiene asientos, compras o check-in asociados (integridad referencial).";
+            }
             return RedirectToAction("Index");
         }
 

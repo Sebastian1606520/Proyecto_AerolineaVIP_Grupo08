@@ -1,27 +1,7 @@
-﻿@using Con_Autenticacion.Models
+﻿@model Con_Autenticacion.Models.ReportesViewModel
 @{
     ViewBag.Title = "Consultas y reportes";
     Layout = "~/Views/Shared/_Layout.cshtml";
-
-    string consulta = ViewBag.Consulta;
-    string fDesde = ViewBag.Desde;
-    string fHasta = ViewBag.Hasta;
-    int? fRutaId = ViewBag.RutaId;
-    int? fAeronaveId = ViewBag.AeronaveId;
-    string fEstado = ViewBag.Estado;
-    DateTime fechaCorte = (DateTime)ViewBag.FechaCorte;
-
-    // Ocupación
-    var vuelos = ViewBag.Vuelos as List<Vuelo>;
-    var reservados = ViewBag.Reservados as Dictionary<int, int>;
-    var ocupadosConf = ViewBag.OcupadosConfirmados as Dictionary<int, int>;
-
-    // Reservas
-    var reservas = ViewBag.Reservas as List<Reserva>;
-    var resumenReservas = ViewBag.ResumenReservas as List<object[]>;
-
-    // Pagos
-    var compras = ViewBag.Compras as List<Compra>;
 }
 
 <style>
@@ -130,56 +110,56 @@
                 <div class="col-12 col-md-4">
                     <label for="consulta" class="form-label small fw-semibold text-secondary mb-1">Consulta <span class="text-danger">*</span></label>
                     <select id="consulta" name="consulta" class="form-select form-select-sm py-2">
-                        <option value="ocupacion" @(consulta == "ocupacion" ? "selected" : "")>Ocupación por vuelo</option>
-                        <option value="reservas" @(consulta == "reservas" ? "selected" : "")>Reservas por estado</option>
-                        <option value="pagos" @(consulta == "pagos" ? "selected" : "")>Compras y pagos simulados</option>
+                        <option value="ocupacion" @(Model.Consulta == "ocupacion" ? "selected" : "")>Ocupación por vuelo</option>
+                        <option value="reservas" @(Model.Consulta == "reservas" ? "selected" : "")>Reservas por estado</option>
+                        <option value="pagos" @(Model.Consulta == "pagos" ? "selected" : "")>Compras y pagos simulados</option>
                     </select>
                 </div>
                 <div class="col-6 col-md-4">
                     <label for="desde" class="form-label small fw-semibold text-secondary mb-1">Fecha desde <span class="text-danger">*</span></label>
-                    <input type="date" id="desde" name="desde" class="form-control form-control-sm py-2" value="@fDesde" required />
+                    <input type="date" id="desde" name="desde" class="form-control form-control-sm py-2" value="@Model.Desde" required />
                 </div>
                 <div class="col-6 col-md-4">
                     <label for="hasta" class="form-label small fw-semibold text-secondary mb-1">Fecha hasta <span class="text-danger">*</span></label>
-                    <input type="date" id="hasta" name="hasta" class="form-control form-control-sm py-2" value="@fHasta" required aria-describedby="errorRango" />
+                    <input type="date" id="hasta" name="hasta" class="form-control form-control-sm py-2" value="@Model.Hasta" required aria-describedby="errorRango" />
                 </div>
                 <div class="col-12 col-md-4">
                     <label for="rutaId" class="form-label small fw-semibold text-secondary mb-1">Ruta (opcional)</label>
-                    @Html.DropDownList("rutaId", (SelectList)ViewBag.RutasLista, "Todas", new { @class = "form-select form-select-sm py-2", id = "rutaId" })
+                    @Html.DropDownList("rutaId", Model.RutasLista, "Todas", new { @class = "form-select form-select-sm py-2", id = "rutaId" })
                 </div>
                 <div class="col-12 col-md-4">
                     <label for="aeronaveId" class="form-label small fw-semibold text-secondary mb-1">Aeronave (opcional)</label>
-                    @Html.DropDownList("aeronaveId", (SelectList)ViewBag.AeronavesLista, "Todas", new { @class = "form-select form-select-sm py-2", id = "aeronaveId" })
+                    @Html.DropDownList("aeronaveId", Model.AeronavesLista, "Todas", new { @class = "form-select form-select-sm py-2", id = "aeronaveId" })
                 </div>
                 <div class="col-12 col-md-4">
                     <label for="estado" class="form-label small fw-semibold text-secondary mb-1">Estado (opcional)</label>
                     <select id="estado" name="estado" class="form-select form-select-sm py-2">
                         <option value="">Todos</option>
                         @* Estados de vuelo *@
-                        <option data-consulta="ocupacion" value="PROGRAMADO" @(fEstado == "PROGRAMADO" ? "selected" : "")>Programado</option>
-                        <option data-consulta="ocupacion" value="CONFIRMADO" @(fEstado == "CONFIRMADO" ? "selected" : "")>Confirmado</option>
-                        <option data-consulta="ocupacion" value="CANCELADO" @(fEstado == "CANCELADO" ? "selected" : "")>Cancelado</option>
-                        <option data-consulta="ocupacion" value="COMPLETADO" @(fEstado == "COMPLETADO" ? "selected" : "")>Completado</option>
+                        <option data-consulta="ocupacion" value="PROGRAMADO" @(Model.Estado == "PROGRAMADO" ? "selected" : "")>Programado</option>
+                        <option data-consulta="ocupacion" value="CONFIRMADO" @(Model.Estado == "CONFIRMADO" ? "selected" : "")>Confirmado</option>
+                        <option data-consulta="ocupacion" value="CANCELADO" @(Model.Estado == "CANCELADO" ? "selected" : "")>Cancelado</option>
+                        <option data-consulta="ocupacion" value="COMPLETADO" @(Model.Estado == "COMPLETADO" ? "selected" : "")>Completado</option>
                         @* Estados de reserva *@
-                        <option data-consulta="reservas" value="PENDIENTE" @(fEstado == "PENDIENTE" && consulta == "reservas" ? "selected" : "")>Pendiente</option>
-                        <option data-consulta="reservas" value="CONFIRMADA" @(fEstado == "CONFIRMADA" ? "selected" : "")>Confirmada</option>
-                        <option data-consulta="reservas" value="CANCELADA" @(fEstado == "CANCELADA" ? "selected" : "")>Cancelada</option>
-                        <option data-consulta="reservas" value="EXPIRADA" @(fEstado == "EXPIRADA" ? "selected" : "")>Expirada</option>
+                        <option data-consulta="reservas" value="PENDIENTE" @(Model.Estado == "PENDIENTE" && Model.Consulta == "reservas" ? "selected" : "")>Pendiente</option>
+                        <option data-consulta="reservas" value="CONFIRMADA" @(Model.Estado == "CONFIRMADA" ? "selected" : "")>Confirmada</option>
+                        <option data-consulta="reservas" value="CANCELADA" @(Model.Estado == "CANCELADA" ? "selected" : "")>Cancelada</option>
+                        <option data-consulta="reservas" value="EXPIRADA" @(Model.Estado == "EXPIRADA" ? "selected" : "")>Expirada</option>
                         @* Estados de compra *@
-                        <option data-consulta="pagos" value="PAGADA" @(fEstado == "PAGADA" ? "selected" : "")>Pagada</option>
-                        <option data-consulta="pagos" value="PENDIENTE" @(fEstado == "PENDIENTE" && consulta == "pagos" ? "selected" : "")>Pendiente de pago</option>
-                        <option data-consulta="pagos" value="ANULADA" @(fEstado == "ANULADA" ? "selected" : "")>Anulada</option>
+                        <option data-consulta="pagos" value="PAGADA" @(Model.Estado == "PAGADA" ? "selected" : "")>Pagada</option>
+                        <option data-consulta="pagos" value="PENDIENTE" @(Model.Estado == "PENDIENTE" && Model.Consulta == "pagos" ? "selected" : "")>Pendiente de pago</option>
+                        <option data-consulta="pagos" value="ANULADA" @(Model.Estado == "ANULADA" ? "selected" : "")>Anulada</option>
                     </select>
                 </div>
             </div>
 
-            <small id="errorRango" class="text-danger mt-2 @(ViewBag.ErrorFiltro == null ? "d-none" : "d-block")" role="alert" style="font-size: 0.8rem;">
-                &#9888; @(ViewBag.ErrorFiltro ?? "Revise el rango de fechas: «Hasta» no puede ser anterior a «Desde» y el rango no puede superar 366 días.")
+            <small id="errorRango" class="text-danger mt-2 @(Model.ErrorFiltro == null ? "d-none" : "d-block")" role="alert" style="font-size: 0.8rem;">
+                &#9888; @(Model.ErrorFiltro ?? "Revise el rango de fechas: «Hasta» no puede ser anterior a «Desde» y el rango no puede superar 366 días.")
             </small>
 
             <div class="d-flex flex-wrap gap-2 mt-3">
                 <button type="submit" id="btnConsultar" class="btn btn-dark btn-sm px-4 py-2 fw-semibold">Consultar</button>
-                <a href="@Url.Action("Reportes", "Admin", new { consulta = consulta, desde = fDesde, hasta = fHasta, rutaId = fRutaId, aeronaveId = fAeronaveId, estado = fEstado })"
+                <a href="@Url.Action("Reportes", "Admin", new { consulta = Model.Consulta, desde = Model.Desde, hasta = Model.Hasta, rutaId = Model.RutaId, aeronaveId = Model.AeronaveId, estado = Model.Estado })"
                    class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">Actualizar resultados</a>
             </div>
         </form>
@@ -188,12 +168,12 @@
     <!-- Fecha de corte (11.4.7) -->
     <div class="alert alert-light border small text-secondary mb-4">
         <strong class="text-dark">&#9432;</strong>
-        Datos con corte al <strong>@fechaCorte.ToString("dd/MM/yyyy HH:mm")</strong>.
-        @if (consulta == "ocupacion")
+        Datos con corte al <strong>@Model.FechaCorte.ToString("dd/MM/yyyy HH:mm")</strong>.
+        @if (Model.Consulta == "ocupacion")
         {
-            <span>Disponibles = Capacidad − (Reservados + Ocupados). Reservados = asientos pendientes de pago; Ocupados = asientos con compra pagada.</span>
+            <span>Disponibles = Capacidad − (Reservados + Ocupados). Reservados = asientos pendientes de pago; Ocupados = asientos con compra pagada. Capacidad y disponibles: vista vw_DisponibilidadVuelo.</span>
         }
-        else if (consulta == "reservas")
+        else if (Model.Consulta == "reservas")
         {
             <span>Rango aplicado a la fecha de creación de la reserva. Importe = suma de los importes por tramo.</span>
         }
@@ -204,15 +184,14 @@
     </div>
 
     @* ===================== OCUPACIÓN POR VUELO ===================== *@
-    @if (consulta == "ocupacion" && vuelos != null)
+    @if (Model.Consulta == "ocupacion")
     {
-        if (!vuelos.Any())
+        if (!Model.Ocupacion.Any())
         {
             <div class="admin-card shadow-sm p-5 text-center"><h3 class="h6 fw-bold text-dark mb-0">No hay resultados para los filtros seleccionados.</h3></div>
         }
         else
         {
-            int totalCapacidad = 0, totalReservados = 0, totalOcupados = 0;
             <div class="admin-card shadow-sm">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
@@ -230,35 +209,28 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var v in vuelos)
+                            @foreach (var f in Model.Ocupacion)
                             {
-                                int capacidad = v.Aeronave != null ? v.Aeronave.ModeloAeronave.CapacidadAsientos : 0;
-                                int res = reservados.ContainsKey(v.VueloId) ? reservados[v.VueloId] : 0;
-                                int ocu = ocupadosConf.ContainsKey(v.VueloId) ? ocupadosConf[v.VueloId] : 0;
-                                int disp = capacidad - res - ocu;
-                                totalCapacidad += capacidad;
-                                totalReservados += res;
-                                totalOcupados += ocu;
                                 <tr>
-                                    <td class="ps-4 fw-bold text-dark">VIP@(v.VueloId.ToString("D5"))</td>
-                                    <td>@v.FechaOperacion.ToString("dd/MM/yyyy") <small class="text-muted">@v.Frecuencia.HoraSalida.ToString(@"hh\:mm")</small></td>
-                                    <td>@v.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @v.Frecuencia.Ruta.Aeropuerto1.CodigoIATA</td>
-                                    <td>@(v.Aeronave != null ? v.Aeronave.Matricula : "Sin asignar")</td>
-                                    <td class="text-center">@(capacidad > 0 ? capacidad.ToString() : "—")</td>
-                                    <td class="text-center num-reservado">@res</td>
-                                    <td class="text-center num-ocupado">@ocu</td>
-                                    <td class="text-center num-disponible">@(capacidad > 0 ? disp.ToString() : "—")</td>
-                                    <td class="pe-4">@v.EstadoVueloCodigo</td>
+                                    <td class="ps-4 fw-bold text-dark">@f.CodigoVuelo</td>
+                                    <td>@f.Fecha <small class="text-muted">@f.Hora</small></td>
+                                    <td>@f.Ruta</td>
+                                    <td>@f.Aeronave</td>
+                                    <td class="text-center">@(f.Capacidad.HasValue ? f.Capacidad.ToString() : "—")</td>
+                                    <td class="text-center num-reservado">@f.Reservados</td>
+                                    <td class="text-center num-ocupado">@f.Ocupados</td>
+                                    <td class="text-center num-disponible">@(f.Disponibles.HasValue ? f.Disponibles.ToString() : "—")</td>
+                                    <td class="pe-4">@f.Estado</td>
                                 </tr>
                             }
                         </tbody>
                         <tfoot class="table-light fw-bold">
                             <tr>
-                                <td class="ps-4" colspan="4">Totales (@vuelos.Count vuelos)</td>
-                                <td class="text-center">@totalCapacidad</td>
-                                <td class="text-center num-reservado">@totalReservados</td>
-                                <td class="text-center num-ocupado">@totalOcupados</td>
-                                <td class="text-center num-disponible">@(totalCapacidad - totalReservados - totalOcupados)</td>
+                                <td class="ps-4" colspan="4">Totales (@Model.Ocupacion.Count vuelos)</td>
+                                <td class="text-center">@Model.TotalCapacidad</td>
+                                <td class="text-center num-reservado">@Model.TotalReservados</td>
+                                <td class="text-center num-ocupado">@Model.TotalOcupados</td>
+                                <td class="text-center num-disponible">@Model.TotalDisponibles</td>
                                 <td class="pe-4"></td>
                             </tr>
                         </tfoot>
@@ -269,9 +241,9 @@
     }
 
     @* ===================== RESERVAS POR ESTADO ===================== *@
-    @if (consulta == "reservas" && reservas != null)
+    @if (Model.Consulta == "reservas")
     {
-        if (!reservas.Any())
+        if (!Model.Reservas.Any())
         {
             <div class="admin-card shadow-sm p-5 text-center"><h3 class="h6 fw-bold text-dark mb-0">No hay resultados para los filtros seleccionados.</h3></div>
         }
@@ -293,13 +265,13 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var fila in resumenReservas)
+                            @foreach (var f in Model.ResumenReservas)
                             {
                                 <tr>
-                                    <td class="ps-4 fw-semibold">@(fila[0])</td>
-                                    <td class="text-center">@(fila[1])</td>
-                                    <td class="text-center">@(fila[2])</td>
-                                    <td class="text-end pe-4">@(((decimal)fila[3]).ToString("N2"))</td>
+                                    <td class="ps-4 fw-semibold">@f.Estado</td>
+                                    <td class="text-center">@f.Reservas</td>
+                                    <td class="text-center">@f.Pasajeros</td>
+                                    <td class="text-end pe-4">@f.Importe.ToString("N2")</td>
                                 </tr>
                             }
                         </tbody>
@@ -310,7 +282,7 @@
             @* Detalle *@
             <div class="admin-card shadow-sm">
                 <div class="admin-card-header">
-                    <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Detalle (@reservas.Count reservas)</span>
+                    <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Detalle (@Model.Reservas.Count reservas)</span>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
@@ -326,23 +298,20 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var r in reservas)
+                            @foreach (var f in Model.Reservas)
                             {
-                                var primerVuelo = r.ReservaPasajeroVuelo.Select(a => a.Vuelo).OrderBy(v => v.FechaOperacion).FirstOrDefault();
-                                var compra = r.Compra.OrderByDescending(c => c.FechaCompra).FirstOrDefault();
-                                string claseReserva = r.EstadoReservaCodigo == "PENDIENTE" ? "b-morado"
-                                    : (r.EstadoReservaCodigo == "CONFIRMADA" ? "b-verde"
-                                    : (r.EstadoReservaCodigo == "EXPIRADA" ? "b-ambar" : "b-gris"));
                                 <tr>
                                     <td class="ps-4 fw-bold text-dark">
-                                        <a href="@Url.Action("Gestionar", "Reservas", new { id = r.ReservaId })" class="text-dark">@r.CodigoReserva</a>
+                                        <a href="@Url.Action("Gestionar", "Reservas", new { id = f.ReservaId })" class="text-dark">@f.CodigoReserva</a>
                                     </td>
-                                    <td>@r.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</td>
-                                    <td>@(primerVuelo != null ? primerVuelo.FechaOperacion.ToString("dd/MM/yyyy") : "—")</td>
-                                    <td class="text-center">@r.ReservaPasajeroVuelo.Select(a => a.PasajeroId).Distinct().Count()</td>
-                                    <td><span class="estado-badge @claseReserva">@r.EstadoReservaCodigo</span></td>
-                                    <td>@(compra != null ? compra.EstadoCompraCodigo : "Sin compra")</td>
-                                    <td class="text-end pe-4">@r.ReservaPasajeroVuelo.Sum(a => a.ImporteTramo).ToString("N2")</td>
+                                    <td>@f.Creada</td>
+                                    <td>@f.FechaViaje</td>
+                                    <td class="text-center">@f.Pasajeros</td>
+                                    <td>
+                                        <span class="estado-badge @(f.Estado == "PENDIENTE" ? "b-morado" : f.Estado == "CONFIRMADA" ? "b-verde" : f.Estado == "EXPIRADA" ? "b-ambar" : "b-gris")">@f.Estado</span>
+                                    </td>
+                                    <td>@f.EstadoCompra</td>
+                                    <td class="text-end pe-4">@f.Importe.ToString("N2")</td>
                                 </tr>
                             }
                         </tbody>
@@ -353,15 +322,14 @@
     }
 
     @* ===================== COMPRAS Y PAGOS SIMULADOS ===================== *@
-    @if (consulta == "pagos" && compras != null)
+    @if (Model.Consulta == "pagos")
     {
-        if (!compras.Any())
+        if (!Model.Pagos.Any())
         {
             <div class="admin-card shadow-sm p-5 text-center"><h3 class="h6 fw-bold text-dark mb-0">No hay resultados para los filtros seleccionados.</h3></div>
         }
         else
         {
-            decimal totalCompras = 0, totalAprobado = 0;
             <div class="admin-card shadow-sm">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
@@ -378,31 +346,22 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var c in compras)
+                            @foreach (var f in Model.Pagos)
                             {
-                                decimal aprobado = c.Pago.Where(p => p.EstadoPagoCodigo == "APROBADO").Sum(p => p.Importe);
-                                int rechazos = c.Pago.Count(p => p.EstadoPagoCodigo == "RECHAZADO");
-                                var ultimo = c.Pago.OrderByDescending(p => p.FechaPago).FirstOrDefault();
-                                totalCompras += c.Importe;
-                                totalAprobado += aprobado;
-
-                                // Conciliación: una compra PAGADA debe tener un pago aprobado por el mismo importe;
-                                // una ANULADA o PENDIENTE no debe tener pagos aprobados vigentes.
-                                bool cuadra = c.EstadoCompraCodigo == "PAGADA" ? aprobado == c.Importe : aprobado == 0;
                                 <tr>
-                                    <td class="ps-4 fw-bold text-dark">@c.Reserva.CodigoReserva</td>
-                                    <td>@c.FechaCompra.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td class="ps-4 fw-bold text-dark">@f.CodigoReserva</td>
+                                    <td>@f.FechaCompra</td>
                                     <td>
-                                        <span class="estado-badge @(c.EstadoCompraCodigo == "PAGADA" ? "b-verde" : (c.EstadoCompraCodigo == "ANULADA" ? "b-rojo" : "b-ambar"))">@c.EstadoCompraCodigo</span>
+                                        <span class="estado-badge @(f.EstadoCompra == "PAGADA" ? "b-verde" : f.EstadoCompra == "ANULADA" ? "b-rojo" : "b-ambar")">@f.EstadoCompra</span>
                                     </td>
-                                    <td class="text-end">@c.Importe.ToString("N2")</td>
-                                    <td class="text-end">@aprobado.ToString("N2")</td>
-                                    <td class="text-center">@rechazos</td>
+                                    <td class="text-end">@f.Importe.ToString("N2")</td>
+                                    <td class="text-end">@f.Aprobado.ToString("N2")</td>
+                                    <td class="text-center">@f.Rechazos</td>
                                     <td class="small">
-                                        @if (ultimo != null)
+                                        @if (f.UltimoPago != null)
                                         {
-                                            <span>@ultimo.EstadoPagoCodigo &middot; @ultimo.MarcaTarjetaCodigo **** @ultimo.UltimosCuatroDigitos</span>
-                                            <span class="d-block text-muted">@ultimo.CodigoOperacion</span>
+                                            <span>@f.UltimoPago</span>
+                                            <span class="d-block text-muted">@f.UltimoPagoOperacion</span>
                                         }
                                         else
                                         {
@@ -410,7 +369,7 @@
                                         }
                                     </td>
                                     <td class="pe-4">
-                                        @if (cuadra)
+                                        @if (f.Cuadra)
                                         {
                                             <span class="estado-badge b-verde">Cuadra</span>
                                         }
@@ -424,9 +383,9 @@
                         </tbody>
                         <tfoot class="table-light fw-bold">
                             <tr>
-                                <td class="ps-4" colspan="3">Totales (@compras.Count compras, USD)</td>
-                                <td class="text-end">@totalCompras.ToString("N2")</td>
-                                <td class="text-end">@totalAprobado.ToString("N2")</td>
+                                <td class="ps-4" colspan="3">Totales (@Model.Pagos.Count compras, USD)</td>
+                                <td class="text-end">@Model.TotalCompras.ToString("N2")</td>
+                                <td class="text-end">@Model.TotalAprobado.ToString("N2")</td>
                                 <td colspan="3" class="pe-4"></td>
                             </tr>
                         </tfoot>
@@ -443,40 +402,40 @@
 
 @section scripts {
     <script>
-        $(function () {
-            // Muestra solo los estados que corresponden a la consulta elegida
-            function filtrarEstados() {
-                var consulta = $('#consulta').val();
-                $('#estado option[data-consulta]').each(function () {
-                    var visible = $(this).data('consulta') === consulta;
-                    $(this).prop('hidden', !visible).prop('disabled', !visible);
+                $(function () {
+                    // Muestra solo los estados que corresponden a la consulta elegida
+                    function filtrarEstados() {
+                        var consulta = $('#consulta').val();
+                        $('#estado option[data-consulta]').each(function () {
+                            var visible = $(this).data('consulta') === consulta;
+                            $(this).prop('hidden', !visible).prop('disabled', !visible);
+                        });
+                        var seleccion = $('#estado option:selected');
+                        if (seleccion.length && seleccion.prop('disabled')) {
+                            $('#estado').val('');
+                        }
+                    }
+
+                    filtrarEstados();
+                    $('#consulta').on('change', filtrarEstados);
+
+                    // Validación del rango de fechas (obligatorio, Hasta >= Desde, máximo 366 días)
+                    function rangoValido() {
+                        var desde = $('#desde').val();
+                        var hasta = $('#hasta').val();
+                        if (!desde || !hasta) return false;
+                        if (hasta < desde) return false;
+                        return (new Date(hasta) - new Date(desde)) / 86400000 <= 366;
+                    }
+
+                    $('#formReporte').on('submit', function (e) {
+                        if (!rangoValido()) {
+                            e.preventDefault();
+                            $('#errorRango').removeClass('d-none').addClass('d-block');
+                            return;
+                        }
+                        $('#btnConsultar').attr('disabled', 'disabled').text('Consultando…');
+                    });
                 });
-                var seleccion = $('#estado option:selected');
-                if (seleccion.length && seleccion.prop('disabled')) {
-                    $('#estado').val('');
-                }
-            }
-
-            filtrarEstados();
-            $('#consulta').on('change', filtrarEstados);
-
-            // Validación del rango de fechas (obligatorio, Hasta >= Desde, máximo 366 días)
-            function rangoValido() {
-                var desde = $('#desde').val();
-                var hasta = $('#hasta').val();
-                if (!desde || !hasta) return false;
-                if (hasta < desde) return false;
-                return (new Date(hasta) - new Date(desde)) / 86400000 <= 366;
-            }
-
-            $('#formReporte').on('submit', function (e) {
-                if (!rangoValido()) {
-                    e.preventDefault();
-                    $('#errorRango').removeClass('d-none').addClass('d-block');
-                    return;
-                }
-                $('#btnConsultar').attr('disabled', 'disabled').text('Consultando…');
-            });
-        });
     </script>
 }
