@@ -241,7 +241,7 @@
                     Editar vuelo VIP@(vueloEditar.VueloId.ToString("D5"))
                 </span>
                 <small class="text-secondary ms-2">
-                    @vueloEditar.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @vueloEditar.Frecuencia.Ruta.Aeropuerto1.CodigoIATA
+                    @vueloEditar.CodigoOrigen &rarr; @vueloEditar.CodigoDestino
                     &middot; @vueloEditar.FechaOperacion.ToString("dd/MM/yyyy")
                     &middot; @vueloEditar.Frecuencia.HoraSalida.ToString(@"hh\:mm")&ndash;@vueloEditar.Frecuencia.HoraLlegada.ToString(@"hh\:mm")
                 </small>
@@ -312,7 +312,7 @@
                                         @v.FechaOperacion.ToString("dd/MM/yyyy")
                                         <small class="d-block text-muted">@(dias[(int)v.FechaOperacion.DayOfWeek == 0 ? 7 : (int)v.FechaOperacion.DayOfWeek])</small>
                                     </td>
-                                    <td>@v.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @v.Frecuencia.Ruta.Aeropuerto1.CodigoIATA</td>
+                                    <td>@v.CodigoOrigen &rarr; @v.CodigoDestino</td>
                                     <td>@v.Frecuencia.HoraSalida.ToString(@"hh\:mm")&ndash;@v.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</td>
                                     <td>
                                         @if (v.Aeronave != null)
@@ -385,7 +385,7 @@
                             <tr>
                                 <td class="ps-4 fw-semibold">@(dias[f.DiaSemana])</td>
                                 <td>
-                                    @f.Ruta.Aeropuerto.Localidad (@f.Ruta.Aeropuerto.CodigoIATA) &rarr; @f.Ruta.Aeropuerto1.Localidad (@f.Ruta.Aeropuerto1.CodigoIATA)
+                                    @f.Ruta.Aeropuerto1.Localidad (@f.Ruta.Aeropuerto1.CodigoIATA) &rarr; @f.Ruta.Aeropuerto.Localidad (@f.Ruta.Aeropuerto.CodigoIATA)
                                 </td>
                                 <td>@f.HoraSalida.ToString(@"hh\:mm")&ndash;@f.HoraLlegada.ToString(@"hh\:mm")</td>
                                 <td class="text-end">@f.Ruta.TarifaReferencial.ToString("N2") USD</td>
@@ -466,13 +466,13 @@
                                                 if (sig.FechaOperacion == vt.FechaOperacion)
                                                 {
                                                     espera = (sig.Frecuencia.HoraSalida - vt.Frecuencia.HoraLlegada).TotalMinutes + " min en "
-                                                             + vt.Frecuencia.Ruta.Aeropuerto1.CodigoIATA;
+                                                             + vt.CodigoDestino;
                                                 }
                                             }
                                             <tr>
                                                 <td class="ps-4 fw-bold">@t.Orden</td>
                                                 <td>VIP@(vt.VueloId.ToString("D5"))</td>
-                                                <td>@vt.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @vt.Frecuencia.Ruta.Aeropuerto1.CodigoIATA</td>
+                                                <td>@vt.CodigoOrigen &rarr; @vt.CodigoDestino</td>
                                                 <td>@vt.FechaOperacion.ToString("dd/MM") &middot; @vt.Frecuencia.HoraSalida.ToString(@"hh\:mm")&ndash;@vt.Frecuencia.HoraLlegada.ToString(@"hh\:mm")</td>
                                                 <td>@(vt.Aeronave != null ? vt.Aeronave.Matricula : "Sin asignar")</td>
                                                 <td><span class="estado-badge @claseEstado(vt.EstadoVueloCodigo)">@textoEstado(vt.EstadoVueloCodigo)</span></td>
@@ -492,41 +492,41 @@
 
 @section scripts {
     <script>
-        $(function () {
-            // Validación del rango de fechas (obligatorio, Hasta >= Desde, máximo 366 días)
-            function rangoValido() {
-                var desde = $('#desde').val();
-                var hasta = $('#hasta').val();
-                if (!desde || !hasta) return false;
-                if (hasta < desde) return false;
-                var dias = (new Date(hasta) - new Date(desde)) / 86400000;
-                return dias <= 366;
-            }
+                $(function () {
+                    // Validación del rango de fechas (obligatorio, Hasta >= Desde, máximo 366 días)
+                    function rangoValido() {
+                        var desde = $('#desde').val();
+                        var hasta = $('#hasta').val();
+                        if (!desde || !hasta) return false;
+                        if (hasta < desde) return false;
+                        var dias = (new Date(hasta) - new Date(desde)) / 86400000;
+                        return dias <= 366;
+                    }
 
-            $('#desde, #hasta').on('change', function () {
-                if (rangoValido()) {
-                    $('#errorRango').addClass('d-none').removeClass('d-block');
-                }
-            });
+                    $('#desde, #hasta').on('change', function () {
+                        if (rangoValido()) {
+                            $('#errorRango').addClass('d-none').removeClass('d-block');
+                        }
+                    });
 
-            $('#formFiltros').on('submit', function (e) {
-                if (!rangoValido()) {
-                    e.preventDefault();
-                    $('#errorRango').removeClass('d-none').addClass('d-block');
-                }
-            });
+                    $('#formFiltros').on('submit', function (e) {
+                        if (!rangoValido()) {
+                            e.preventDefault();
+                            $('#errorRango').removeClass('d-none').addClass('d-block');
+                        }
+                    });
 
-            // Generar vuelos: usa el rango que está escrito en los filtros
-            $('#formGenerar').on('submit', function (e) {
-                if (!rangoValido()) {
-                    e.preventDefault();
-                    $('#errorRango').removeClass('d-none').addClass('d-block');
-                    return;
-                }
-                $('#formGenerar input[name="desde"]').val($('#desde').val());
-                $('#formGenerar input[name="hasta"]').val($('#hasta').val());
-                $('button[form="formGenerar"]').attr('disabled', 'disabled').text('Generando vuelos…');
-            });
-        });
+                    // Generar vuelos: usa el rango que está escrito en los filtros
+                    $('#formGenerar').on('submit', function (e) {
+                        if (!rangoValido()) {
+                            e.preventDefault();
+                            $('#errorRango').removeClass('d-none').addClass('d-block');
+                            return;
+                        }
+                        $('#formGenerar input[name="desde"]').val($('#desde').val());
+                        $('#formGenerar input[name="hasta"]').val($('#hasta').val());
+                        $('button[form="formGenerar"]').attr('disabled', 'disabled').text('Generando vuelos…');
+                    });
+                });
     </script>
 }

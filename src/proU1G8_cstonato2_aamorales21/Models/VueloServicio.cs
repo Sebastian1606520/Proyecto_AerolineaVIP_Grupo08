@@ -40,6 +40,108 @@ namespace Con_Autenticacion.Negocio
         }
 
         // =====================================================================
+        // DATOS DEL VUELO (Pantallas 12 a 16, 18, 19 y 21) — vista SQL vw_VueloDetalle
+        // =====================================================================
+
+        // Carga en cada vuelo su código, origen y destino desde la vista SQL dbo.vw_VueloDetalle
+        public void CargarDetalle(IEnumerable<Vuelo> vuelos)
+        {
+            var lista = vuelos.Where(v => v != null).Distinct().ToList();
+            if (!lista.Any())
+                return;
+
+            var ids = lista.Select(v => v.VueloId).Distinct().ToList();
+            var datos = db.vw_VueloDetalle
+                .AsNoTracking()
+                .Where(d => ids.Contains(d.VueloId))
+                .ToList()
+                .ToDictionary(d => d.VueloId);
+
+            foreach (var vuelo in lista)
+            {
+                vw_VueloDetalle d;
+                if (datos.TryGetValue(vuelo.VueloId, out d))
+                {
+                    vuelo.CodigoVueloVista = d.CodigoVuelo;
+                    vuelo.OrigenVista = d.Origen;
+                    vuelo.DestinoVista = d.Destino;
+                    vuelo.CiudadOrigenVista = d.CiudadOrigen;
+                    vuelo.CiudadDestinoVista = d.CiudadDestino;
+                }
+            }
+        }
+
+        // =====================================================================
+        // MAPA DE ASIENTOS (Pantallas 7 y 8) — vista SQL vw_EstadoAsientoVuelo
+        // =====================================================================
+
+        // Carga en el vuelo el estado de sus 7 asientos desde la vista SQL
+        // dbo.vw_EstadoAsientoVuelo: DISPONIBLE (verde), RESERVADO (morado), OCUPADO (rojo).
+        // Si el vuelo no tiene aeronave, la vista no devuelve filas y se mantiene el cálculo en C#.
+        public void CargarEstadoAsientos(Vuelo vuelo)
+        {
+            // DP-07: primero se liberan las reservas pendientes vencidas, para que
+            // la vista no siga mostrando en morado un asiento cuyo plazo ya terminó
+            Reserva.LiberarVencidas(db);
+
+            var filas = db.vw_EstadoAsientoVuelo
+                .AsNoTracking()
+                .Where(a => a.VueloId == vuelo.VueloId)
+                .OrderBy(a => a.NumeroAsiento)
+                .ToList();
+
+            if (!filas.Any())
+                return;
+
+            vuelo.AsientosDesdeVista = filas.Select(f => new AsientoInfo
+            {
+                Numero = f.NumeroAsiento,
+                Codigo = f.CodigoAsiento,
+                Ubicacion = f.Ubicacion,
+                Estado = f.EstadoVisual.ToLower(),          // disponible / reservado / ocupado
+                Color = f.ColorEstado,                       // Verde / Morado / Rojo
+                GridClass = "seat-" + f.CodigoAsiento.ToLower()
+            }).ToList();
+        }
+
+        // =====================================================================
+        // ASIENTOS DISPONIBLES (Pantallas 6, 7 y 8) — vista SQL vw_DisponibilidadVuelo
+        // =====================================================================
+
+        // Carga en cada vuelo sus asientos disponibles desde la vista SQL
+        // dbo.vw_DisponibilidadVuelo (Disponibles = Capacidad - Ocupados).
+        public void CargarDisponibilidad(IEnumerable<Vuelo> vuelos)
+        {
+            var lista = vuelos.ToList();
+            if (!lista.Any())
+                return;
+
+            // DP-07: las reservas pendientes vencidas dejan de ocupar asientos
+            Reserva.LiberarVencidas(db);
+
+            var ids = lista.Select(v => v.VueloId).ToList();
+            var datos = db.vw_DisponibilidadVuelo
+                .AsNoTracking()
+                .Where(d => ids.Contains(d.VueloId))
+                .ToList();
+
+            foreach (var vuelo in lista)
+            {
+                var d = datos.FirstOrDefault(x => x.VueloId == vuelo.VueloId);
+                if (d != null && d.Disponibles.HasValue)
+                {
+                    vuelo.DisponiblesDesdeVista = d.Disponibles.Value;
+                }
+            }
+        }
+
+        // Versión para un solo vuelo
+        public void CargarDisponibilidad(Vuelo vuelo)
+        {
+            CargarDisponibilidad(new List<Vuelo> { vuelo });
+        }
+
+        // =====================================================================
         // BÚSQUEDA DE VUELOS (Pantallas 5 y 6)
         // =====================================================================
 
@@ -159,8 +261,8 @@ namespace Con_Autenticacion.Negocio
                     var actual = lista[i];
                     string codAnt = "VIP" + anterior.VueloId.ToString("D5");
                     string codAct = "VIP" + actual.VueloId.ToString("D5");
-                    string destinoAnt = anterior.Frecuencia.Ruta.Aeropuerto1.CodigoIATA;
-                    string origenAct = actual.Frecuencia.Ruta.Aeropuerto.CodigoIATA;
+                    string destinoAnt = anterior.CodigoDestino;
+                    string origenAct = actual.CodigoOrigen;
 
                     if (anterior.FechaOperacion == actual.FechaOperacion)
                     {

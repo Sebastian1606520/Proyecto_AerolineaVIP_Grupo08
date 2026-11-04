@@ -15,6 +15,7 @@
     var vuelos = ViewBag.Vuelos as List<Vuelo>;
     var reservados = ViewBag.Reservados as Dictionary<int, int>;
     var ocupadosConf = ViewBag.OcupadosConfirmados as Dictionary<int, int>;
+    var disponibilidad = ViewBag.Disponibilidad as Dictionary<int, Con_Autenticacion.Models.vw_DisponibilidadVuelo>;
 
     // Reservas
     var reservas = ViewBag.Reservas as List<Reserva>;
@@ -191,7 +192,7 @@
         Datos con corte al <strong>@fechaCorte.ToString("dd/MM/yyyy HH:mm")</strong>.
         @if (consulta == "ocupacion")
         {
-            <span>Disponibles = Capacidad − (Reservados + Ocupados). Reservados = asientos pendientes de pago; Ocupados = asientos con compra pagada.</span>
+            <span>Disponibles = Capacidad − (Reservados + Ocupados). Reservados = asientos pendientes de pago; Ocupados = asientos con compra pagada. Capacidad y disponibles: vista vw_DisponibilidadVuelo.</span>
         }
         else if (consulta == "reservas")
         {
@@ -232,17 +233,19 @@
                         <tbody>
                             @foreach (var v in vuelos)
                             {
-                                int capacidad = v.Aeronave != null ? v.Aeronave.ModeloAeronave.CapacidadAsientos : 0;
+                                // Capacidad y disponibles: vista SQL vw_DisponibilidadVuelo
+                                var dv = (disponibilidad != null && disponibilidad.ContainsKey(v.VueloId)) ? disponibilidad[v.VueloId] : null;
+                                int capacidad = dv != null ? dv.Capacidad : 0;
                                 int res = reservados.ContainsKey(v.VueloId) ? reservados[v.VueloId] : 0;
                                 int ocu = ocupadosConf.ContainsKey(v.VueloId) ? ocupadosConf[v.VueloId] : 0;
-                                int disp = capacidad - res - ocu;
+                                int disp = (dv != null && dv.Disponibles.HasValue) ? dv.Disponibles.Value : 0;
                                 totalCapacidad += capacidad;
                                 totalReservados += res;
                                 totalOcupados += ocu;
                                 <tr>
-                                    <td class="ps-4 fw-bold text-dark">VIP@(v.VueloId.ToString("D5"))</td>
+                                    <td class="ps-4 fw-bold text-dark">@v.CodigoVuelo</td>
                                     <td>@v.FechaOperacion.ToString("dd/MM/yyyy") <small class="text-muted">@v.Frecuencia.HoraSalida.ToString(@"hh\:mm")</small></td>
-                                    <td>@v.Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @v.Frecuencia.Ruta.Aeropuerto1.CodigoIATA</td>
+                                    <td>@v.CodigoOrigen &rarr; @v.CodigoDestino</td>
                                     <td>@(v.Aeronave != null ? v.Aeronave.Matricula : "Sin asignar")</td>
                                     <td class="text-center">@(capacidad > 0 ? capacidad.ToString() : "—")</td>
                                     <td class="text-center num-reservado">@res</td>
@@ -443,40 +446,40 @@
 
 @section scripts {
     <script>
-        $(function () {
-            // Muestra solo los estados que corresponden a la consulta elegida
-            function filtrarEstados() {
-                var consulta = $('#consulta').val();
-                $('#estado option[data-consulta]').each(function () {
-                    var visible = $(this).data('consulta') === consulta;
-                    $(this).prop('hidden', !visible).prop('disabled', !visible);
+                $(function () {
+                    // Muestra solo los estados que corresponden a la consulta elegida
+                    function filtrarEstados() {
+                        var consulta = $('#consulta').val();
+                        $('#estado option[data-consulta]').each(function () {
+                            var visible = $(this).data('consulta') === consulta;
+                            $(this).prop('hidden', !visible).prop('disabled', !visible);
+                        });
+                        var seleccion = $('#estado option:selected');
+                        if (seleccion.length && seleccion.prop('disabled')) {
+                            $('#estado').val('');
+                        }
+                    }
+
+                    filtrarEstados();
+                    $('#consulta').on('change', filtrarEstados);
+
+                    // Validación del rango de fechas (obligatorio, Hasta >= Desde, máximo 366 días)
+                    function rangoValido() {
+                        var desde = $('#desde').val();
+                        var hasta = $('#hasta').val();
+                        if (!desde || !hasta) return false;
+                        if (hasta < desde) return false;
+                        return (new Date(hasta) - new Date(desde)) / 86400000 <= 366;
+                    }
+
+                    $('#formReporte').on('submit', function (e) {
+                        if (!rangoValido()) {
+                            e.preventDefault();
+                            $('#errorRango').removeClass('d-none').addClass('d-block');
+                            return;
+                        }
+                        $('#btnConsultar').attr('disabled', 'disabled').text('Consultando…');
+                    });
                 });
-                var seleccion = $('#estado option:selected');
-                if (seleccion.length && seleccion.prop('disabled')) {
-                    $('#estado').val('');
-                }
-            }
-
-            filtrarEstados();
-            $('#consulta').on('change', filtrarEstados);
-
-            // Validación del rango de fechas (obligatorio, Hasta >= Desde, máximo 366 días)
-            function rangoValido() {
-                var desde = $('#desde').val();
-                var hasta = $('#hasta').val();
-                if (!desde || !hasta) return false;
-                if (hasta < desde) return false;
-                return (new Date(hasta) - new Date(desde)) / 86400000 <= 366;
-            }
-
-            $('#formReporte').on('submit', function (e) {
-                if (!rangoValido()) {
-                    e.preventDefault();
-                    $('#errorRango').removeClass('d-none').addClass('d-block');
-                    return;
-                }
-                $('#btnConsultar').attr('disabled', 'disabled').text('Consultando…');
-            });
-        });
     </script>
 }

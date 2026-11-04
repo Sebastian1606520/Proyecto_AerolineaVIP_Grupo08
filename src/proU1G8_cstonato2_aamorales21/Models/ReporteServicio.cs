@@ -73,6 +73,19 @@ namespace Con_Autenticacion.Negocio
             return lista;
         }
 
+        // Capacidad y disponibles por vuelo desde la vista SQL
+        // dbo.vw_DisponibilidadVuelo (wireframe, pantalla 21). Clave = VueloId.
+        public Dictionary<int, vw_DisponibilidadVuelo> ObtenerDisponibilidad(DateTime fDesde, DateTime fHasta)
+        {
+            Reserva.LiberarVencidas(db);   // DP-07: lo vencido no cuenta como ocupado
+
+            return db.vw_DisponibilidadVuelo
+                .AsNoTracking()
+                .Where(d => d.FechaOperacion >= fDesde && d.FechaOperacion <= fHasta)
+                .ToList()
+                .ToDictionary(d => d.VueloId);
+        }
+
         // ---------------- RESERVAS POR ESTADO ----------------
         // Devuelve las reservas creadas en el rango y un resumen por estado:
         // cada elemento = [estado, cantidad, pasajeros, importe].

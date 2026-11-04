@@ -1,5 +1,7 @@
 ﻿using Con_Autenticacion.Models;
 using System;
+using System.Collections.Generic;
+using System.Data.Entity;
 using System.Linq;
 
 namespace Con_Autenticacion.Negocio
@@ -36,6 +38,17 @@ namespace Con_Autenticacion.Negocio
                 return "Seleccione un estado operativo válido.";
 
             return null;
+        }
+
+        // Distribución de asientos de una aeronave desde la vista SQL
+        // dbo.vw_AsientoAeronave (wireframe, pantalla 19).
+        public List<vw_AsientoAeronave> ObtenerAsientos(int aeronaveId)
+        {
+            return db.vw_AsientoAeronave
+                .AsNoTracking()
+                .Where(s => s.AeronaveId == aeronaveId)
+                .OrderBy(s => s.Fila).ThenBy(s => s.Lado)
+                .ToList();
         }
 
         // Vuelos próximos (desde hoy, no cancelados ni completados) asignados a la aeronave

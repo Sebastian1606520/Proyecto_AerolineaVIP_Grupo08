@@ -1,5 +1,6 @@
 ﻿using Con_Autenticacion.Models;
 using System;
+using System.Data.Entity;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -51,6 +52,15 @@ namespace Con_Autenticacion.Negocio
                 return "La reserva no tiene pasajeros asignados.";
 
             return null;
+        }
+
+        // Encabezado del comprobante (emisor, reserva, compra y pago simulado)
+        // desde la vista SQL dbo.vw_ComprobanteDetalle (wireframe, pantalla 16).
+        public vw_ComprobanteDetalle ObtenerEncabezadoComprobante(int comprobanteId)
+        {
+            return db.vw_ComprobanteDetalle
+                .AsNoTracking()
+                .FirstOrDefault(c => c.ComprobanteId == comprobanteId);
         }
 
         // Procesa el pago simulado de una reserva.

@@ -60,6 +60,9 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("Buscar");
             }
 
+            // Asientos disponibles desde la vista SQL vw_DisponibilidadVuelo
+            new VueloServicio(db).CargarDisponibilidad(busqueda.Vuelos);
+
             // Parámetros para la vista
             ViewBag.EsItinerarioEscala = busqueda.EsItinerario;
             ViewBag.OrigenId = origenId.Value;
@@ -102,6 +105,11 @@ namespace Con_Autenticacion.Controllers
                 TempData["Error"] = "Este vuelo aún no tiene aeronave asignada; sus asientos no pueden consultarse.";
                 return RedirectToAction("Buscar");
             }
+
+            // Estado de los asientos (vw_EstadoAsientoVuelo) y disponibles (vw_DisponibilidadVuelo)
+            var servicioVuelos = new VueloServicio(db);
+            servicioVuelos.CargarEstadoAsientos(vuelo);
+            servicioVuelos.CargarDisponibilidad(vuelo);
 
             int cantPasajeros = Math.Max(1, Math.Min(pasajeros, 7));
             ViewBag.HoraCorte = DateTime.Now.ToString("HH:mm");

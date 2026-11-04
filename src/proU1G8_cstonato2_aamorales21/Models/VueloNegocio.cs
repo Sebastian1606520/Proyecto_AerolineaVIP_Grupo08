@@ -11,12 +11,30 @@ namespace Con_Autenticacion.Models
         public string Ubicacion { get; set; }
         public string Estado { get; set; } // "disponible", "reservado", "ocupado"
         public string GridClass { get; set; }
+        public string Color { get; set; }  // ColorEstado de la vista SQL (Verde / Morado / Rojo)
         public bool EstaDisponible => Estado == "disponible";
     }
 
     public partial class Vuelo
     {
         public const int CapacidadMaximaVIP = 7;
+
+        // ---- Datos leídos de la vista SQL vw_VueloDetalle ----
+        // Los carga VueloServicio.CargarDetalle. No son columnas de la tabla Vuelo:
+        // Entity Framework los ignora.
+        public string CodigoVueloVista { get; set; }
+        public string OrigenVista { get; set; }
+        public string DestinoVista { get; set; }
+        public string CiudadOrigenVista { get; set; }
+        public string CiudadDestinoVista { get; set; }
+
+        // Código, origen y destino del vuelo. Si se cargó la vista SQL, vienen de ella;
+        // si no, de la ruta. OJO: en el .edmx, Ruta.Aeropuerto1 = ORIGEN y Ruta.Aeropuerto = DESTINO.
+        public string CodigoVuelo => CodigoVueloVista ?? ("VIP" + VueloId.ToString("D5"));
+        public string CodigoOrigen => OrigenVista ?? Frecuencia.Ruta.Aeropuerto1.CodigoIATA;
+        public string CodigoDestino => DestinoVista ?? Frecuencia.Ruta.Aeropuerto.CodigoIATA;
+        public string CiudadOrigen => CiudadOrigenVista ?? Frecuencia.Ruta.Aeropuerto1.Localidad;
+        public string CiudadDestino => CiudadDestinoVista ?? Frecuencia.Ruta.Aeropuerto.Localidad;
 
         // Regla: Un asiento solo bloquea cupo si está CONFIRMADA o si está PENDIENTE y aún NO expira
         public int AsientosOcupados
@@ -35,7 +53,15 @@ namespace Con_Autenticacion.Models
             }
         }
 
-        public int AsientosDisponibles => Math.Max(0, CapacidadMaximaVIP - AsientosOcupados);
+        // Disponibles leídos de la vista SQL vw_DisponibilidadVuelo.
+        // Lo carga VueloServicio.CargarDisponibilidad (pantallas 6, 7 y 8).
+        // No es una columna de la tabla Vuelo: Entity Framework la ignora.
+        public int? DisponiblesDesdeVista { get; set; }
+
+        // Si se cargó la vista SQL, el dato viene de la base; si no, se calcula en C#
+        public int AsientosDisponibles => DisponiblesDesdeVista.HasValue
+            ? Math.Max(0, DisponiblesDesdeVista.Value)
+            : Math.Max(0, CapacidadMaximaVIP - AsientosOcupados);
 
         public bool YaPartio
         {
@@ -88,11 +114,20 @@ namespace Con_Autenticacion.Models
             }
         }
 
+        // Estado de los asientos leído de la vista SQL vw_EstadoAsientoVuelo.
+        // Lo carga VueloServicio.CargarEstadoAsientos (pantallas 7 y 8).
+        // No es una columna de la tabla Vuelo: Entity Framework la ignora.
+        public List<AsientoInfo> AsientosDesdeVista { get; set; }
+
         // Distribución técnica de cabina Phenom 300E
         public List<AsientoInfo> AsientosCabina
         {
             get
             {
+                // Si se cargó la vista SQL, los estados y colores vienen de la base de datos
+                if (AsientosDesdeVista != null)
+                    return AsientosDesdeVista;
+
                 var mapa = new[]
                 {
                     new { N = 1, C = "1D", U = "Ventanilla derecha, fila 1", Cls = "seat-1d" },

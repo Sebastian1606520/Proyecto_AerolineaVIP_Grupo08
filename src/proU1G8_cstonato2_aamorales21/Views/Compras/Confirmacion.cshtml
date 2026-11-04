@@ -307,11 +307,11 @@
                                                 T-@(((List<int>)ViewBag.TramosIds).IndexOf(a.VueloId) + 1)
                                             </span>
                                         </td>
-                                        <td class="text-nowrap fw-bold text-dark">VIP@(a.Vuelo.VueloId.ToString("D5"))</td>
+                                        <td class="text-nowrap fw-bold text-dark">@a.Vuelo.CodigoVuelo</td>
                                         <td class="text-nowrap">
-                                            <strong>@a.Vuelo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA</strong>
+                                            <strong>@a.Vuelo.CodigoOrigen</strong>
                                             <span class="text-muted">&rarr;</span>
-                                            <strong>@a.Vuelo.Frecuencia.Ruta.Aeropuerto.CodigoIATA</strong>
+                                            <strong>@a.Vuelo.CodigoDestino</strong>
                                         </td>
                                         <td class="text-nowrap">@a.Vuelo.FechaOperacion.ToString("dd/MM/yyyy")</td>
                                         <td class="text-nowrap text-secondary">

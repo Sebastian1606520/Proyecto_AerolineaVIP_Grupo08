@@ -51,6 +51,15 @@ namespace Con_Autenticacion.Controllers
 
             int cantidadPasajeros = (pasajeros >= 1 && pasajeros <= 7) ? pasajeros : 1;
 
+            // Estado de los asientos (vw_EstadoAsientoVuelo) y disponibles (vw_DisponibilidadVuelo)
+            // de cada tramo. Se cargan antes de EsVendible, que usa los disponibles.
+            var servicioVuelos = new VueloServicio(db);
+            foreach (var t in tramos)
+            {
+                servicioVuelos.CargarEstadoAsientos(t);
+            }
+            servicioVuelos.CargarDisponibilidad(tramos);
+
             // Misma regla que usa Resultados (VueloNegocio.EsVendible), repetida en el servidor:
             // no cancelado, con aeronave, sin partir, con 60 min de anticipación y cupo en TODOS los tramos
             if (tramos.Any(t => !t.EsVendible(cantidadPasajeros)))
@@ -507,6 +516,9 @@ namespace Con_Autenticacion.Controllers
             ViewBag.HayFiltros = desde.HasValue || hasta.HasValue || !string.IsNullOrEmpty(estado);
             ViewBag.Ahora = ahora;
 
+            // Ruta de cada reserva desde la vista SQL vw_VueloDetalle
+            new VueloServicio(db).CargarDetalle(paginaActual.SelectMany(r => r.ReservaPasajeroVuelo.Select(a => a.Vuelo)));
+
             return View(paginaActual);
         }
         // =========================================================================
@@ -568,6 +580,9 @@ namespace Con_Autenticacion.Controllers
             ViewBag.MotivoNoCancelable = motivoNoCancelable;
             ViewBag.ConReembolso = conReembolso;
             ViewBag.HorasRestantes = horasRestantes;
+
+            // Ruta de cada tramo desde la vista SQL vw_VueloDetalle
+            new VueloServicio(db).CargarDetalle(reserva.ReservaPasajeroVuelo.Select(a => a.Vuelo));
 
             return View(reserva);
         }
@@ -639,6 +654,9 @@ namespace Con_Autenticacion.Controllers
             }
 
             ViewBag.Elegibilidad = servicio.EvaluarReserva(reserva);
+
+            // Ruta de cada tramo desde la vista SQL vw_VueloDetalle
+            new VueloServicio(db).CargarDetalle(reserva.ReservaPasajeroVuelo.Select(a => a.Vuelo));
             ViewBag.CodigosAsiento = servicio.ObtenerCodigosAsiento(reserva);
             return View(reserva);
         }

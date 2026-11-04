@@ -303,6 +303,21 @@
     <Compile Include="Models\Utilidades.cs" />
     <Compile Include="Models\VueloNegocio.cs" />
     <Compile Include="Models\VueloServicio.cs" />
+    <Compile Include="Models\vw_AsientoAeronave.cs">
+      <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Models\vw_ComprobanteDetalle.cs">
+      <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Models\vw_DisponibilidadVuelo.cs">
+      <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Models\vw_EstadoAsientoVuelo.cs">
+      <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Models\vw_VueloDetalle.cs">
+      <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Startup.cs" />
   </ItemGroup>

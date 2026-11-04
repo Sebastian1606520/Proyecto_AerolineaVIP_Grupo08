@@ -144,7 +144,7 @@ namespace Con_Autenticacion.Controllers
 
             // Listas de filtros
             ViewBag.RutasLista = new SelectList(
-                db.Ruta.ToList().Select(r => new { r.RutaId, Texto = r.Aeropuerto.CodigoIATA + " → " + r.Aeropuerto1.CodigoIATA }),
+                db.Ruta.ToList().Select(r => new { r.RutaId, Texto = r.Aeropuerto1.CodigoIATA + " → " + r.Aeropuerto.CodigoIATA }),
                 "RutaId", "Texto", rutaId);
             ViewBag.EstadosFiltro = new SelectList(db.EstadoVuelo.ToList(), "Codigo", "Descripcion", estado);
 
@@ -154,6 +154,14 @@ namespace Con_Autenticacion.Controllers
             ViewBag.RutaId = rutaId;
             ViewBag.Estado = estado ?? "";
             ViewBag.MostrarConflictos = conflictos;
+
+            // Código y ruta de los vuelos desde la vista SQL vw_VueloDetalle
+            var vuelosDetalle = new List<Vuelo>(vuelos);
+            var vEditar = ViewBag.VueloEditar as Vuelo;
+            if (vEditar != null) vuelosDetalle.Add(vEditar);
+            var its = ViewBag.Itinerarios as List<Itinerario>;
+            if (its != null) vuelosDetalle.AddRange(its.SelectMany(i => i.TramoItinerario.Select(t => t.Vuelo)));
+            new VueloServicio(db).CargarDetalle(vuelosDetalle);
 
             return View(vuelos);
         }
@@ -248,10 +256,8 @@ namespace Con_Autenticacion.Controllers
                     return RedirectToAction("Aeronaves");
                 }
 
-                ViewBag.Asientos = db.Asiento
-                    .Where(s => s.ModeloAeronaveId == seleccionada.ModeloAeronaveId)
-                    .OrderBy(s => s.Fila).ThenBy(s => s.Lado)
-                    .ToList();
+                // Distribución de asientos desde la vista SQL vw_AsientoAeronave
+                ViewBag.Asientos = new AeronaveServicio(db).ObtenerAsientos(seleccionada.AeronaveId);
 
                 ViewBag.Asignaciones = db.Vuelo
                     .Include(v => v.Frecuencia.Ruta.Aeropuerto)
@@ -261,6 +267,9 @@ namespace Con_Autenticacion.Controllers
                     .ToList()
                     .OrderBy(v => VueloServicio.Salida(v))
                     .ToList();
+
+                // Ruta de las próximas asignaciones desde la vista SQL vw_VueloDetalle
+                new VueloServicio(db).CargarDetalle((List<Vuelo>)ViewBag.Asignaciones);
 
                 if (editar)
                 {
@@ -591,8 +600,12 @@ namespace Con_Autenticacion.Controllers
             {
                 Dictionary<int, int> reservados, ocupados;
                 ViewBag.Vuelos = servicio.OcupacionPorVuelo(fDesde, fHasta, rutaId, aeronaveId, estado, out reservados, out ocupados);
+                new VueloServicio(db).CargarDetalle((List<Vuelo>)ViewBag.Vuelos);   // ruta: vista SQL vw_VueloDetalle
                 ViewBag.Reservados = reservados;
                 ViewBag.OcupadosConfirmados = ocupados;
+
+                // Capacidad y disponibles desde la vista SQL vw_DisponibilidadVuelo
+                ViewBag.Disponibilidad = servicio.ObtenerDisponibilidad(fDesde, fHasta);
             }
 
             if (consulta == "reservas")
@@ -609,7 +622,7 @@ namespace Con_Autenticacion.Controllers
 
             // Listas de filtros
             ViewBag.RutasLista = new SelectList(
-                db.Ruta.ToList().Select(r => new { r.RutaId, Texto = r.Aeropuerto.CodigoIATA + " → " + r.Aeropuerto1.CodigoIATA }),
+                db.Ruta.ToList().Select(r => new { r.RutaId, Texto = r.Aeropuerto1.CodigoIATA + " → " + r.Aeropuerto.CodigoIATA }),
                 "RutaId", "Texto", rutaId);
             ViewBag.AeronavesLista = new SelectList(db.Aeronave.OrderBy(a => a.Matricula).ToList(), "AeronaveId", "Matricula", aeronaveId);
 

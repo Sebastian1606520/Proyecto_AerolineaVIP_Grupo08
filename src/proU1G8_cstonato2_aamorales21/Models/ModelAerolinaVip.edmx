@@ -4,7 +4,7 @@
   <edmx:Runtime>
     <!-- SSDL content -->
     <edmx:StorageModels>
-      <Schema Namespace="AerolineaVIPModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+    <Schema Namespace="AerolineaVIPModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
         <EntityType Name="Aeronave">
           <Key>
             <PropertyRef Name="AeronaveId" />
@@ -296,6 +296,168 @@
           <Property Name="VueloId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
           <Property Name="FrecuenciaId" Type="int" Nullable="false" />
           <Property Name="FechaOperacion" Type="date" Nullable="false" />
+          <Property Name="AeronaveId" Type="int" />
+          <Property Name="EstadoVueloCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+        </EntityType>
+        <!--Errores durante la generación:
+advertencia 6002: La tabla o vista 'AerolineaVIP.dbo.vw_AsientoAeronave' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+        <EntityType Name="vw_AsientoAeronave">
+          <Key>
+            <PropertyRef Name="AeronaveId" />
+            <PropertyRef Name="Matricula" />
+            <PropertyRef Name="NumeroAsiento" />
+            <PropertyRef Name="CodigoAsiento" />
+            <PropertyRef Name="Fila" />
+            <PropertyRef Name="Lado" />
+            <PropertyRef Name="Ubicacion" />
+          </Key>
+          <Property Name="AeronaveId" Type="int" Nullable="false" />
+          <Property Name="Matricula" Type="varchar" MaxLength="15" Nullable="false" />
+          <Property Name="NumeroAsiento" Type="tinyint" Nullable="false" />
+          <Property Name="CodigoAsiento" Type="char" MaxLength="2" Nullable="false" />
+          <Property Name="Fila" Type="tinyint" Nullable="false" />
+          <Property Name="Lado" Type="char" MaxLength="1" Nullable="false" />
+          <Property Name="Ubicacion" Type="nvarchar" MaxLength="100" Nullable="false" />
+        </EntityType>
+        <!--Errores durante la generación:
+advertencia 6002: La tabla o vista 'AerolineaVIP.dbo.vw_ComprobanteDetalle' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+        <EntityType Name="vw_ComprobanteDetalle">
+          <Key>
+            <PropertyRef Name="ComprobanteId" />
+            <PropertyRef Name="NumeroComprobante" />
+            <PropertyRef Name="TipoComprobanteCodigo" />
+            <PropertyRef Name="TipoComprobante" />
+            <PropertyRef Name="FechaEmision" />
+            <PropertyRef Name="EstadoComprobanteCodigo" />
+            <PropertyRef Name="EmisorNombre" />
+            <PropertyRef Name="EmisorIdentificacion" />
+            <PropertyRef Name="EmisorDireccion" />
+            <PropertyRef Name="LeyendaComprobante" />
+            <PropertyRef Name="ReservaId" />
+            <PropertyRef Name="UsuarioId" />
+            <PropertyRef Name="CompraId" />
+            <PropertyRef Name="FechaCompra" />
+            <PropertyRef Name="TotalOperacion" />
+            <PropertyRef Name="MonedaCodigo" />
+            <PropertyRef Name="EstadoCompraCodigo" />
+          </Key>
+          <Property Name="ComprobanteId" Type="int" Nullable="false" />
+          <Property Name="NumeroComprobante" Type="varchar" MaxLength="30" Nullable="false" />
+          <Property Name="TipoComprobanteCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="TipoComprobante" Type="nvarchar" MaxLength="150" Nullable="false" />
+          <Property Name="FechaEmision" Type="datetime2" Precision="0" Nullable="false" />
+          <Property Name="EstadoComprobanteCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="EmisorNombre" Type="nvarchar" MaxLength="150" Nullable="false" />
+          <Property Name="EmisorIdentificacion" Type="nvarchar" MaxLength="60" Nullable="false" />
+          <Property Name="EmisorDireccion" Type="nvarchar" MaxLength="200" Nullable="false" />
+          <Property Name="LeyendaComprobante" Type="nvarchar" MaxLength="300" Nullable="false" />
+          <Property Name="ReservaId" Type="int" Nullable="false" />
+          <Property Name="CodigoReserva" Type="varchar" MaxLength="10" />
+          <Property Name="UsuarioId" Type="nvarchar" MaxLength="128" Nullable="false" />
+          <Property Name="CompraId" Type="int" Nullable="false" />
+          <Property Name="FechaCompra" Type="datetime2" Precision="0" Nullable="false" />
+          <Property Name="TotalOperacion" Type="decimal" Precision="12" Scale="2" Nullable="false" />
+          <Property Name="MonedaCodigo" Type="char" MaxLength="3" Nullable="false" />
+          <Property Name="EstadoCompraCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="PagoId" Type="int" />
+          <Property Name="CodigoOperacion" Type="varchar" MaxLength="40" />
+          <Property Name="FechaPago" Type="datetime2" Precision="0" />
+          <Property Name="EstadoPagoCodigo" Type="varchar" MaxLength="20" />
+          <Property Name="MetodoPago" Type="nvarchar" MaxLength="100" />
+          <Property Name="MarcaTarjeta" Type="nvarchar" MaxLength="60" />
+          <Property Name="TarjetaEnmascarada" Type="varchar" MaxLength="9" />
+          <Property Name="EsSimulado" Type="bit" />
+        </EntityType>
+        <!--Errores durante la generación:
+advertencia 6002: La tabla o vista 'AerolineaVIP.dbo.vw_DisponibilidadVuelo' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+        <EntityType Name="vw_DisponibilidadVuelo">
+          <Key>
+            <PropertyRef Name="VueloId" />
+            <PropertyRef Name="FechaOperacion" />
+            <PropertyRef Name="Origen" />
+            <PropertyRef Name="Destino" />
+            <PropertyRef Name="HoraSalida" />
+            <PropertyRef Name="HoraLlegada" />
+            <PropertyRef Name="EstadoVueloCodigo" />
+            <PropertyRef Name="Capacidad" />
+            <PropertyRef Name="Ocupados" />
+          </Key>
+          <Property Name="VueloId" Type="int" Nullable="false" />
+          <Property Name="CodigoVuelo" Type="varchar" MaxLength="8" />
+          <Property Name="FechaOperacion" Type="date" Nullable="false" />
+          <Property Name="Origen" Type="char" MaxLength="3" Nullable="false" />
+          <Property Name="Destino" Type="char" MaxLength="3" Nullable="false" />
+          <Property Name="HoraSalida" Type="time" Precision="0" Nullable="false" />
+          <Property Name="HoraLlegada" Type="time" Precision="0" Nullable="false" />
+          <Property Name="EstadoVueloCodigo" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="Matricula" Type="varchar" MaxLength="15" />
+          <Property Name="Capacidad" Type="int" Nullable="false" />
+          <Property Name="Ocupados" Type="int" Nullable="false" />
+          <Property Name="Disponibles" Type="int" />
+        </EntityType>
+        <!--Errores durante la generación:
+advertencia 6002: La tabla o vista 'AerolineaVIP.dbo.vw_EstadoAsientoVuelo' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+        <EntityType Name="vw_EstadoAsientoVuelo">
+          <Key>
+            <PropertyRef Name="VueloId" />
+            <PropertyRef Name="NumeroAsiento" />
+            <PropertyRef Name="CodigoAsiento" />
+            <PropertyRef Name="Fila" />
+            <PropertyRef Name="Lado" />
+            <PropertyRef Name="Ubicacion" />
+            <PropertyRef Name="EstadoVisual" />
+            <PropertyRef Name="ColorEstado" />
+          </Key>
+          <Property Name="VueloId" Type="int" Nullable="false" />
+          <Property Name="AeronaveId" Type="int" />
+          <Property Name="NumeroAsiento" Type="tinyint" Nullable="false" />
+          <Property Name="CodigoAsiento" Type="char" MaxLength="2" Nullable="false" />
+          <Property Name="Fila" Type="tinyint" Nullable="false" />
+          <Property Name="Lado" Type="char" MaxLength="1" Nullable="false" />
+          <Property Name="Ubicacion" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="EstadoVisual" Type="varchar" MaxLength="20" Nullable="false" />
+          <Property Name="ColorEstado" Type="varchar" MaxLength="6" Nullable="false" />
+          <Property Name="AsignacionId" Type="int" />
+          <Property Name="ReservaId" Type="int" />
+          <Property Name="PasajeroId" Type="int" />
+        </EntityType>
+        <!--Errores durante la generación:
+advertencia 6002: La tabla o vista 'AerolineaVIP.dbo.vw_VueloDetalle' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+        <EntityType Name="vw_VueloDetalle">
+          <Key>
+            <PropertyRef Name="VueloId" />
+            <PropertyRef Name="FechaOperacion" />
+            <PropertyRef Name="DiaSemana" />
+            <PropertyRef Name="FrecuenciaId" />
+            <PropertyRef Name="RutaId" />
+            <PropertyRef Name="TarifaReferencial" />
+            <PropertyRef Name="AeropuertoOrigenId" />
+            <PropertyRef Name="AeropuertoDestinoId" />
+            <PropertyRef Name="Origen" />
+            <PropertyRef Name="CiudadOrigen" />
+            <PropertyRef Name="Destino" />
+            <PropertyRef Name="CiudadDestino" />
+            <PropertyRef Name="HoraSalida" />
+            <PropertyRef Name="HoraLlegada" />
+            <PropertyRef Name="EstadoVueloCodigo" />
+          </Key>
+          <Property Name="VueloId" Type="int" Nullable="false" />
+          <Property Name="CodigoVuelo" Type="varchar" MaxLength="8" />
+          <Property Name="FechaOperacion" Type="date" Nullable="false" />
+          <Property Name="DiaSemana" Type="tinyint" Nullable="false" />
+          <Property Name="FrecuenciaId" Type="int" Nullable="false" />
+          <Property Name="RutaId" Type="int" Nullable="false" />
+          <Property Name="TarifaReferencial" Type="decimal" Precision="12" Scale="2" Nullable="false" />
+          <Property Name="AeropuertoOrigenId" Type="int" Nullable="false" />
+          <Property Name="AeropuertoDestinoId" Type="int" Nullable="false" />
+          <Property Name="Origen" Type="char" MaxLength="3" Nullable="false" />
+          <Property Name="CiudadOrigen" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="Destino" Type="char" MaxLength="3" Nullable="false" />
+          <Property Name="CiudadDestino" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="HoraSalida" Type="time" Precision="0" Nullable="false" />
+          <Property Name="HoraLlegada" Type="time" Precision="0" Nullable="false" />
+          <Property Name="SalidaProgramada" Type="datetime" />
+          <Property Name="LlegadaProgramada" Type="datetime" />
           <Property Name="AeronaveId" Type="int" />
           <Property Name="EstadoVueloCodigo" Type="varchar" MaxLength="20" Nullable="false" />
         </EntityType>
@@ -691,6 +853,102 @@
           <EntitySet Name="TipoDocumentoIdentidad" EntityType="Self.TipoDocumentoIdentidad" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="TramoItinerario" EntityType="Self.TramoItinerario" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Vuelo" EntityType="Self.Vuelo" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="vw_AsientoAeronave" EntityType="Self.vw_AsientoAeronave" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [vw_AsientoAeronave].[AeronaveId] AS [AeronaveId], 
+    [vw_AsientoAeronave].[Matricula] AS [Matricula], 
+    [vw_AsientoAeronave].[NumeroAsiento] AS [NumeroAsiento], 
+    [vw_AsientoAeronave].[CodigoAsiento] AS [CodigoAsiento], 
+    [vw_AsientoAeronave].[Fila] AS [Fila], 
+    [vw_AsientoAeronave].[Lado] AS [Lado], 
+    [vw_AsientoAeronave].[Ubicacion] AS [Ubicacion]
+    FROM [dbo].[vw_AsientoAeronave] AS [vw_AsientoAeronave]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="vw_ComprobanteDetalle" EntityType="Self.vw_ComprobanteDetalle" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [vw_ComprobanteDetalle].[ComprobanteId] AS [ComprobanteId], 
+    [vw_ComprobanteDetalle].[NumeroComprobante] AS [NumeroComprobante], 
+    [vw_ComprobanteDetalle].[TipoComprobanteCodigo] AS [TipoComprobanteCodigo], 
+    [vw_ComprobanteDetalle].[TipoComprobante] AS [TipoComprobante], 
+    [vw_ComprobanteDetalle].[FechaEmision] AS [FechaEmision], 
+    [vw_ComprobanteDetalle].[EstadoComprobanteCodigo] AS [EstadoComprobanteCodigo], 
+    [vw_ComprobanteDetalle].[EmisorNombre] AS [EmisorNombre], 
+    [vw_ComprobanteDetalle].[EmisorIdentificacion] AS [EmisorIdentificacion], 
+    [vw_ComprobanteDetalle].[EmisorDireccion] AS [EmisorDireccion], 
+    [vw_ComprobanteDetalle].[LeyendaComprobante] AS [LeyendaComprobante], 
+    [vw_ComprobanteDetalle].[ReservaId] AS [ReservaId], 
+    [vw_ComprobanteDetalle].[CodigoReserva] AS [CodigoReserva], 
+    [vw_ComprobanteDetalle].[UsuarioId] AS [UsuarioId], 
+    [vw_ComprobanteDetalle].[CompraId] AS [CompraId], 
+    [vw_ComprobanteDetalle].[FechaCompra] AS [FechaCompra], 
+    [vw_ComprobanteDetalle].[TotalOperacion] AS [TotalOperacion], 
+    [vw_ComprobanteDetalle].[MonedaCodigo] AS [MonedaCodigo], 
+    [vw_ComprobanteDetalle].[EstadoCompraCodigo] AS [EstadoCompraCodigo], 
+    [vw_ComprobanteDetalle].[PagoId] AS [PagoId], 
+    [vw_ComprobanteDetalle].[CodigoOperacion] AS [CodigoOperacion], 
+    [vw_ComprobanteDetalle].[FechaPago] AS [FechaPago], 
+    [vw_ComprobanteDetalle].[EstadoPagoCodigo] AS [EstadoPagoCodigo], 
+    [vw_ComprobanteDetalle].[MetodoPago] AS [MetodoPago], 
+    [vw_ComprobanteDetalle].[MarcaTarjeta] AS [MarcaTarjeta], 
+    [vw_ComprobanteDetalle].[TarjetaEnmascarada] AS [TarjetaEnmascarada], 
+    [vw_ComprobanteDetalle].[EsSimulado] AS [EsSimulado]
+    FROM [dbo].[vw_ComprobanteDetalle] AS [vw_ComprobanteDetalle]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="vw_DisponibilidadVuelo" EntityType="Self.vw_DisponibilidadVuelo" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [vw_DisponibilidadVuelo].[VueloId] AS [VueloId], 
+    [vw_DisponibilidadVuelo].[CodigoVuelo] AS [CodigoVuelo], 
+    [vw_DisponibilidadVuelo].[FechaOperacion] AS [FechaOperacion], 
+    [vw_DisponibilidadVuelo].[Origen] AS [Origen], 
+    [vw_DisponibilidadVuelo].[Destino] AS [Destino], 
+    [vw_DisponibilidadVuelo].[HoraSalida] AS [HoraSalida], 
+    [vw_DisponibilidadVuelo].[HoraLlegada] AS [HoraLlegada], 
+    [vw_DisponibilidadVuelo].[EstadoVueloCodigo] AS [EstadoVueloCodigo], 
+    [vw_DisponibilidadVuelo].[Matricula] AS [Matricula], 
+    [vw_DisponibilidadVuelo].[Capacidad] AS [Capacidad], 
+    [vw_DisponibilidadVuelo].[Ocupados] AS [Ocupados], 
+    [vw_DisponibilidadVuelo].[Disponibles] AS [Disponibles]
+    FROM [dbo].[vw_DisponibilidadVuelo] AS [vw_DisponibilidadVuelo]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="vw_EstadoAsientoVuelo" EntityType="Self.vw_EstadoAsientoVuelo" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [vw_EstadoAsientoVuelo].[VueloId] AS [VueloId], 
+    [vw_EstadoAsientoVuelo].[AeronaveId] AS [AeronaveId], 
+    [vw_EstadoAsientoVuelo].[NumeroAsiento] AS [NumeroAsiento], 
+    [vw_EstadoAsientoVuelo].[CodigoAsiento] AS [CodigoAsiento], 
+    [vw_EstadoAsientoVuelo].[Fila] AS [Fila], 
+    [vw_EstadoAsientoVuelo].[Lado] AS [Lado], 
+    [vw_EstadoAsientoVuelo].[Ubicacion] AS [Ubicacion], 
+    [vw_EstadoAsientoVuelo].[EstadoVisual] AS [EstadoVisual], 
+    [vw_EstadoAsientoVuelo].[ColorEstado] AS [ColorEstado], 
+    [vw_EstadoAsientoVuelo].[AsignacionId] AS [AsignacionId], 
+    [vw_EstadoAsientoVuelo].[ReservaId] AS [ReservaId], 
+    [vw_EstadoAsientoVuelo].[PasajeroId] AS [PasajeroId]
+    FROM [dbo].[vw_EstadoAsientoVuelo] AS [vw_EstadoAsientoVuelo]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="vw_VueloDetalle" EntityType="Self.vw_VueloDetalle" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [vw_VueloDetalle].[VueloId] AS [VueloId], 
+    [vw_VueloDetalle].[CodigoVuelo] AS [CodigoVuelo], 
+    [vw_VueloDetalle].[FechaOperacion] AS [FechaOperacion], 
+    [vw_VueloDetalle].[DiaSemana] AS [DiaSemana], 
+    [vw_VueloDetalle].[FrecuenciaId] AS [FrecuenciaId], 
+    [vw_VueloDetalle].[RutaId] AS [RutaId], 
+    [vw_VueloDetalle].[TarifaReferencial] AS [TarifaReferencial], 
+    [vw_VueloDetalle].[AeropuertoOrigenId] AS [AeropuertoOrigenId], 
+    [vw_VueloDetalle].[AeropuertoDestinoId] AS [AeropuertoDestinoId], 
+    [vw_VueloDetalle].[Origen] AS [Origen], 
+    [vw_VueloDetalle].[CiudadOrigen] AS [CiudadOrigen], 
+    [vw_VueloDetalle].[Destino] AS [Destino], 
+    [vw_VueloDetalle].[CiudadDestino] AS [CiudadDestino], 
+    [vw_VueloDetalle].[HoraSalida] AS [HoraSalida], 
+    [vw_VueloDetalle].[HoraLlegada] AS [HoraLlegada], 
+    [vw_VueloDetalle].[SalidaProgramada] AS [SalidaProgramada], 
+    [vw_VueloDetalle].[LlegadaProgramada] AS [LlegadaProgramada], 
+    [vw_VueloDetalle].[AeronaveId] AS [AeronaveId], 
+    [vw_VueloDetalle].[EstadoVueloCodigo] AS [EstadoVueloCodigo]
+    FROM [dbo].[vw_VueloDetalle] AS [vw_VueloDetalle]</DefiningQuery>
+          </EntitySet>
           <AssociationSet Name="FK_Aeronave_Estado" Association="Self.FK_Aeronave_Estado">
             <End Role="EstadoAeronave" EntitySet="EstadoAeronave" />
             <End Role="Aeronave" EntitySet="Aeronave" />
@@ -812,8 +1070,7 @@
             <End Role="Vuelo" EntitySet="Vuelo" />
           </AssociationSet>
         </EntityContainer>
-      </Schema>
-    </edmx:StorageModels>
+      </Schema></edmx:StorageModels>
     <!-- CSDL content -->
     <edmx:ConceptualModels>
       <Schema Namespace="AerolineaVIPModel" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
@@ -1683,7 +1940,164 @@
             <End Role="Vuelo" EntitySet="Vuelo" />
             <End Role="TramoItinerario" EntitySet="TramoItinerario" />
           </AssociationSet>
+          <EntitySet Name="vw_AsientoAeronave" EntityType="AerolineaVIPModel.vw_AsientoAeronave" />
+          <EntitySet Name="vw_ComprobanteDetalle" EntityType="AerolineaVIPModel.vw_ComprobanteDetalle" />
+          <EntitySet Name="vw_DisponibilidadVuelo" EntityType="AerolineaVIPModel.vw_DisponibilidadVuelo" />
+          <EntitySet Name="vw_EstadoAsientoVuelo" EntityType="AerolineaVIPModel.vw_EstadoAsientoVuelo" />
+          <EntitySet Name="vw_VueloDetalle" EntityType="AerolineaVIPModel.vw_VueloDetalle" />
         </EntityContainer>
+        <EntityType Name="vw_AsientoAeronave">
+          <Key>
+            <PropertyRef Name="AeronaveId" />
+            <PropertyRef Name="Matricula" />
+            <PropertyRef Name="NumeroAsiento" />
+            <PropertyRef Name="CodigoAsiento" />
+            <PropertyRef Name="Fila" />
+            <PropertyRef Name="Lado" />
+            <PropertyRef Name="Ubicacion" />
+          </Key>
+          <Property Name="AeronaveId" Type="Int32" Nullable="false" />
+          <Property Name="Matricula" Type="String" Nullable="false" MaxLength="15" FixedLength="false" Unicode="false" />
+          <Property Name="NumeroAsiento" Type="Byte" Nullable="false" />
+          <Property Name="CodigoAsiento" Type="String" Nullable="false" MaxLength="2" FixedLength="true" Unicode="false" />
+          <Property Name="Fila" Type="Byte" Nullable="false" />
+          <Property Name="Lado" Type="String" Nullable="false" MaxLength="1" FixedLength="true" Unicode="false" />
+          <Property Name="Ubicacion" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="true" />
+        </EntityType>
+        <EntityType Name="vw_ComprobanteDetalle">
+          <Key>
+            <PropertyRef Name="ComprobanteId" />
+            <PropertyRef Name="NumeroComprobante" />
+            <PropertyRef Name="TipoComprobanteCodigo" />
+            <PropertyRef Name="TipoComprobante" />
+            <PropertyRef Name="FechaEmision" />
+            <PropertyRef Name="EstadoComprobanteCodigo" />
+            <PropertyRef Name="EmisorNombre" />
+            <PropertyRef Name="EmisorIdentificacion" />
+            <PropertyRef Name="EmisorDireccion" />
+            <PropertyRef Name="LeyendaComprobante" />
+            <PropertyRef Name="ReservaId" />
+            <PropertyRef Name="UsuarioId" />
+            <PropertyRef Name="CompraId" />
+            <PropertyRef Name="FechaCompra" />
+            <PropertyRef Name="TotalOperacion" />
+            <PropertyRef Name="MonedaCodigo" />
+            <PropertyRef Name="EstadoCompraCodigo" />
+          </Key>
+          <Property Name="ComprobanteId" Type="Int32" Nullable="false" />
+          <Property Name="NumeroComprobante" Type="String" Nullable="false" MaxLength="30" FixedLength="false" Unicode="false" />
+          <Property Name="TipoComprobanteCodigo" Type="String" Nullable="false" MaxLength="20" FixedLength="false" Unicode="false" />
+          <Property Name="TipoComprobante" Type="String" Nullable="false" MaxLength="150" FixedLength="false" Unicode="true" />
+          <Property Name="FechaEmision" Type="DateTime" Nullable="false" Precision="0" />
+          <Property Name="EstadoComprobanteCodigo" Type="String" Nullable="false" MaxLength="20" FixedLength="false" Unicode="false" />
+          <Property Name="EmisorNombre" Type="String" Nullable="false" MaxLength="150" FixedLength="false" Unicode="true" />
+          <Property Name="EmisorIdentificacion" Type="String" Nullable="false" MaxLength="60" FixedLength="false" Unicode="true" />
+          <Property Name="EmisorDireccion" Type="String" Nullable="false" MaxLength="200" FixedLength="false" Unicode="true" />
+          <Property Name="LeyendaComprobante" Type="String" Nullable="false" MaxLength="300" FixedLength="false" Unicode="true" />
+          <Property Name="ReservaId" Type="Int32" Nullable="false" />
+          <Property Name="CodigoReserva" Type="String" MaxLength="10" FixedLength="false" Unicode="false" />
+          <Property Name="UsuarioId" Type="String" Nullable="false" MaxLength="128" FixedLength="false" Unicode="true" />
+          <Property Name="CompraId" Type="Int32" Nullable="false" />
+          <Property Name="FechaCompra" Type="DateTime" Nullable="false" Precision="0" />
+          <Property Name="TotalOperacion" Type="Decimal" Nullable="false" Precision="12" Scale="2" />
+          <Property Name="MonedaCodigo" Type="String" Nullable="false" MaxLength="3" FixedLength="true" Unicode="false" />
+          <Property Name="EstadoCompraCodigo" Type="String" Nullable="false" MaxLength="20" FixedLength="false" Unicode="false" />
+          <Property Name="PagoId" Type="Int32" />
+          <Property Name="CodigoOperacion" Type="String" MaxLength="40" FixedLength="false" Unicode="false" />
+          <Property Name="FechaPago" Type="DateTime" Precision="0" />
+          <Property Name="EstadoPagoCodigo" Type="String" MaxLength="20" FixedLength="false" Unicode="false" />
+          <Property Name="MetodoPago" Type="String" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="MarcaTarjeta" Type="String" MaxLength="60" FixedLength="false" Unicode="true" />
+          <Property Name="TarjetaEnmascarada" Type="String" MaxLength="9" FixedLength="false" Unicode="false" />
+          <Property Name="EsSimulado" Type="Boolean" />
+        </EntityType>
+        <EntityType Name="vw_DisponibilidadVuelo">
+          <Key>
+            <PropertyRef Name="VueloId" />
+            <PropertyRef Name="FechaOperacion" />
+            <PropertyRef Name="Origen" />
+            <PropertyRef Name="Destino" />
+            <PropertyRef Name="HoraSalida" />
+            <PropertyRef Name="HoraLlegada" />
+            <PropertyRef Name="EstadoVueloCodigo" />
+            <PropertyRef Name="Capacidad" />
+            <PropertyRef Name="Ocupados" />
+          </Key>
+          <Property Name="VueloId" Type="Int32" Nullable="false" />
+          <Property Name="CodigoVuelo" Type="String" MaxLength="8" FixedLength="false" Unicode="false" />
+          <Property Name="FechaOperacion" Type="DateTime" Nullable="false" Precision="0" />
+          <Property Name="Origen" Type="String" Nullable="false" MaxLength="3" FixedLength="true" Unicode="false" />
+          <Property Name="Destino" Type="String" Nullable="false" MaxLength="3" FixedLength="true" Unicode="false" />
+          <Property Name="HoraSalida" Type="Time" Nullable="false" Precision="0" />
+          <Property Name="HoraLlegada" Type="Time" Nullable="false" Precision="0" />
+          <Property Name="EstadoVueloCodigo" Type="String" Nullable="false" MaxLength="20" FixedLength="false" Unicode="false" />
+          <Property Name="Matricula" Type="String" MaxLength="15" FixedLength="false" Unicode="false" />
+          <Property Name="Capacidad" Type="Int32" Nullable="false" />
+          <Property Name="Ocupados" Type="Int32" Nullable="false" />
+          <Property Name="Disponibles" Type="Int32" />
+        </EntityType>
+        <EntityType Name="vw_EstadoAsientoVuelo">
+          <Key>
+            <PropertyRef Name="VueloId" />
+            <PropertyRef Name="NumeroAsiento" />
+            <PropertyRef Name="CodigoAsiento" />
+            <PropertyRef Name="Fila" />
+            <PropertyRef Name="Lado" />
+            <PropertyRef Name="Ubicacion" />
+            <PropertyRef Name="EstadoVisual" />
+            <PropertyRef Name="ColorEstado" />
+          </Key>
+          <Property Name="VueloId" Type="Int32" Nullable="false" />
+          <Property Name="AeronaveId" Type="Int32" />
+          <Property Name="NumeroAsiento" Type="Byte" Nullable="false" />
+          <Property Name="CodigoAsiento" Type="String" Nullable="false" MaxLength="2" FixedLength="true" Unicode="false" />
+          <Property Name="Fila" Type="Byte" Nullable="false" />
+          <Property Name="Lado" Type="String" Nullable="false" MaxLength="1" FixedLength="true" Unicode="false" />
+          <Property Name="Ubicacion" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="EstadoVisual" Type="String" Nullable="false" MaxLength="20" FixedLength="false" Unicode="false" />
+          <Property Name="ColorEstado" Type="String" Nullable="false" MaxLength="6" FixedLength="false" Unicode="false" />
+          <Property Name="AsignacionId" Type="Int32" />
+          <Property Name="ReservaId" Type="Int32" />
+          <Property Name="PasajeroId" Type="Int32" />
+        </EntityType>
+        <EntityType Name="vw_VueloDetalle">
+          <Key>
+            <PropertyRef Name="VueloId" />
+            <PropertyRef Name="FechaOperacion" />
+            <PropertyRef Name="DiaSemana" />
+            <PropertyRef Name="FrecuenciaId" />
+            <PropertyRef Name="RutaId" />
+            <PropertyRef Name="TarifaReferencial" />
+            <PropertyRef Name="AeropuertoOrigenId" />
+            <PropertyRef Name="AeropuertoDestinoId" />
+            <PropertyRef Name="Origen" />
+            <PropertyRef Name="CiudadOrigen" />
+            <PropertyRef Name="Destino" />
+            <PropertyRef Name="CiudadDestino" />
+            <PropertyRef Name="HoraSalida" />
+            <PropertyRef Name="HoraLlegada" />
+            <PropertyRef Name="EstadoVueloCodigo" />
+          </Key>
+          <Property Name="VueloId" Type="Int32" Nullable="false" />
+          <Property Name="CodigoVuelo" Type="String" MaxLength="8" FixedLength="false" Unicode="false" />
+          <Property Name="FechaOperacion" Type="DateTime" Nullable="false" Precision="0" />
+          <Property Name="DiaSemana" Type="Byte" Nullable="false" />
+          <Property Name="FrecuenciaId" Type="Int32" Nullable="false" />
+          <Property Name="RutaId" Type="Int32" Nullable="false" />
+          <Property Name="TarifaReferencial" Type="Decimal" Nullable="false" Precision="12" Scale="2" />
+          <Property Name="AeropuertoOrigenId" Type="Int32" Nullable="false" />
+          <Property Name="AeropuertoDestinoId" Type="Int32" Nullable="false" />
+          <Property Name="Origen" Type="String" Nullable="false" MaxLength="3" FixedLength="true" Unicode="false" />
+          <Property Name="CiudadOrigen" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="Destino" Type="String" Nullable="false" MaxLength="3" FixedLength="true" Unicode="false" />
+          <Property Name="CiudadDestino" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="HoraSalida" Type="Time" Nullable="false" Precision="0" />
+          <Property Name="HoraLlegada" Type="Time" Nullable="false" Precision="0" />
+          <Property Name="SalidaProgramada" Type="DateTime" Precision="3" />
+          <Property Name="LlegadaProgramada" Type="DateTime" Precision="3" />
+          <Property Name="AeronaveId" Type="Int32" />
+          <Property Name="EstadoVueloCodigo" Type="String" Nullable="false" MaxLength="20" FixedLength="false" Unicode="false" />
+        </EntityType>
       </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -2011,6 +2425,112 @@
                 <ScalarProperty Name="FechaOperacion" ColumnName="FechaOperacion" />
                 <ScalarProperty Name="AeronaveId" ColumnName="AeronaveId" />
                 <ScalarProperty Name="EstadoVueloCodigo" ColumnName="EstadoVueloCodigo" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="vw_AsientoAeronave">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.vw_AsientoAeronave">
+              <MappingFragment StoreEntitySet="vw_AsientoAeronave">
+                <ScalarProperty Name="Ubicacion" ColumnName="Ubicacion" />
+                <ScalarProperty Name="Lado" ColumnName="Lado" />
+                <ScalarProperty Name="Fila" ColumnName="Fila" />
+                <ScalarProperty Name="CodigoAsiento" ColumnName="CodigoAsiento" />
+                <ScalarProperty Name="NumeroAsiento" ColumnName="NumeroAsiento" />
+                <ScalarProperty Name="Matricula" ColumnName="Matricula" />
+                <ScalarProperty Name="AeronaveId" ColumnName="AeronaveId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="vw_ComprobanteDetalle">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.vw_ComprobanteDetalle">
+              <MappingFragment StoreEntitySet="vw_ComprobanteDetalle">
+                <ScalarProperty Name="EsSimulado" ColumnName="EsSimulado" />
+                <ScalarProperty Name="TarjetaEnmascarada" ColumnName="TarjetaEnmascarada" />
+                <ScalarProperty Name="MarcaTarjeta" ColumnName="MarcaTarjeta" />
+                <ScalarProperty Name="MetodoPago" ColumnName="MetodoPago" />
+                <ScalarProperty Name="EstadoPagoCodigo" ColumnName="EstadoPagoCodigo" />
+                <ScalarProperty Name="FechaPago" ColumnName="FechaPago" />
+                <ScalarProperty Name="CodigoOperacion" ColumnName="CodigoOperacion" />
+                <ScalarProperty Name="PagoId" ColumnName="PagoId" />
+                <ScalarProperty Name="EstadoCompraCodigo" ColumnName="EstadoCompraCodigo" />
+                <ScalarProperty Name="MonedaCodigo" ColumnName="MonedaCodigo" />
+                <ScalarProperty Name="TotalOperacion" ColumnName="TotalOperacion" />
+                <ScalarProperty Name="FechaCompra" ColumnName="FechaCompra" />
+                <ScalarProperty Name="CompraId" ColumnName="CompraId" />
+                <ScalarProperty Name="UsuarioId" ColumnName="UsuarioId" />
+                <ScalarProperty Name="CodigoReserva" ColumnName="CodigoReserva" />
+                <ScalarProperty Name="ReservaId" ColumnName="ReservaId" />
+                <ScalarProperty Name="LeyendaComprobante" ColumnName="LeyendaComprobante" />
+                <ScalarProperty Name="EmisorDireccion" ColumnName="EmisorDireccion" />
+                <ScalarProperty Name="EmisorIdentificacion" ColumnName="EmisorIdentificacion" />
+                <ScalarProperty Name="EmisorNombre" ColumnName="EmisorNombre" />
+                <ScalarProperty Name="EstadoComprobanteCodigo" ColumnName="EstadoComprobanteCodigo" />
+                <ScalarProperty Name="FechaEmision" ColumnName="FechaEmision" />
+                <ScalarProperty Name="TipoComprobante" ColumnName="TipoComprobante" />
+                <ScalarProperty Name="TipoComprobanteCodigo" ColumnName="TipoComprobanteCodigo" />
+                <ScalarProperty Name="NumeroComprobante" ColumnName="NumeroComprobante" />
+                <ScalarProperty Name="ComprobanteId" ColumnName="ComprobanteId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="vw_DisponibilidadVuelo">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.vw_DisponibilidadVuelo">
+              <MappingFragment StoreEntitySet="vw_DisponibilidadVuelo">
+                <ScalarProperty Name="Disponibles" ColumnName="Disponibles" />
+                <ScalarProperty Name="Ocupados" ColumnName="Ocupados" />
+                <ScalarProperty Name="Capacidad" ColumnName="Capacidad" />
+                <ScalarProperty Name="Matricula" ColumnName="Matricula" />
+                <ScalarProperty Name="EstadoVueloCodigo" ColumnName="EstadoVueloCodigo" />
+                <ScalarProperty Name="HoraLlegada" ColumnName="HoraLlegada" />
+                <ScalarProperty Name="HoraSalida" ColumnName="HoraSalida" />
+                <ScalarProperty Name="Destino" ColumnName="Destino" />
+                <ScalarProperty Name="Origen" ColumnName="Origen" />
+                <ScalarProperty Name="FechaOperacion" ColumnName="FechaOperacion" />
+                <ScalarProperty Name="CodigoVuelo" ColumnName="CodigoVuelo" />
+                <ScalarProperty Name="VueloId" ColumnName="VueloId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="vw_EstadoAsientoVuelo">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.vw_EstadoAsientoVuelo">
+              <MappingFragment StoreEntitySet="vw_EstadoAsientoVuelo">
+                <ScalarProperty Name="PasajeroId" ColumnName="PasajeroId" />
+                <ScalarProperty Name="ReservaId" ColumnName="ReservaId" />
+                <ScalarProperty Name="AsignacionId" ColumnName="AsignacionId" />
+                <ScalarProperty Name="ColorEstado" ColumnName="ColorEstado" />
+                <ScalarProperty Name="EstadoVisual" ColumnName="EstadoVisual" />
+                <ScalarProperty Name="Ubicacion" ColumnName="Ubicacion" />
+                <ScalarProperty Name="Lado" ColumnName="Lado" />
+                <ScalarProperty Name="Fila" ColumnName="Fila" />
+                <ScalarProperty Name="CodigoAsiento" ColumnName="CodigoAsiento" />
+                <ScalarProperty Name="NumeroAsiento" ColumnName="NumeroAsiento" />
+                <ScalarProperty Name="AeronaveId" ColumnName="AeronaveId" />
+                <ScalarProperty Name="VueloId" ColumnName="VueloId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="vw_VueloDetalle">
+            <EntityTypeMapping TypeName="AerolineaVIPModel.vw_VueloDetalle">
+              <MappingFragment StoreEntitySet="vw_VueloDetalle">
+                <ScalarProperty Name="EstadoVueloCodigo" ColumnName="EstadoVueloCodigo" />
+                <ScalarProperty Name="AeronaveId" ColumnName="AeronaveId" />
+                <ScalarProperty Name="LlegadaProgramada" ColumnName="LlegadaProgramada" />
+                <ScalarProperty Name="SalidaProgramada" ColumnName="SalidaProgramada" />
+                <ScalarProperty Name="HoraLlegada" ColumnName="HoraLlegada" />
+                <ScalarProperty Name="HoraSalida" ColumnName="HoraSalida" />
+                <ScalarProperty Name="CiudadDestino" ColumnName="CiudadDestino" />
+                <ScalarProperty Name="Destino" ColumnName="Destino" />
+                <ScalarProperty Name="CiudadOrigen" ColumnName="CiudadOrigen" />
+                <ScalarProperty Name="Origen" ColumnName="Origen" />
+                <ScalarProperty Name="AeropuertoDestinoId" ColumnName="AeropuertoDestinoId" />
+                <ScalarProperty Name="AeropuertoOrigenId" ColumnName="AeropuertoOrigenId" />
+                <ScalarProperty Name="TarifaReferencial" ColumnName="TarifaReferencial" />
+                <ScalarProperty Name="RutaId" ColumnName="RutaId" />
+                <ScalarProperty Name="FrecuenciaId" ColumnName="FrecuenciaId" />
+                <ScalarProperty Name="DiaSemana" ColumnName="DiaSemana" />
+                <ScalarProperty Name="FechaOperacion" ColumnName="FechaOperacion" />
+                <ScalarProperty Name="CodigoVuelo" ColumnName="CodigoVuelo" />
+                <ScalarProperty Name="VueloId" ColumnName="VueloId" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>

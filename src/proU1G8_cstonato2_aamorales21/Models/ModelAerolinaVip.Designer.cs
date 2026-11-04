@@ -1,4 +1,4 @@
-﻿// La generación de código T4 está habilitada para el modelo 'C:\ESPE\6to Semestre\Desarrollo WEB 36641\Primer Parcial\MOLDE_MVC - copia (3)\Con Autenticacion\Models\ModelAerolinaVip.edmx'. 
+﻿// La generación de código T4 está habilitada para el modelo 'C:\Users\lenovo legion\Downloads\proyyo\Proyecto_AerolineaVIP_Grupo08\src\proU1G8_cstonato2_aamorales21\Models\ModelAerolinaVip.edmx'. 
 // Para habilitar la generación de código heredada, cambie el valor de la propiedad del diseñador 'Estrategia de generación de código'
 // por 'ObjectContext heredado'. Esta propiedad está disponible en la ventana Propiedades cuando se abre
 // el modelo en el diseñador.

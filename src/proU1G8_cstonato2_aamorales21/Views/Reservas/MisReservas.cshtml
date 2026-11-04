@@ -226,9 +226,9 @@
 
                             string fechaViaje = primerTramo != null ? primerTramo.FechaOperacion.ToString("dd/MM/yyyy") : "—";
                             string ruta = primerTramo != null
-                                ? primerTramo.Frecuencia.Ruta.Aeropuerto.Localidad + " → " + ultimoTramo.Frecuencia.Ruta.Aeropuerto1.Localidad
+                                ? primerTramo.CiudadOrigen + " → " + ultimoTramo.CiudadDestino
                                 : "—";
-                            string escala = tramos.Count > 1 ? "Con escala en " + primerTramo.Frecuencia.Ruta.Aeropuerto1.Localidad : "Vuelo directo";
+                            string escala = tramos.Count > 1 ? "Con escala en " + primerTramo.CiudadDestino : "Vuelo directo";
                             int numPasajeros = r.ReservaPasajeroVuelo.Select(a => a.PasajeroId).Distinct().Count();
 
                             bool vencida = r.EstadoReservaCodigo == "PENDIENTE" && r.FechaExpiracion.HasValue && r.FechaExpiracion.Value < ahora;
@@ -309,7 +309,7 @@
 
                 string fechaViaje = primerTramo != null ? primerTramo.FechaOperacion.ToString("dd/MM/yyyy") : "—";
                 string ruta = primerTramo != null
-                    ? primerTramo.Frecuencia.Ruta.Aeropuerto.Localidad + " → " + ultimoTramo.Frecuencia.Ruta.Aeropuerto1.Localidad
+                    ? primerTramo.CiudadOrigen + " → " + ultimoTramo.CiudadDestino
                     : "—";
                 int numPasajeros = r.ReservaPasajeroVuelo.Select(a => a.PasajeroId).Distinct().Count();
 
@@ -390,28 +390,28 @@
 
 @section scripts {
     <script>
-        $(function () {
-            // Validación del rango de fechas: "Hasta" no puede ser anterior a "Desde"
-            function rangoValido() {
-                var desde = $('#desde').val();
-                var hasta = $('#hasta').val();
-                return !(desde && hasta && hasta < desde);
-            }
+                $(function () {
+                    // Validación del rango de fechas: "Hasta" no puede ser anterior a "Desde"
+                    function rangoValido() {
+                        var desde = $('#desde').val();
+                        var hasta = $('#hasta').val();
+                        return !(desde && hasta && hasta < desde);
+                    }
 
-            $('#desde, #hasta').on('change', function () {
-                if (rangoValido()) {
-                    $('#errorRango').addClass('d-none').removeClass('d-block');
-                    $('#hasta').removeClass('is-invalid');
-                }
-            });
+                    $('#desde, #hasta').on('change', function () {
+                        if (rangoValido()) {
+                            $('#errorRango').addClass('d-none').removeClass('d-block');
+                            $('#hasta').removeClass('is-invalid');
+                        }
+                    });
 
-            $('#formFiltros').on('submit', function (e) {
-                if (!rangoValido()) {
-                    e.preventDefault();
-                    $('#errorRango').removeClass('d-none').addClass('d-block');
-                    $('#hasta').addClass('is-invalid').focus();
-                }
-            });
-        });
+                    $('#formFiltros').on('submit', function (e) {
+                        if (!rangoValido()) {
+                            e.preventDefault();
+                            $('#errorRango').removeClass('d-none').addClass('d-block');
+                            $('#hasta').addClass('is-invalid').focus();
+                        }
+                    });
+                });
     </script>
 }

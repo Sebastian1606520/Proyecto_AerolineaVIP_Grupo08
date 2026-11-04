@@ -204,6 +204,7 @@ namespace Con_Autenticacion.Controllers
                 .ThenBy(a => a.Pasajero.Apellidos)
                 .ToList();
             ViewBag.Detalle = detalle;
+            new VueloServicio(db).CargarDetalle(detalle.Select(a => a.Vuelo));   // vista SQL vw_VueloDetalle
             ViewBag.CodigosAsiento = detalle.ToDictionary(
                 a => a.AsignacionId,
                 a => CodigosAsiento.ContainsKey(a.NumeroAsiento) ? CodigosAsiento[a.NumeroAsiento] : a.NumeroAsiento.ToString());
@@ -299,13 +300,8 @@ namespace Con_Autenticacion.Controllers
                 var compra = seleccionado.Compra;
                 var reserva = compra.Reserva;
 
-                ViewBag.Emisor = db.DatosEmisor.FirstOrDefault();
-
-                // Pago simulado asociado (aprobado o reversado)
-                ViewBag.Pago = compra.Pago
-                    .Where(p => p.EstadoPagoCodigo == "APROBADO" || p.EstadoPagoCodigo == "REVERSADO")
-                    .OrderByDescending(p => p.FechaPago)
-                    .FirstOrDefault();
+                // Emisor, reserva, total y pago simulado desde la vista SQL vw_ComprobanteDetalle
+                ViewBag.Encabezado = new PagoServicio(db).ObtenerEncabezadoComprobante(seleccionado.ComprobanteId);
 
                 // Cliente (base de Identity)
                 using (var identity = new ApplicationDbContext())
@@ -331,6 +327,7 @@ namespace Con_Autenticacion.Controllers
                 }
 
                 ViewBag.Detalle = detalle;
+                new VueloServicio(db).CargarDetalle(detalle.Select(a => a.Vuelo));   // vista SQL vw_VueloDetalle
                 ViewBag.CodigosAsiento = codigos;
             }
 

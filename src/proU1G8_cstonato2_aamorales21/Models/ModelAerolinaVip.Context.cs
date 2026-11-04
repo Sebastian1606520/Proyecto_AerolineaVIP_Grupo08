@@ -56,5 +56,10 @@ namespace Con_Autenticacion.Models
         public virtual DbSet<TipoDocumentoIdentidad> TipoDocumentoIdentidad { get; set; }
         public virtual DbSet<TramoItinerario> TramoItinerario { get; set; }
         public virtual DbSet<Vuelo> Vuelo { get; set; }
+        public virtual DbSet<vw_AsientoAeronave> vw_AsientoAeronave { get; set; }
+        public virtual DbSet<vw_ComprobanteDetalle> vw_ComprobanteDetalle { get; set; }
+        public virtual DbSet<vw_DisponibilidadVuelo> vw_DisponibilidadVuelo { get; set; }
+        public virtual DbSet<vw_EstadoAsientoVuelo> vw_EstadoAsientoVuelo { get; set; }
+        public virtual DbSet<vw_VueloDetalle> vw_VueloDetalle { get; set; }
     }
 }
