@@ -270,16 +270,16 @@
     <Compile Include="Models\Pasajero.cs">
       <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
     </Compile>
-    <Compile Include="Negocio\AeronaveServicio.cs" />
-    <Compile Include="Negocio\CheckInServicio.cs" />
-    <Compile Include="Negocio\PagoServicio.cs" />
-    <Compile Include="Negocio\PasajeroNegocio.cs" />
+    <Compile Include="Models\AeronaveServicio.cs" />
+    <Compile Include="Models\CheckInServicio.cs" />
+    <Compile Include="Models\PagoServicio.cs" />
+    <Compile Include="Models\PasajeroNegocio.cs" />
     <Compile Include="Models\Reserva.cs">
       <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
     </Compile>
-    <Compile Include="Negocio\PasajeroServicio.cs" />
-    <Compile Include="Negocio\ReporteServicio.cs" />
-    <Compile Include="Negocio\ReservaNegocio.cs" />
+    <Compile Include="Models\PasajeroServicio.cs" />
+    <Compile Include="Models\ReporteServicio.cs" />
+    <Compile Include="Models\ReservaNegocio.cs" />
     <Compile Include="Models\ReservaPasajeroVuelo.cs">
       <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
     </Compile>
@@ -298,11 +298,11 @@
     <Compile Include="Models\Vuelo.cs">
       <DependentUpon>ModelAerolinaVip.tt</DependentUpon>
     </Compile>
-    <Compile Include="Negocio\ReservaServicio.cs" />
-    <Compile Include="Negocio\UsuarioServicio.cs" />
-    <Compile Include="Negocio\Utilidades.cs" />
-    <Compile Include="Negocio\VueloNegocio.cs" />
-    <Compile Include="Negocio\VueloServicio.cs" />
+    <Compile Include="Models\ReservaServicio.cs" />
+    <Compile Include="Models\UsuarioServicio.cs" />
+    <Compile Include="Models\Utilidades.cs" />
+    <Compile Include="Models\VueloNegocio.cs" />
+    <Compile Include="Models\VueloServicio.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Startup.cs" />
   </ItemGroup>
