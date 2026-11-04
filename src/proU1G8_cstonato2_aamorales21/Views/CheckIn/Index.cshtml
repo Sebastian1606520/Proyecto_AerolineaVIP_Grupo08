@@ -10,13 +10,10 @@
     var elegibilidad = ViewBag.Elegibilidad as Dictionary<int, string>;
     var codigosAsiento = ViewBag.CodigosAsiento as Dictionary<int, string>;
 
-    // Asignaciones ordenadas por tramo y pasajero
-    var asignaciones = Model == null ? new List<Con_Autenticacion.Models.ReservaPasajeroVuelo>()
-        : Model.ReservaPasajeroVuelo
-            .OrderBy(a => a.Vuelo.FechaOperacion).ThenBy(a => a.Vuelo.Frecuencia.HoraSalida)
-            .ThenBy(a => a.Pasajero.Apellidos)
-            .ToList();
-    int elegibles = Model == null ? 0 : asignaciones.Count(a => elegibilidad[a.AsignacionId] == "ELEGIBLE");
+    // Asignaciones ya ordenadas y conteo de elegibles: los calcula el servidor (CheckInServicio)
+    var asignaciones = ViewBag.Asignaciones as List<Con_Autenticacion.Models.ReservaPasajeroVuelo>
+                       ?? new List<Con_Autenticacion.Models.ReservaPasajeroVuelo>();
+    int elegibles = (ViewBag.Elegibles as int?) ?? 0;
 }
 
 <style>
@@ -131,7 +128,7 @@
             <span class="paso-numero">1</span>
             <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Localizar reserva</span>
         </div>
-        <form id="formBuscar" action="@Url.Action("CheckIn", "Reservas")" method="get" class="p-4" novalidate>
+        <form id="formBuscar" action="@Url.Action("Index", "CheckIn")" method="get" class="p-4" novalidate>
             <div class="row g-3 align-items-start">
                 <div class="col-12 col-md-5">
                     <label for="codigo" class="form-label small fw-semibold text-secondary mb-1">
@@ -170,7 +167,7 @@
     <!-- Paso 2: Pasajeros y tramos -->
     @if (Model != null)
     {
-        <form id="formCheckIn" action="@Url.Action("CheckIn", "Reservas")" method="post" novalidate>
+        <form id="formCheckIn" action="@Url.Action("Index", "CheckIn")" method="post" novalidate>
             @Html.AntiForgeryToken()
             <input type="hidden" name="codigo" value="@codigo" />
             <input type="hidden" name="documento" value="@documento" />
@@ -289,7 +286,7 @@
                         {
                             <button type="submit" id="btnConfirmar" class="btn btn-dark px-4 py-2 fw-semibold">Confirmar</button>
                         }
-                        <a href="@Url.Action("CheckIn", "Reservas", new { codigo = codigo, documento = documento })" class="btn btn-outline-secondary px-4 py-2">
+                        <a href="@Url.Action("Index", "CheckIn", new { codigo = codigo, documento = documento })" class="btn btn-outline-secondary px-4 py-2">
                             Consultar estado
                         </a>
                     </div>

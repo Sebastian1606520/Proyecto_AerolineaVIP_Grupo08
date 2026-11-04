@@ -38,6 +38,9 @@ namespace Con_Autenticacion.Models
             db.SaveChanges();
         }
 
+        // DP-08: para cancelar una reserva pagada (CONFIRMADA) el motivo es obligatorio
+        public bool RequiereMotivoCancelacion => EstadoReservaCodigo == "CONFIRMADA";
+
         public string EvaluarCancelacion(out bool conReembolso, out double horasRestantes)
         {
             conReembolso = false;

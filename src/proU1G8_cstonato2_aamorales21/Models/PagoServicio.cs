@@ -63,6 +63,13 @@ namespace Con_Autenticacion.Negocio
                 .FirstOrDefault(c => c.ComprobanteId == comprobanteId);
         }
 
+        // El comprobante muestra el pago solo si está aprobado o reversado (reembolso simulado)
+        public static bool TienePagoVigente(vw_ComprobanteDetalle encabezado)
+        {
+            return encabezado != null && encabezado.PagoId.HasValue
+                   && (encabezado.EstadoPagoCodigo == "APROBADO" || encabezado.EstadoPagoCodigo == "REVERSADO");
+        }
+
         // Procesa el pago simulado de una reserva.
         // Devuelve null si el pago fue aprobado, o el mensaje de error para mostrar.
         public string ProcesarPago(Reserva reserva, string metodoPago, string marcaTarjeta, string numeroTarjeta,

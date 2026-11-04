@@ -1,14 +1,7 @@
-﻿@model IEnumerable<Con_Autenticacion.Models.Reserva>
+﻿@model Con_Autenticacion.Models.MisReservasViewModel
 @{
     ViewBag.Title = "Mis reservas";
     Layout = "~/Views/Shared/_Layout.cshtml";
-
-    DateTime ahora = (DateTime)ViewBag.Ahora;
-    int pagina = (int)ViewBag.Pagina;
-    int totalPaginas = (int)ViewBag.TotalPaginas;
-    string fDesde = ViewBag.Desde;
-    string fHasta = ViewBag.Hasta;
-    string fEstado = ViewBag.Estado;
 }
 
 <style>
@@ -133,20 +126,20 @@
                 <div class="row g-3 align-items-end">
                     <div class="col-12 col-md-3">
                         <label for="desde" class="form-label small fw-semibold text-secondary mb-1">Fecha de viaje desde (opcional)</label>
-                        <input type="date" id="desde" name="desde" class="form-control form-control-sm py-2" value="@fDesde" />
+                        <input type="date" id="desde" name="desde" class="form-control form-control-sm py-2" value="@Model.Desde" />
                     </div>
                     <div class="col-12 col-md-3">
                         <label for="hasta" class="form-label small fw-semibold text-secondary mb-1">Hasta (opcional)</label>
-                        <input type="date" id="hasta" name="hasta" class="form-control form-control-sm py-2" value="@fHasta" aria-describedby="errorRango" />
+                        <input type="date" id="hasta" name="hasta" class="form-control form-control-sm py-2" value="@Model.Hasta" aria-describedby="errorRango" />
                     </div>
                     <div class="col-12 col-md-3">
                         <label for="estado" class="form-label small fw-semibold text-secondary mb-1">Estado (opcional)</label>
                         <select id="estado" name="estado" class="form-select form-select-sm py-2">
-                            <option value="" @(fEstado == "" ? "selected" : "")>Todos</option>
-                            <option value="PENDIENTE" @(fEstado == "PENDIENTE" ? "selected" : "")>Pendiente</option>
-                            <option value="CONFIRMADA" @(fEstado == "CONFIRMADA" ? "selected" : "")>Confirmada</option>
-                            <option value="CANCELADA" @(fEstado == "CANCELADA" ? "selected" : "")>Cancelada</option>
-                            <option value="EXPIRADA" @(fEstado == "EXPIRADA" ? "selected" : "")>Expirada</option>
+                            <option value="" @(Model.Estado == "" ? "selected" : "")>Todos</option>
+                            <option value="PENDIENTE" @(Model.Estado == "PENDIENTE" ? "selected" : "")>Pendiente</option>
+                            <option value="CONFIRMADA" @(Model.Estado == "CONFIRMADA" ? "selected" : "")>Confirmada</option>
+                            <option value="CANCELADA" @(Model.Estado == "CANCELADA" ? "selected" : "")>Cancelada</option>
+                            <option value="EXPIRADA" @(Model.Estado == "EXPIRADA" ? "selected" : "")>Expirada</option>
                         </select>
                     </div>
                     <div class="col-12 col-md-3 d-flex gap-2">
@@ -155,19 +148,19 @@
                     </div>
                 </div>
 
-                <small id="errorRango" class="text-danger mt-2 @(ViewBag.ErrorFiltro == null ? "d-none" : "d-block")" role="alert" style="font-size: 0.8rem;">
-                    &#9888; @(ViewBag.ErrorFiltro ?? "La fecha «Hasta» no puede ser anterior a la fecha «Desde».")
+                <small id="errorRango" class="text-danger mt-2 @(Model.ErrorFiltro == null ? "d-none" : "d-block")" role="alert" style="font-size: 0.8rem;">
+                    &#9888; @(Model.ErrorFiltro ?? "La fecha «Hasta» no puede ser anterior a la fecha «Desde».")
                 </small>
             </form>
         </div>
     </div>
 
-    @if (!Model.Any())
+    @if (!Model.Reservas.Any())
     {
         @* Estado vacío *@
         <div class="reservas-card shadow-sm p-5 text-center my-4">
             <span class="display-6 text-muted">&#9992;</span>
-            @if ((bool)ViewBag.HayFiltros)
+            @if (Model.HayFiltros)
             {
                 <h3 class="h5 fw-bold text-dark mt-3 mb-2">No tiene reservas que coincidan con los filtros.</h3>
                 <p class="text-secondary small mb-4">Pruebe con otro rango de fechas u otro estado.</p>
@@ -184,17 +177,17 @@
     else
     {
         @* Avisos de reservas pendientes próximas a expirar *@
-        foreach (var r in Model.Where(x => x.EstadoReservaCodigo == "PENDIENTE" && x.FechaExpiracion.HasValue && x.FechaExpiracion.Value >= ahora))
+        foreach (var r in Model.Reservas.Where(x => x.ExpiraEl.HasValue))
         {
             <div class="alert alert-warning py-2 px-3 mb-2 small rounded-3 border-0 shadow-sm d-flex align-items-center gap-2" role="alert">
                 <span>&#9888;</span>
-                <span>La reserva <strong>@r.CodigoReserva</strong> expira el <strong>@r.FechaExpiracion.Value.ToString("dd/MM/yyyy HH:mm")</strong>. Pague antes de esa hora para conservar sus asientos.</span>
+                <span>La reserva <strong>@r.CodigoReserva</strong> expira el <strong>@r.ExpiraEl.Value.ToString("dd/MM/yyyy HH:mm")</strong>. Pague antes de esa hora para conservar sus asientos.</span>
             </div>
         }
 
         <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
             <small class="text-muted">
-                <strong class="text-dark">@ViewBag.TotalRegistros</strong> @((int)ViewBag.TotalRegistros == 1 ? "reserva encontrada" : "reservas encontradas")
+                <strong class="text-dark">@Model.TotalRegistros</strong> @(Model.TotalRegistros == 1 ? "reserva encontrada" : "reservas encontradas")
             </small>
         </div>
 
@@ -214,46 +207,18 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var r in Model)
+                        @foreach (var r in Model.Reservas)
                         {
-                            // ---- Datos calculados de la reserva ----
-                            var tramos = r.ReservaPasajeroVuelo
-                                .Select(a => a.Vuelo).Distinct()
-                                .OrderBy(v => v.FechaOperacion).ThenBy(v => v.Frecuencia.HoraSalida)
-                                .ToList();
-                            var primerTramo = tramos.FirstOrDefault();
-                            var ultimoTramo = tramos.LastOrDefault();
-
-                            string fechaViaje = primerTramo != null ? primerTramo.FechaOperacion.ToString("dd/MM/yyyy") : "—";
-                            string ruta = primerTramo != null
-                                ? primerTramo.CiudadOrigen + " → " + ultimoTramo.CiudadDestino
-                                : "—";
-                            string escala = tramos.Count > 1 ? "Con escala en " + primerTramo.CiudadDestino : "Vuelo directo";
-                            int numPasajeros = r.ReservaPasajeroVuelo.Select(a => a.PasajeroId).Distinct().Count();
-
-                            bool vencida = r.EstadoReservaCodigo == "PENDIENTE" && r.FechaExpiracion.HasValue && r.FechaExpiracion.Value < ahora;
-                            string estadoReserva = vencida ? "EXPIRADA" : r.EstadoReservaCodigo;
-
-                            var compra = r.Compra.OrderByDescending(c => c.FechaCompra).FirstOrDefault();
-                            string estadoCompra = compra != null ? compra.EstadoCompraCodigo : "";
-
-                            bool tieneCheckIn = r.ReservaPasajeroVuelo.Any(a => a.CheckIn.Any(c => c.EstadoCheckInCodigo == "COMPLETADO"));
-                            bool vueloFuturo = primerTramo != null && primerTramo.FechaOperacion.Add(primerTramo.Frecuencia.HoraSalida) > ahora;
-
-                            bool puedePagar = estadoReserva == "PENDIENTE";
-                            // DP-08: se puede cancelar una reserva pendiente vigente o una confirmada sin check-in y con vuelo futuro
-                            bool puedeCancelar = puedePagar || (estadoReserva == "CONFIRMADA" && !tieneCheckIn && vueloFuturo);
-
                             <tr>
                                 <td class="ps-4 fw-bold text-dark">@r.CodigoReserva</td>
-                                <td>@fechaViaje</td>
+                                <td>@r.FechaViaje</td>
                                 <td>
-                                    <span class="fw-semibold text-dark">@ruta</span>
-                                    <small class="d-block text-muted" style="font-size: 0.75rem;">@escala</small>
+                                    <span class="fw-semibold text-dark">@r.Ruta</span>
+                                    <small class="d-block text-muted" style="font-size: 0.75rem;">@r.Escala</small>
                                 </td>
-                                <td class="text-center">@numPasajeros</td>
+                                <td class="text-center">@r.NumPasajeros</td>
                                 <td>
-                                    @switch (estadoReserva)
+                                    @switch (r.EstadoReserva)
                                     {
                                         case "PENDIENTE":<span class="estado-badge estado-pendiente">Pendiente</span> break;
                                         case "CONFIRMADA": <span class="estado-badge estado-confirmada">Confirmada</span> break;
@@ -262,7 +227,7 @@
                                     }
                                 </td>
                                 <td>
-                                    @switch (estadoCompra)
+                                    @switch (r.EstadoCompra)
                                     {
                                         case "PAGADA":<span class="estado-badge compra-pagada">Pagada</span> break;
                                         case "PENDIENTE": <span class="estado-badge compra-pendiente">Pendiente de pago</span> break;
@@ -275,13 +240,13 @@
                                         <a href="@Url.Action("Gestionar", "Reservas", new { id = r.ReservaId })" class="btn btn-outline-secondary btn-sm px-2 py-1">
                                             Ver detalle
                                         </a>
-                                        @if (puedePagar)
+                                        @if (r.PuedePagar)
                                         {
                                             <a href="@Url.Action("Pagar", "Compras", new { id = r.ReservaId })" class="btn btn-dark btn-sm px-2 py-1 fw-semibold">
                                                 Pagar
                                             </a>
                                         }
-                                        @if (puedeCancelar)
+                                        @if (r.PuedeCancelar)
                                         {
                                             <a href="@Url.Action("Gestionar", "Reservas", new { id = r.ReservaId })" class="btn btn-outline-danger btn-sm px-2 py-1">
                                                 Solicitar cancelación
@@ -298,39 +263,15 @@
 
         @* Tarjetas apiladas (móvil) *@
         <div class="d-flex flex-column gap-3 d-md-none mb-4">
-            @foreach (var r in Model)
+            @foreach (var r in Model.Reservas)
             {
-                var tramos = r.ReservaPasajeroVuelo
-                    .Select(a => a.Vuelo).Distinct()
-                    .OrderBy(v => v.FechaOperacion).ThenBy(v => v.Frecuencia.HoraSalida)
-                    .ToList();
-                var primerTramo = tramos.FirstOrDefault();
-                var ultimoTramo = tramos.LastOrDefault();
-
-                string fechaViaje = primerTramo != null ? primerTramo.FechaOperacion.ToString("dd/MM/yyyy") : "—";
-                string ruta = primerTramo != null
-                    ? primerTramo.CiudadOrigen + " → " + ultimoTramo.CiudadDestino
-                    : "—";
-                int numPasajeros = r.ReservaPasajeroVuelo.Select(a => a.PasajeroId).Distinct().Count();
-
-                bool vencida = r.EstadoReservaCodigo == "PENDIENTE" && r.FechaExpiracion.HasValue && r.FechaExpiracion.Value < ahora;
-                string estadoReserva = vencida ? "EXPIRADA" : r.EstadoReservaCodigo;
-
-                var compra = r.Compra.OrderByDescending(c => c.FechaCompra).FirstOrDefault();
-                string estadoCompra = compra != null ? compra.EstadoCompraCodigo : "";
-
-                bool tieneCheckIn = r.ReservaPasajeroVuelo.Any(a => a.CheckIn.Any(c => c.EstadoCheckInCodigo == "COMPLETADO"));
-                bool vueloFuturo = primerTramo != null && primerTramo.FechaOperacion.Add(primerTramo.Frecuencia.HoraSalida) > ahora;
-                bool puedePagar = estadoReserva == "PENDIENTE";
-                bool puedeCancelar = puedePagar || (estadoReserva == "CONFIRMADA" && !tieneCheckIn && vueloFuturo);
-
                 <div class="reserva-movil shadow-sm p-3">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <div>
                             <div class="fw-bold text-dark">@r.CodigoReserva</div>
-                            <small class="text-muted">@fechaViaje &middot; @numPasajeros @(numPasajeros == 1 ? "pasajero" : "pasajeros")</small>
+                            <small class="text-muted">@r.FechaViaje &middot; @r.NumPasajeros @(r.NumPasajeros == 1 ? "pasajero" : "pasajeros")</small>
                         </div>
-                        @switch (estadoReserva)
+                        @switch (r.EstadoReserva)
                         {
                             case "PENDIENTE":<span class="estado-badge estado-pendiente">Pendiente</span> break;
                             case "CONFIRMADA": <span class="estado-badge estado-confirmada">Confirmada</span> break;
@@ -338,10 +279,10 @@
                             default: <span class="estado-badge estado-expirada">Expirada</span>break;
                         }
                     </div>
-                    <div class="small text-dark fw-semibold mb-2">@ruta</div>
+                    <div class="small text-dark fw-semibold mb-2">@r.Ruta</div>
                     <div class="small mb-3">
                         <span class="text-secondary">Compra:</span>
-                        @switch (estadoCompra)
+                        @switch (r.EstadoCompra)
                         {
                             case "PAGADA":<span class="estado-badge compra-pagada">Pagada</span> break;
                             case "PENDIENTE": <span class="estado-badge compra-pendiente">Pendiente de pago</span> break;
@@ -351,11 +292,11 @@
                     </div>
                     <div class="d-grid gap-2">
                         <a href="@Url.Action("Gestionar", "Reservas", new { id = r.ReservaId })" class="btn btn-outline-secondary btn-sm">Ver detalle</a>
-                        @if (puedePagar)
+                        @if (r.PuedePagar)
                         {
                             <a href="@Url.Action("Pagar", "Compras", new { id = r.ReservaId })" class="btn btn-dark btn-sm fw-semibold">Pagar</a>
                         }
-                        @if (puedeCancelar)
+                        @if (r.PuedeCancelar)
                         {
                             <a href="@Url.Action("Gestionar", "Reservas", new { id = r.ReservaId })" class="btn btn-outline-danger btn-sm">Solicitar cancelación</a>
                         }
@@ -365,22 +306,22 @@
         </div>
 
         @* Paginación *@
-        if (totalPaginas > 1)
+        if (Model.TotalPaginas > 1)
         {
             <nav aria-label="Paginación de reservas">
                 <ul class="pagination pagination-sm justify-content-center">
-                    <li class="page-item @(pagina <= 1 ? "disabled" : "")">
-                        <a class="page-link text-dark" href="@Url.Action("MisReservas", "Reservas", new { desde = fDesde, hasta = fHasta, estado = fEstado, pagina = pagina - 1 })">&laquo; Anterior</a>
+                    <li class="page-item @(Model.Pagina <= 1 ? "disabled" : "")">
+                        <a class="page-link text-dark" href="@Url.Action("MisReservas", "Reservas", new { desde = Model.Desde, hasta = Model.Hasta, estado = Model.Estado, pagina = Model.Pagina - 1 })">&laquo; Anterior</a>
                     </li>
-                    @for (int p = 1; p <= totalPaginas; p++)
+                    @for (int p = 1; p <= Model.TotalPaginas; p++)
                     {
-                        <li class="page-item @(p == pagina ? "active" : "")">
-                            <a class="page-link @(p == pagina ? "bg-dark border-dark text-white" : "text-dark")"
-                               href="@Url.Action("MisReservas", "Reservas", new { desde = fDesde, hasta = fHasta, estado = fEstado, pagina = p })">@p</a>
+                        <li class="page-item @(p == Model.Pagina ? "active" : "")">
+                            <a class="page-link @(p == Model.Pagina ? "bg-dark border-dark text-white" : "text-dark")"
+                               href="@Url.Action("MisReservas", "Reservas", new { desde = Model.Desde, hasta = Model.Hasta, estado = Model.Estado, pagina = p })">@p</a>
                         </li>
                     }
-                    <li class="page-item @(pagina >= totalPaginas ? "disabled" : "")">
-                        <a class="page-link text-dark" href="@Url.Action("MisReservas", "Reservas", new { desde = fDesde, hasta = fHasta, estado = fEstado, pagina = pagina + 1 })">Siguiente &raquo;</a>
+                    <li class="page-item @(Model.Pagina >= Model.TotalPaginas ? "disabled" : "")">
+                        <a class="page-link text-dark" href="@Url.Action("MisReservas", "Reservas", new { desde = Model.Desde, hasta = Model.Hasta, estado = Model.Estado, pagina = Model.Pagina + 1 })">Siguiente &raquo;</a>
                     </li>
                 </ul>
             </nav>

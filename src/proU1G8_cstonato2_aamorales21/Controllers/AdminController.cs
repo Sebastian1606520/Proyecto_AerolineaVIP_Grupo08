@@ -587,54 +587,16 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("Index");
             }
 
-            consulta = (consulta == "reservas" || consulta == "pagos") ? consulta : "ocupacion";
-            estado = estado ?? "";
+            // El servicio consulta y calcula cada fila del reporte (ReportesViewModel)
+            var modelo = new ReporteServicio(db).ArmarReporte(consulta, desde, hasta, rutaId, aeronaveId, estado);
 
-            // Las consultas están en Negocio/ReporteServicio.cs
-            var servicio = new ReporteServicio(db);
-
-            DateTime fDesde, fHasta;
-            ViewBag.ErrorFiltro = servicio.NormalizarRango(desde, hasta, out fDesde, out fHasta);
-
-            if (consulta == "ocupacion")
-            {
-                Dictionary<int, int> reservados, ocupados;
-                ViewBag.Vuelos = servicio.OcupacionPorVuelo(fDesde, fHasta, rutaId, aeronaveId, estado, out reservados, out ocupados);
-                new VueloServicio(db).CargarDetalle((List<Vuelo>)ViewBag.Vuelos);   // ruta: vista SQL vw_VueloDetalle
-                ViewBag.Reservados = reservados;
-                ViewBag.OcupadosConfirmados = ocupados;
-
-                // Capacidad y disponibles desde la vista SQL vw_DisponibilidadVuelo
-                ViewBag.Disponibilidad = servicio.ObtenerDisponibilidad(fDesde, fHasta);
-            }
-
-            if (consulta == "reservas")
-            {
-                List<object[]> resumen;
-                ViewBag.Reservas = servicio.ReservasPorEstado(fDesde, fHasta, rutaId, aeronaveId, estado, out resumen);
-                ViewBag.ResumenReservas = resumen;
-            }
-
-            if (consulta == "pagos")
-            {
-                ViewBag.Compras = servicio.ComprasYPagos(fDesde, fHasta, rutaId, aeronaveId, estado);
-            }
-
-            // Listas de filtros
-            ViewBag.RutasLista = new SelectList(
+            // Listas desplegables de los filtros
+            modelo.RutasLista = new SelectList(
                 db.Ruta.ToList().Select(r => new { r.RutaId, Texto = r.Aeropuerto1.CodigoIATA + " → " + r.Aeropuerto.CodigoIATA }),
                 "RutaId", "Texto", rutaId);
-            ViewBag.AeronavesLista = new SelectList(db.Aeronave.OrderBy(a => a.Matricula).ToList(), "AeronaveId", "Matricula", aeronaveId);
+            modelo.AeronavesLista = new SelectList(db.Aeronave.OrderBy(a => a.Matricula).ToList(), "AeronaveId", "Matricula", aeronaveId);
 
-            ViewBag.Consulta = consulta;
-            ViewBag.Desde = fDesde.ToString("yyyy-MM-dd");
-            ViewBag.Hasta = fHasta.ToString("yyyy-MM-dd");
-            ViewBag.RutaId = rutaId;
-            ViewBag.AeronaveId = aeronaveId;
-            ViewBag.Estado = estado;
-            ViewBag.FechaCorte = DateTime.Now;
-
-            return View();
+            return View(modelo);
         }
 
         protected override void Dispose(bool disposing)

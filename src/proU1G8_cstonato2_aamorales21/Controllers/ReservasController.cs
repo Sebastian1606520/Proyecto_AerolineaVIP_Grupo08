@@ -442,84 +442,11 @@ namespace Con_Autenticacion.Controllers
         public ActionResult MisReservas(DateTime? desde, DateTime? hasta, string estado, int pagina = 1)
         {
             // Siempre se filtra por el usuario autenticado, nunca por un parámetro de la URL
-            string currentUserId = User.Identity.GetUserId() ?? User.Identity.Name;
+            string usuarioId = User.Identity.GetUserId() ?? User.Identity.Name;
 
-            // Rango de fechas inválido: se avisa junto al filtro y no se aplica el "hasta"
-            if (desde.HasValue && hasta.HasValue && hasta.Value.Date < desde.Value.Date)
-            {
-                ViewBag.ErrorFiltro = "La fecha «Hasta» no puede ser anterior a la fecha «Desde».";
-                hasta = null;
-            }
-
-            // Estados válidos del filtro
-            var estadosValidos = new List<string> { "PENDIENTE", "CONFIRMADA", "CANCELADA", "EXPIRADA" };
-            if (!string.IsNullOrEmpty(estado) && !estadosValidos.Contains(estado))
-            {
-                estado = null;
-            }
-
-            var reservas = db.Reserva
-                .Include(r => r.Compra)
-                .Include(r => r.ReservaPasajeroVuelo.Select(a => a.Vuelo.Frecuencia.Ruta.Aeropuerto))
-                .Include(r => r.ReservaPasajeroVuelo.Select(a => a.Vuelo.Frecuencia.Ruta.Aeropuerto1))
-                .Where(r => r.UsuarioId == currentUserId)
-                .OrderByDescending(r => r.FechaCreacion)
-                .ToList();
-
-            DateTime ahora = DateTime.Now;
-
-            // Filtro por fecha de viaje (fecha del primer tramo de la reserva)
-            if (desde.HasValue)
-            {
-                reservas = reservas
-                    .Where(r => r.ReservaPasajeroVuelo.Any() && r.ReservaPasajeroVuelo.Min(a => a.Vuelo.FechaOperacion) >= desde.Value.Date)
-                    .ToList();
-            }
-            if (hasta.HasValue)
-            {
-                reservas = reservas
-                    .Where(r => r.ReservaPasajeroVuelo.Any() && r.ReservaPasajeroVuelo.Min(a => a.Vuelo.FechaOperacion) <= hasta.Value.Date)
-                    .ToList();
-            }
-
-            // Filtro por estado (una reserva PENDIENTE con el plazo vencido se considera EXPIRADA - DP-07)
-            if (!string.IsNullOrEmpty(estado))
-            {
-                reservas = reservas.Where(r =>
-                {
-                    bool vencida = r.EstadoReservaCodigo == "PENDIENTE" && r.FechaExpiracion.HasValue && r.FechaExpiracion.Value < ahora;
-                    string estadoEfectivo = vencida ? "EXPIRADA" : r.EstadoReservaCodigo;
-                    return estadoEfectivo == estado;
-                }).ToList();
-            }
-
-            // Paginación simple (8 reservas por página)
-            int tamanoPagina = 8;
-            int totalRegistros = reservas.Count;
-            int totalPaginas = (int)Math.Ceiling(totalRegistros / (double)tamanoPagina);
-            if (totalPaginas < 1) totalPaginas = 1;
-            if (pagina < 1) pagina = 1;
-            if (pagina > totalPaginas) pagina = totalPaginas;
-
-            var paginaActual = reservas
-                .Skip((pagina - 1) * tamanoPagina)
-                .Take(tamanoPagina)
-                .ToList();
-
-            // Datos para conservar los filtros en la vista
-            ViewBag.Desde = desde.HasValue ? desde.Value.ToString("yyyy-MM-dd") : "";
-            ViewBag.Hasta = hasta.HasValue ? hasta.Value.ToString("yyyy-MM-dd") : "";
-            ViewBag.Estado = estado ?? "";
-            ViewBag.Pagina = pagina;
-            ViewBag.TotalPaginas = totalPaginas;
-            ViewBag.TotalRegistros = totalRegistros;
-            ViewBag.HayFiltros = desde.HasValue || hasta.HasValue || !string.IsNullOrEmpty(estado);
-            ViewBag.Ahora = ahora;
-
-            // Ruta de cada reserva desde la vista SQL vw_VueloDetalle
-            new VueloServicio(db).CargarDetalle(paginaActual.SelectMany(r => r.ReservaPasajeroVuelo.Select(a => a.Vuelo)));
-
-            return View(paginaActual);
+            // El servicio filtra, pagina y calcula cada fila (MisReservasViewModel)
+            var modelo = new ReservaServicio(db).ObtenerMisReservas(usuarioId, desde, hasta, estado, pagina);
+            return View(modelo);
         }
         // =========================================================================
         // PANTALLA 14: GESTIÓN DE RESERVAS Y CANCELACIONES (/Reservas/Gestionar/{id})
@@ -612,99 +539,6 @@ namespace Con_Autenticacion.Controllers
             }
             return RedirectToAction("Gestionar", new { id = id });
         }
-        // =========================================================================
-        // PANTALLA 15: CHECK-IN (/Reservas/CheckIn)
-        // =========================================================================
-
-        // La lógica del check-in está en Negocio/CheckInServicio.cs.
-        // Aquí solo se recibe la petición, se verifican permisos y se muestra el resultado.
-
-        // GET: /Reservas/CheckIn?codigo=RV00000006&documento=1710000015
-        [HttpGet]
-        public ActionResult CheckIn(string codigo, string documento)
-        {
-            codigo = (codigo ?? "").Trim().ToUpper();
-            documento = (documento ?? "").Trim().ToUpper();
-            ViewBag.Codigo = codigo;
-            ViewBag.Documento = documento;
-
-            // Paso 1: sin datos todavía, solo se muestra el formulario
-            if (codigo == "" && documento == "")
-            {
-                return View((Reserva)null);
-            }
-
-            var servicio = new CheckInServicio(db);
-
-            // Validación de formato en el servidor
-            string error = servicio.ValidarFormato(codigo, documento);
-            if (error != null)
-            {
-                ViewBag.ErrorBusqueda = error;
-                return View((Reserva)null);
-            }
-
-            // RG-37 + permisos (titular o Counter / Administrador / SuperUsuario)
-            var reserva = servicio.BuscarReserva(codigo, documento);
-            if (reserva == null || !PuedeGestionar(reserva))
-            {
-                // Mensaje neutral: no se revela si la reserva existe
-                ViewBag.ErrorBusqueda = "No se encontró una reserva con esos datos.";
-                return View((Reserva)null);
-            }
-
-            ViewBag.Elegibilidad = servicio.EvaluarReserva(reserva);
-
-            // Ruta de cada tramo desde la vista SQL vw_VueloDetalle
-            new VueloServicio(db).CargarDetalle(reserva.ReservaPasajeroVuelo.Select(a => a.Vuelo));
-            ViewBag.CodigosAsiento = servicio.ObtenerCodigosAsiento(reserva);
-            return View(reserva);
-        }
-
-        // POST: /Reservas/CheckIn  (Confirmar check-in de las asignaciones marcadas)
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult CheckIn(string codigo, string documento, List<int> asignaciones)
-        {
-            codigo = (codigo ?? "").Trim().ToUpper();
-            documento = (documento ?? "").Trim().ToUpper();
-
-            var servicio = new CheckInServicio(db);
-
-            var reserva = servicio.BuscarReserva(codigo, documento);
-            if (reserva == null || !PuedeGestionar(reserva))
-            {
-                TempData["Error"] = "No se encontró una reserva con esos datos.";
-                return RedirectToAction("CheckIn");
-            }
-
-            if (asignaciones == null || asignaciones.Count == 0)
-            {
-                TempData["Error"] = "Seleccione al menos un pasajero para registrar el check-in.";
-                return RedirectToAction("CheckIn", new { codigo = codigo, documento = documento });
-            }
-
-            var registrados = new List<string>();
-            var rechazados = new List<string>();
-
-            try
-            {
-                servicio.Registrar(reserva, asignaciones, registrados, rechazados);
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = "No se pudo registrar el check-in: " + MensajeInterno(ex);
-                return RedirectToAction("CheckIn", new { codigo = codigo, documento = documento });
-            }
-
-            if (registrados.Any())
-                TempData["Exito"] = "Check-in completado para " + string.Join(", ", registrados) + ".";
-            if (rechazados.Any())
-                TempData["Error"] = "No se pudo registrar el check-in de " + string.Join(", ", rechazados) + " porque ya no es elegible.";
-
-            return RedirectToAction("CheckIn", new { codigo = codigo, documento = documento });
-        }
-
         // =========================================================================
         // CRUD DE SCAFFOLDING (roles de permiso: Details, Create, Edit, Delete)
         // =========================================================================

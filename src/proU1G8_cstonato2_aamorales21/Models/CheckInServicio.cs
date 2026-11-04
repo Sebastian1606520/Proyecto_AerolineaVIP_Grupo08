@@ -79,6 +79,21 @@ namespace Con_Autenticacion.Negocio
             return "ELEGIBLE";
         }
 
+        // Asignaciones de la reserva ordenadas por tramo y pasajero (para mostrarlas)
+        public List<ReservaPasajeroVuelo> ObtenerAsignacionesOrdenadas(Reserva reserva)
+        {
+            return reserva.ReservaPasajeroVuelo
+                .OrderBy(a => a.Vuelo.FechaOperacion).ThenBy(a => a.Vuelo.Frecuencia.HoraSalida)
+                .ThenBy(a => a.Pasajero.Apellidos)
+                .ToList();
+        }
+
+        // Cuántas asignaciones pueden registrar check-in ahora
+        public static int ContarElegibles(Dictionary<int, string> elegibilidad)
+        {
+            return elegibilidad.Values.Count(e => e == "ELEGIBLE");
+        }
+
         // Elegibilidad de cada asignación (pasajero + vuelo) de la reserva
         public Dictionary<int, string> EvaluarReserva(Reserva reserva)
         {

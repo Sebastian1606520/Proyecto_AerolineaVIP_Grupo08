@@ -10,8 +10,7 @@
     var sel = ViewBag.Seleccionado as Con_Autenticacion.Models.Comprobante;
     // Encabezado del comprobante: vista SQL vw_ComprobanteDetalle
     var enc = ViewBag.Encabezado as Con_Autenticacion.Models.vw_ComprobanteDetalle;
-    bool hayPago = enc != null && enc.PagoId.HasValue
-                   && (enc.EstadoPagoCodigo == "APROBADO" || enc.EstadoPagoCodigo == "REVERSADO");
+    bool hayPago = (ViewBag.HayPago as bool?) ?? false;   // lo decide PagoServicio.TienePagoVigente
     var detalle = ViewBag.Detalle as List<Con_Autenticacion.Models.ReservaPasajeroVuelo>;
     var codigos = ViewBag.CodigosAsiento as Dictionary<int, string>;
 
@@ -130,7 +129,7 @@
             </button>
         </div>
         <div class="collapse d-md-block" id="panelFiltros">
-            <form id="formFiltros" action="@Url.Action("Comprobantes", "Compras")" method="get" class="p-4" novalidate>
+            <form id="formFiltros" action="@Url.Action("Index", "Comprobantes")" method="get" class="p-4" novalidate>
                 <div class="row g-3 align-items-end">
                     <div class="col-12 col-md-3">
                         <label for="desde" class="form-label small fw-semibold text-secondary mb-1">Desde (opcional)</label>
@@ -151,7 +150,7 @@
                     </div>
                     <div class="col-12 col-md-3 d-flex gap-2">
                         <button type="submit" class="btn btn-dark btn-sm px-4 py-2 fw-semibold flex-grow-1">Filtrar</button>
-                        <a href="@Url.Action("Comprobantes", "Compras")" class="btn btn-outline-secondary btn-sm px-3 py-2">Limpiar</a>
+                        <a href="@Url.Action("Index", "Comprobantes")" class="btn btn-outline-secondary btn-sm px-3 py-2">Limpiar</a>
                     </div>
                 </div>
                 <small id="errorRango" class="text-danger mt-2 @(ViewBag.ErrorFiltro == null ? "d-none" : "d-block")" role="alert" style="font-size: 0.8rem;">
@@ -169,7 +168,7 @@
             @if ((bool)ViewBag.HayFiltros)
             {
                 <h3 class="h5 fw-bold text-dark mt-3 mb-2">No hay comprobantes para los filtros seleccionados.</h3>
-                <a href="@Url.Action("Comprobantes", "Compras")" class="btn btn-outline-dark fw-semibold px-4 py-2 mt-2">Quitar filtros</a>
+                <a href="@Url.Action("Index", "Comprobantes")" class="btn btn-outline-dark fw-semibold px-4 py-2 mt-2">Quitar filtros</a>
             }
             else
             {
@@ -226,7 +225,7 @@
                                     }
                                 </td>
                                 <td class="text-end pe-4">
-                                    <a href="@Url.Action("Comprobantes", "Compras", new { desde = fDesde, hasta = fHasta, tipo = fTipo, ver = c.ComprobanteId })#vistaPrevia"
+                                    <a href="@Url.Action("Index", "Comprobantes", new { desde = fDesde, hasta = fHasta, tipo = fTipo, ver = c.ComprobanteId })#vistaPrevia"
                                        class="btn @(activa ? "btn-dark" : "btn-outline-secondary") btn-sm px-2 py-1">
                                         Visualizar
                                     </a>
@@ -249,7 +248,7 @@
             <h3 class="h6 fw-bold text-dark text-uppercase mb-0" style="letter-spacing: 0.5px;">Vista previa</h3>
             <div class="d-flex gap-2">
                 <button type="button" id="btnImprimir" class="btn btn-dark btn-sm px-3 fw-semibold">Imprimir / Guardar PDF</button>
-                <a href="@Url.Action("Comprobantes", "Compras", new { desde = fDesde, hasta = fHasta, tipo = fTipo })" class="btn btn-outline-secondary btn-sm px-3">Cerrar</a>
+                <a href="@Url.Action("Index", "Comprobantes", new { desde = fDesde, hasta = fHasta, tipo = fTipo })" class="btn btn-outline-secondary btn-sm px-3">Cerrar</a>
             </div>
         </div>
 

@@ -52,21 +52,21 @@
                     @if (esCliente)
                     {
                         <li class="nav-item">@Html.ActionLink("Mi cuenta", "MisReservas", "Reservas", new { area = "" }, new { @class = "nav-link" })</li>
-                        <li class="nav-item">@Html.ActionLink("Check-in", "CheckIn", "Reservas", new { area = "" }, new { @class = "nav-link" })</li>
-                        <li class="nav-item">@Html.ActionLink("Comprobantes", "Comprobantes", "Compras", new { area = "" }, new { @class = "nav-link" })</li>
+                        <li class="nav-item">@Html.ActionLink("Check-in", "Index", "CheckIn", new { area = "" }, new { @class = "nav-link" })</li>
+                        <li class="nav-item">@Html.ActionLink("Comprobantes", "Index", "Comprobantes", new { area = "" }, new { @class = "nav-link" })</li>
                     }
 
                     @if (esCounter)
                     {
                         <li class="nav-item">@Html.ActionLink("Atención a clientes", "Gestion", "Admin", new { area = "", tab = "reservas" }, new { @class = "nav-link" })</li>
-                        <li class="nav-item">@Html.ActionLink("Check-in", "CheckIn", "Reservas", new { area = "" }, new { @class = "nav-link" })</li>
-                        <li class="nav-item">@Html.ActionLink("Comprobantes", "Comprobantes", "Compras", new { area = "" }, new { @class = "nav-link" })</li>
+                        <li class="nav-item">@Html.ActionLink("Check-in", "Index", "CheckIn", new { area = "" }, new { @class = "nav-link" })</li>
+                        <li class="nav-item">@Html.ActionLink("Comprobantes", "Index", "Comprobantes", new { area = "" }, new { @class = "nav-link" })</li>
                     }
 
                     @if (esAdmin)
                     {
                         <li class="nav-item">@Html.ActionLink("Administración", "Index", "Admin", new { area = "" }, new { @class = "nav-link" })</li>
-                        <li class="nav-item">@Html.ActionLink("Comprobantes", "Comprobantes", "Compras", new { area = "" }, new { @class = "nav-link" })</li>
+                        <li class="nav-item">@Html.ActionLink("Comprobantes", "Index", "Comprobantes", new { area = "" }, new { @class = "nav-link" })</li>
                     }
                 </ul>
 

@@ -232,7 +232,7 @@ namespace Con_Autenticacion.Negocio
 
             // Motivo obligatorio (10-300 caracteres) para reservas pagadas
             motivo = (motivo ?? "").Trim();
-            if (reserva.EstadoReservaCodigo == "CONFIRMADA" && (motivo.Length < 10 || motivo.Length > 300))
+            if (reserva.RequiereMotivoCancelacion && (motivo.Length < 10 || motivo.Length > 300))
                 return "Describa el motivo de la cancelación (entre 10 y 300 caracteres).";
 
             var compra = reserva.Compra.OrderByDescending(c => c.FechaCompra).FirstOrDefault();
@@ -305,6 +305,131 @@ namespace Con_Autenticacion.Negocio
             }
             mensajeExito = "Reserva " + reserva.CodigoReserva + " cancelada. Los asientos fueron liberados." + detalle;
             return null;
+        }
+
+        // =====================================================================
+        // MIS RESERVAS (Pantalla 13) — arma el ViewModel con los datos ya calculados
+        // =====================================================================
+
+        public MisReservasViewModel ObtenerMisReservas(string usuarioId, DateTime? desde, DateTime? hasta,
+                                                       string estado, int pagina)
+        {
+            var modelo = new MisReservasViewModel();
+            DateTime ahora = DateTime.Now;
+
+            // Rango de fechas inválido: se avisa junto al filtro y no se aplica el "hasta"
+            if (desde.HasValue && hasta.HasValue && hasta.Value.Date < desde.Value.Date)
+            {
+                modelo.ErrorFiltro = "La fecha «Hasta» no puede ser anterior a la fecha «Desde».";
+                hasta = null;
+            }
+
+            // Estados válidos del filtro
+            var estadosValidos = new List<string> { "PENDIENTE", "CONFIRMADA", "CANCELADA", "EXPIRADA" };
+            if (!string.IsNullOrEmpty(estado) && !estadosValidos.Contains(estado))
+            {
+                estado = null;
+            }
+
+            // Siempre se filtra por el usuario autenticado, nunca por un parámetro de la URL
+            var reservas = db.Reserva
+                .Include(r => r.Compra)
+                .Include(r => r.ReservaPasajeroVuelo.Select(a => a.Vuelo.Frecuencia.Ruta.Aeropuerto))
+                .Include(r => r.ReservaPasajeroVuelo.Select(a => a.Vuelo.Frecuencia.Ruta.Aeropuerto1))
+                .Where(r => r.UsuarioId == usuarioId)
+                .OrderByDescending(r => r.FechaCreacion)
+                .ToList();
+
+            // Filtro por fecha de viaje (fecha del primer tramo de la reserva)
+            if (desde.HasValue)
+            {
+                reservas = reservas
+                    .Where(r => r.ReservaPasajeroVuelo.Any() && r.ReservaPasajeroVuelo.Min(a => a.Vuelo.FechaOperacion) >= desde.Value.Date)
+                    .ToList();
+            }
+            if (hasta.HasValue)
+            {
+                reservas = reservas
+                    .Where(r => r.ReservaPasajeroVuelo.Any() && r.ReservaPasajeroVuelo.Min(a => a.Vuelo.FechaOperacion) <= hasta.Value.Date)
+                    .ToList();
+            }
+
+            // Filtro por estado efectivo (una pendiente vencida es EXPIRADA - DP-07)
+            if (!string.IsNullOrEmpty(estado))
+            {
+                reservas = reservas.Where(r => EstadoEfectivo(r, ahora) == estado).ToList();
+            }
+
+            // Paginación simple (8 reservas por página)
+            int tamanoPagina = 8;
+            int totalRegistros = reservas.Count;
+            int totalPaginas = (int)Math.Ceiling(totalRegistros / (double)tamanoPagina);
+            if (totalPaginas < 1) totalPaginas = 1;
+            if (pagina < 1) pagina = 1;
+            if (pagina > totalPaginas) pagina = totalPaginas;
+
+            var paginaActual = reservas
+                .Skip((pagina - 1) * tamanoPagina)
+                .Take(tamanoPagina)
+                .ToList();
+
+            // Ruta de cada reserva desde la vista SQL vw_VueloDetalle
+            new VueloServicio(db).CargarDetalle(paginaActual.SelectMany(r => r.ReservaPasajeroVuelo.Select(a => a.Vuelo)));
+
+            foreach (var r in paginaActual)
+            {
+                modelo.Reservas.Add(ArmarResumen(r, ahora));
+            }
+
+            modelo.Desde = desde.HasValue ? desde.Value.ToString("yyyy-MM-dd") : "";
+            modelo.Hasta = hasta.HasValue ? hasta.Value.ToString("yyyy-MM-dd") : "";
+            modelo.Estado = estado ?? "";
+            modelo.HayFiltros = desde.HasValue || hasta.HasValue || !string.IsNullOrEmpty(estado);
+            modelo.Pagina = pagina;
+            modelo.TotalPaginas = totalPaginas;
+            modelo.TotalRegistros = totalRegistros;
+            return modelo;
+        }
+
+        // Estado efectivo de una reserva: una pendiente con el plazo vencido es EXPIRADA (DP-07)
+        private static string EstadoEfectivo(Reserva r, DateTime ahora)
+        {
+            bool vencida = r.EstadoReservaCodigo == "PENDIENTE" && r.FechaExpiracion.HasValue && r.FechaExpiracion.Value < ahora;
+            return vencida ? "EXPIRADA" : r.EstadoReservaCodigo;
+        }
+
+        // Datos de una fila de "Mis reservas": ruta, escala, estados y acciones permitidas
+        private static ReservaResumen ArmarResumen(Reserva r, DateTime ahora)
+        {
+            var tramos = r.ReservaPasajeroVuelo
+                .Select(a => a.Vuelo).Distinct()
+                .OrderBy(v => v.FechaOperacion).ThenBy(v => v.Frecuencia.HoraSalida)
+                .ToList();
+            var primerTramo = tramos.FirstOrDefault();
+            var ultimoTramo = tramos.LastOrDefault();
+
+            string estadoReserva = EstadoEfectivo(r, ahora);
+            var compra = r.Compra.OrderByDescending(c => c.FechaCompra).FirstOrDefault();
+
+            bool tieneCheckIn = r.ReservaPasajeroVuelo.Any(a => a.CheckIn.Any(c => c.EstadoCheckInCodigo == "COMPLETADO"));
+            bool vueloFuturo = primerTramo != null && primerTramo.FechaOperacion.Add(primerTramo.Frecuencia.HoraSalida) > ahora;
+            bool puedePagar = estadoReserva == "PENDIENTE";
+
+            return new ReservaResumen
+            {
+                ReservaId = r.ReservaId,
+                CodigoReserva = r.CodigoReserva,
+                FechaViaje = primerTramo != null ? primerTramo.FechaOperacion.ToString("dd/MM/yyyy") : "—",
+                Ruta = primerTramo != null ? primerTramo.CiudadOrigen + " → " + ultimoTramo.CiudadDestino : "—",
+                Escala = tramos.Count > 1 ? "Con escala en " + primerTramo.CiudadDestino : "Vuelo directo",
+                NumPasajeros = r.ReservaPasajeroVuelo.Select(a => a.PasajeroId).Distinct().Count(),
+                EstadoReserva = estadoReserva,
+                EstadoCompra = compra != null ? compra.EstadoCompraCodigo : "",
+                PuedePagar = puedePagar,
+                // DP-08: se cancela una pendiente vigente o una confirmada sin check-in y con vuelo futuro
+                PuedeCancelar = puedePagar || (estadoReserva == "CONFIRMADA" && !tieneCheckIn && vueloFuturo),
+                ExpiraEl = puedePagar ? r.FechaExpiracion : null
+            };
         }
     }
 }

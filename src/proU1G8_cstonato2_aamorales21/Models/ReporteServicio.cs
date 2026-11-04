@@ -141,5 +141,140 @@ namespace Con_Autenticacion.Negocio
 
             return compras.OrderByDescending(c => c.FechaCompra).ToList();
         }
+
+        // =====================================================================
+        // PANTALLA 21 — arma el ViewModel con los datos ya calculados
+        // =====================================================================
+
+        public ReportesViewModel ArmarReporte(string consulta, DateTime? desde, DateTime? hasta,
+                                              int? rutaId, int? aeronaveId, string estado)
+        {
+            var modelo = new ReportesViewModel
+            {
+                Consulta = (consulta == "reservas" || consulta == "pagos") ? consulta : "ocupacion",
+                RutaId = rutaId,
+                AeronaveId = aeronaveId,
+                Estado = estado ?? "",
+                FechaCorte = DateTime.Now
+            };
+
+            DateTime fDesde, fHasta;
+            modelo.ErrorFiltro = NormalizarRango(desde, hasta, out fDesde, out fHasta);
+            modelo.Desde = fDesde.ToString("yyyy-MM-dd");
+            modelo.Hasta = fHasta.ToString("yyyy-MM-dd");
+
+            if (modelo.Consulta == "ocupacion")
+                ArmarOcupacion(modelo, fDesde, fHasta);
+            else if (modelo.Consulta == "reservas")
+                ArmarReservas(modelo, fDesde, fHasta);
+            else
+                ArmarPagos(modelo, fDesde, fHasta);
+
+            return modelo;
+        }
+
+        // Ocupación: vuelos (ruta desde vw_VueloDetalle) + capacidad y disponibles (vw_DisponibilidadVuelo)
+        private void ArmarOcupacion(ReportesViewModel modelo, DateTime fDesde, DateTime fHasta)
+        {
+            Dictionary<int, int> reservados, ocupados;
+            var vuelos = OcupacionPorVuelo(fDesde, fHasta, modelo.RutaId, modelo.AeronaveId, modelo.Estado, out reservados, out ocupados);
+            new VueloServicio(db).CargarDetalle(vuelos);
+            var disponibilidad = ObtenerDisponibilidad(fDesde, fHasta);
+
+            foreach (var v in vuelos)
+            {
+                vw_DisponibilidadVuelo dv;
+                disponibilidad.TryGetValue(v.VueloId, out dv);
+                int capacidad = dv != null ? dv.Capacidad : 0;
+                int res = reservados.ContainsKey(v.VueloId) ? reservados[v.VueloId] : 0;
+                int ocu = ocupados.ContainsKey(v.VueloId) ? ocupados[v.VueloId] : 0;
+                int disp = (dv != null && dv.Disponibles.HasValue) ? dv.Disponibles.Value : 0;
+
+                modelo.Ocupacion.Add(new FilaOcupacion
+                {
+                    CodigoVuelo = v.CodigoVuelo,
+                    Fecha = v.FechaOperacion.ToString("dd/MM/yyyy"),
+                    Hora = v.Frecuencia.HoraSalida.ToString(@"hh\:mm"),
+                    Ruta = v.CodigoOrigen + " → " + v.CodigoDestino,
+                    Aeronave = v.Aeronave != null ? v.Aeronave.Matricula : "Sin asignar",
+                    Capacidad = capacidad > 0 ? (int?)capacidad : null,
+                    Reservados = res,
+                    Ocupados = ocu,
+                    Disponibles = capacidad > 0 ? (int?)disp : null,
+                    Estado = v.EstadoVueloCodigo
+                });
+
+                modelo.TotalCapacidad += capacidad;
+                modelo.TotalReservados += res;
+                modelo.TotalOcupados += ocu;
+            }
+            modelo.TotalDisponibles = modelo.TotalCapacidad - modelo.TotalReservados - modelo.TotalOcupados;
+        }
+
+        // Reservas por estado: resumen y detalle
+        private void ArmarReservas(ReportesViewModel modelo, DateTime fDesde, DateTime fHasta)
+        {
+            List<object[]> resumen;
+            var reservas = ReservasPorEstado(fDesde, fHasta, modelo.RutaId, modelo.AeronaveId, modelo.Estado, out resumen);
+
+            foreach (var fila in resumen)
+            {
+                modelo.ResumenReservas.Add(new FilaResumenReservas
+                {
+                    Estado = (string)fila[0],
+                    Reservas = (int)fila[1],
+                    Pasajeros = (int)fila[2],
+                    Importe = (decimal)fila[3]
+                });
+            }
+
+            foreach (var r in reservas)
+            {
+                var primerVuelo = r.ReservaPasajeroVuelo.Select(a => a.Vuelo).OrderBy(v => v.FechaOperacion).FirstOrDefault();
+                var compra = r.Compra.OrderByDescending(c => c.FechaCompra).FirstOrDefault();
+
+                modelo.Reservas.Add(new FilaReserva
+                {
+                    ReservaId = r.ReservaId,
+                    CodigoReserva = r.CodigoReserva,
+                    Creada = r.FechaCreacion.ToString("dd/MM/yyyy HH:mm"),
+                    FechaViaje = primerVuelo != null ? primerVuelo.FechaOperacion.ToString("dd/MM/yyyy") : "—",
+                    Pasajeros = r.ReservaPasajeroVuelo.Select(a => a.PasajeroId).Distinct().Count(),
+                    Estado = r.EstadoReservaCodigo,
+                    EstadoCompra = compra != null ? compra.EstadoCompraCodigo : "Sin compra",
+                    Importe = r.ReservaPasajeroVuelo.Sum(a => a.ImporteTramo)
+                });
+            }
+        }
+
+        // Compras y pagos simulados, con la conciliación de cada compra
+        private void ArmarPagos(ReportesViewModel modelo, DateTime fDesde, DateTime fHasta)
+        {
+            var compras = ComprasYPagos(fDesde, fHasta, modelo.RutaId, modelo.AeronaveId, modelo.Estado);
+
+            foreach (var c in compras)
+            {
+                decimal aprobado = c.Pago.Where(p => p.EstadoPagoCodigo == "APROBADO").Sum(p => p.Importe);
+                var ultimo = c.Pago.OrderByDescending(p => p.FechaPago).FirstOrDefault();
+
+                modelo.Pagos.Add(new FilaPago
+                {
+                    CodigoReserva = c.Reserva.CodigoReserva,
+                    FechaCompra = c.FechaCompra.ToString("dd/MM/yyyy HH:mm"),
+                    EstadoCompra = c.EstadoCompraCodigo,
+                    Importe = c.Importe,
+                    Aprobado = aprobado,
+                    Rechazos = c.Pago.Count(p => p.EstadoPagoCodigo == "RECHAZADO"),
+                    UltimoPago = ultimo != null ? ultimo.EstadoPagoCodigo + " · " + ultimo.MarcaTarjetaCodigo + " **** " + ultimo.UltimosCuatroDigitos : null,
+                    UltimoPagoOperacion = ultimo != null ? ultimo.CodigoOperacion : null,
+                    // Una compra PAGADA debe tener un pago aprobado por el mismo importe;
+                    // una ANULADA o PENDIENTE no debe tener pagos aprobados vigentes
+                    Cuadra = c.EstadoCompraCodigo == "PAGADA" ? aprobado == c.Importe : aprobado == 0
+                });
+
+                modelo.TotalCompras += c.Importe;
+                modelo.TotalAprobado += aprobado;
+            }
+        }
     }
 }

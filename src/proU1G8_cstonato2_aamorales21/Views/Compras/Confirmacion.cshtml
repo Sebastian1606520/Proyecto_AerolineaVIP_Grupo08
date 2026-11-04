@@ -404,7 +404,7 @@
 
             @if ((bool)ViewBag.EsPagada && (ViewBag.ComprobanteId as int?).HasValue)
             {
-                <a href="@Url.Action("Comprobantes", "Compras", new { ver = ((int?)ViewBag.ComprobanteId).Value })#vistaPrevia" class="btn btn-dark px-4 py-2 fw-semibold small rounded-2 shadow-sm">
+                <a href="@Url.Action("Index", "Comprobantes", new { ver = ((int?)ViewBag.ComprobanteId).Value })#vistaPrevia" class="btn btn-dark px-4 py-2 fw-semibold small rounded-2 shadow-sm">
                     Consultar comprobante oficial &rarr;
                 </a>
             }
