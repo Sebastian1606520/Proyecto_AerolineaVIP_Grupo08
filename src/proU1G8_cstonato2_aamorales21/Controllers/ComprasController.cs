@@ -1,4 +1,5 @@
 ﻿using Con_Autenticacion.Models;
+using Con_Autenticacion.Negocio;
 using Microsoft.AspNet.Identity;
 using System;
 using System.Collections.Generic;
@@ -53,42 +54,6 @@ namespace Con_Autenticacion.Controllers
             return PuedePagar(r) || User.IsInRole("Administrador") || User.IsInRole("SuperUsuario");
         }
 
-        // Devuelve null si la reserva puede pagarse, o el motivo por el que no
-        // Devuelve null si la reserva puede pagarse, o el motivo por el que no.
-        // Si el plazo de retención venció, la reserva pasa a EXPIRADA y sus asientos a LIBERADA (DP-07)
-        private string MotivoNoPagable(Reserva r)
-        {
-            if (r.EstadoReservaCodigo == "CONFIRMADA")
-                return "Esta reserva ya fue pagada.";
-
-            if (r.EstadoReservaCodigo != "PENDIENTE")
-                return "Esta reserva no se encuentra pendiente de pago.";
-
-            if (r.FechaExpiracion.HasValue && r.FechaExpiracion.Value < DateTime.Now)
-            {
-                r.EstadoReservaCodigo = "EXPIRADA";
-                foreach (var asig in r.ReservaPasajeroVuelo.Where(a => a.EstadoAsignacionCodigo == "PENDIENTE"))
-                {
-                    asig.EstadoAsignacionCodigo = "LIBERADA";
-                }
-                db.SaveChanges();   // libera los asientos en la base
-
-                return "El plazo de retención para pagar esta reserva venció el "
-                     + r.FechaExpiracion.Value.ToString("dd/MM/yyyy HH:mm")
-                     + ". Los asientos fueron liberados; realice una nueva reserva.";
-            }
-
-            if (!r.ReservaPasajeroVuelo.Any())
-                return "La reserva no tiene pasajeros asignados.";
-
-            return null;
-        }
-
-        private decimal TotalReserva(Reserva r)
-        {
-            return r.ReservaPasajeroVuelo.Sum(a => (decimal?)a.ImporteTramo) ?? 0m;
-        }
-
         // Datos del itinerario completo (uno o varios tramos) para las vistas
         private void CargarResumen(Reserva r)
         {
@@ -120,7 +85,7 @@ namespace Con_Autenticacion.Controllers
             ViewBag.TramosIds = tramos.Select(t => t.VueloId).ToList();
             ViewBag.NumTramos = tramos.Count;
             ViewBag.NumPasajeros = r.ReservaPasajeroVuelo.Select(a => a.PasajeroId).Distinct().Count();
-            ViewBag.TotalPagar = TotalReserva(r);
+            ViewBag.TotalPagar = PagoServicio.TotalReserva(r);
         }
 
         // Vuelve a la pantalla 11 con un mensaje (los datos de tarjeta nunca se reenvían)
@@ -143,7 +108,7 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("MisReservas", "Reservas");
             }
 
-            string motivo = MotivoNoPagable(reserva);
+            string motivo = new PagoServicio(db).MotivoNoPagable(reserva);
             if (motivo != null)
             {
                 TempData["Error"] = motivo;
@@ -157,6 +122,7 @@ namespace Con_Autenticacion.Controllers
         }
 
         // POST: /Compras/Pagar  (pago SIMULADO, DP-06)
+        // La lógica del pago está en Negocio/PagoServicio.cs
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Pagar(int reservaId, string metodoPago, string marcaTarjeta, string numeroTarjeta,
@@ -169,8 +135,10 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("MisReservas", "Reservas");
             }
 
+            var servicio = new PagoServicio(db);
+
             // 1. Revalidar la reserva (RG-16 y RG-17: no se paga dos veces ni una reserva expirada)
-            string motivo = MotivoNoPagable(reserva);
+            string motivo = servicio.MotivoNoPagable(reserva);
             if (motivo != null)
             {
                 TempData["Error"] = motivo;
@@ -179,122 +147,12 @@ namespace Con_Autenticacion.Controllers
                     : RedirectToAction("MisReservas", "Reservas");
             }
 
-            // 2. Validación del formulario en el servidor (DP-06)
-            var metodo = db.MetodoPago.Find(metodoPago ?? "");
-            if (metodo == null || !metodo.Activo)
-                return VolverAPagar(reservaId, "Seleccione el método de pago.");
-
-            var marca = db.MarcaTarjeta.Find(marcaTarjeta ?? "");
-            if (marca == null || !marca.Activa)
-                return VolverAPagar(reservaId, "Seleccione la marca de la tarjeta.");
-
-            string numLimpio = (numeroTarjeta ?? "").Replace(" ", "").Trim();
-            if (numLimpio.Length != marca.LongitudNumero || !numLimpio.All(char.IsDigit))
-                return VolverAPagar(reservaId, "El número de tarjeta debe tener " + marca.LongitudNumero + " dígitos para " + marca.Nombre + ".");
-
-            string titular = (titularTarjeta ?? "").Trim();
-            if (!System.Text.RegularExpressions.Regex.IsMatch(titular, @"^[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]{2,100}$"))
-                return VolverAPagar(reservaId, "Ingrese el nombre del titular (solo letras y espacios).");
-
-            var mVence = System.Text.RegularExpressions.Regex.Match((vencimiento ?? "").Trim(), @"^(0[1-9]|1[0-2])/(\d{2})$");
-            if (!mVence.Success)
-                return VolverAPagar(reservaId, "El vencimiento debe tener el formato MM/AA.");
-
-            var primerDiaMesSiguiente = new DateTime(2000 + int.Parse(mVence.Groups[2].Value), int.Parse(mVence.Groups[1].Value), 1).AddMonths(1);
-            if (primerDiaMesSiguiente <= DateTime.Today)
-                return VolverAPagar(reservaId, "La tarjeta está vencida.");
-
-            if (!System.Text.RegularExpressions.Regex.IsMatch((codigoSeguridad ?? "").Trim(), @"^\d{" + marca.LongitudCodigoSeguridad + "}$"))
-                return VolverAPagar(reservaId, "El código de seguridad debe tener " + marca.LongitudCodigoSeguridad + " dígitos.");
-
-            // 3. Rechazo simulado (DP-06): termina en 0000. La reserva sigue PENDIENTE para reintentar
-            if (numLimpio.EndsWith("0000"))
-                return VolverAPagar(reservaId, "Pago simulado rechazado. La reserva sigue pendiente; puede intentar con otra tarjeta.");
-
-            // 4. Pago aprobado: todo en UNA transacción (RG-18)
-            decimal total = TotalReserva(reserva);
-            string ultimos4 = numLimpio.Substring(numLimpio.Length - 4);
-            string opSimulada = "SIM-" + (DateTime.Now.Ticks % 100000000).ToString("D8");
-
-            using (var transaccion = db.Database.BeginTransaction())
+            // 2. Validar los datos de la tarjeta y registrar el pago (todo en el servicio)
+            string error = servicio.ProcesarPago(reserva, metodoPago, marcaTarjeta, numeroTarjeta,
+                                                 titularTarjeta, vencimiento, codigoSeguridad);
+            if (error != null)
             {
-                try
-                {
-                    // A. Compra (se reutiliza si ya existía una PENDIENTE)
-                    var compra = reserva.Compra.FirstOrDefault(c => c.EstadoCompraCodigo == "PENDIENTE");
-                    if (compra == null)
-                    {
-                        compra = new Compra
-                        {
-                            ReservaId = reserva.ReservaId,
-                            FechaCompra = DateTime.Now,
-                            Importe = total,
-                            MonedaCodigo = "USD",
-                            EstadoCompraCodigo = "PAGADA",
-                            ClaveIdempotencia = Guid.NewGuid()
-                        };
-                        db.Compra.Add(compra);
-                    }
-                    else
-                    {
-                        compra.Importe = total;
-                        compra.MonedaCodigo = "USD";
-                        compra.EstadoCompraCodigo = "PAGADA";
-                    }
-                    db.SaveChanges();   // genera CompraId
-
-                    // B. Pago simulado (sin número completo, vencimiento ni código de seguridad)
-                    db.Pago.Add(new Pago
-                    {
-                        CompraId = compra.CompraId,
-                        MetodoPagoCodigo = metodo.Codigo,
-                        MarcaTarjetaCodigo = marca.Codigo,
-                        UltimosCuatroDigitos = ultimos4,
-                        NombreTitular = titular.ToUpper(),
-                        CodigoOperacion = opSimulada,
-                        Importe = total,
-                        FechaPago = DateTime.Now,
-                        EsSimulado = true,
-                        EstadoPagoCodigo = "APROBADO",
-                        MensajeResultado = "Pago simulado aprobado."
-                    });
-
-                    // C. Reserva y asientos confirmados (asientos en rojo)
-                    reserva.EstadoReservaCodigo = "CONFIRMADA";
-                    foreach (var rp in reserva.ReservaPasajeroVuelo.Where(a => a.EstadoAsignacionCodigo == "PENDIENTE"))
-                    {
-                        rp.EstadoAsignacionCodigo = "CONFIRMADA";
-                    }
-
-                    // D. Comprobantes académicos (DP-05)
-                    int numConfirmacion = db.Comprobante.Count(c => c.TipoComprobanteCodigo == "CONFIRMACION") + 1;
-                    int numVenta = db.Comprobante.Count(c => c.TipoComprobanteCodigo == "FACTURA") + 1;
-
-                    db.Comprobante.Add(new Comprobante
-                    {
-                        CompraId = compra.CompraId,
-                        TipoComprobanteCodigo = "CONFIRMACION",
-                        NumeroComprobante = "CNF-" + numConfirmacion.ToString("D6"),
-                        FechaEmision = DateTime.Now,
-                        EstadoComprobanteCodigo = "EMITIDO"
-                    });
-                    db.Comprobante.Add(new Comprobante
-                    {
-                        CompraId = compra.CompraId,
-                        TipoComprobanteCodigo = "FACTURA",
-                        NumeroComprobante = "ACAD-" + numVenta.ToString("D6"),
-                        FechaEmision = DateTime.Now,
-                        EstadoComprobanteCodigo = "EMITIDO"
-                    });
-
-                    db.SaveChanges();
-                    transaccion.Commit();   // un solo Commit
-                }
-                catch (Exception ex)
-                {
-                    transaccion.Rollback();
-                    return VolverAPagar(reservaId, "No se pudo procesar el pago: " + MensajeInterno(ex));
-                }
+                return VolverAPagar(reservaId, error);
             }
 
             return RedirectToAction("Confirmacion", new { id = reservaId });
@@ -323,7 +181,7 @@ namespace Con_Autenticacion.Controllers
             ViewBag.EsPagada = esPagada;
             ViewBag.EsRechazada = esRechazada;
             ViewBag.EsSoloReserva = !esPagada && !esRechazada && reserva.EstadoReservaCodigo == "PENDIENTE" && !vencida;
-            ViewBag.PuedePagar = MotivoNoPagable(reserva) == null && PuedePagar(reserva);
+            ViewBag.PuedePagar = new PagoServicio(db).MotivoNoPagable(reserva) == null && PuedePagar(reserva);
 
             ViewBag.EstadoReservaTexto = vencida ? "EXPIRADA" : reserva.EstadoReservaCodigo;
             ViewBag.EstadoCompraTexto = compra != null ? compra.EstadoCompraCodigo : "SIN COMPRA";

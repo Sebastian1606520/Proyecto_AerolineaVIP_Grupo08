@@ -7,6 +7,7 @@ using System.Net;
 using System.Web;
 using System.Web.Mvc;
 using Con_Autenticacion.Models;
+using Con_Autenticacion.Negocio;
 
 namespace Con_Autenticacion.Controllers
 {
@@ -47,108 +48,28 @@ namespace Con_Autenticacion.Controllers
         }
 
         // GET: Vuelos/Resultados (Pantalla 6)
+        // La lógica de la búsqueda está en Negocio/VueloServicio.cs
         [HttpGet]
         [AllowAnonymous]
         public ActionResult Resultados(int? origenId, int? destinoId, DateTime? fecha, int pasajeros = 1)
         {
-            // 1. Validaciones básicas de entrada
-            if (!origenId.HasValue || !destinoId.HasValue || !fecha.HasValue || origenId.Value == destinoId.Value)
+            var busqueda = new VueloServicio(db).BuscarVuelos(origenId, destinoId, fecha);
+            if (busqueda.Error != null)
             {
-                TempData["Error"] = (origenId.HasValue && destinoId.HasValue && origenId.Value == destinoId.Value)
-                    ? "El aeropuerto de origen y destino deben ser diferentes."
-                    : "Debe especificar origen, destino y fecha para consultar vuelos.";
+                TempData["Error"] = busqueda.Error;
                 return RedirectToAction("Buscar");
             }
 
-            DateTime fechaBusqueda = fecha.Value.Date;
-            int totalPasajeros = Math.Max(1, Math.Min(pasajeros, 7));
-
-            var aeroOrigen = db.Aeropuerto.Find(origenId.Value);
-            var aeroDestino = db.Aeropuerto.Find(destinoId.Value);
-
-            if (aeroOrigen == null || aeroDestino == null)
-            {
-                TempData["Error"] = "Uno de los aeropuertos seleccionados no es válido.";
-                return RedirectToAction("Buscar");
-            }
-
-            string iataO = aeroOrigen.CodigoIATA;
-            string iataD = aeroDestino.CodigoIATA;
-
-            // 2. Determinar si es la ruta especial con escala dominical UIO <-> GPS
-            bool esIdaGalapagos = (iataO == "UIO" && iataD == "GPS");
-            bool esRetornoGalapagos = (iataO == "GPS" && iataD == "UIO");
-            bool esItinerario = esIdaGalapagos || esRetornoGalapagos;
-            bool esDomingo = fechaBusqueda.DayOfWeek == DayOfWeek.Sunday;
-
-            if (esItinerario && !esDomingo)
-            {
-                TempData["Error"] = "La ruta con escala técnica Quito – Galápagos opera exclusivamente los domingos.";
-                return RedirectToAction("Buscar");
-            }
-
-            if (!esItinerario && esDomingo)
-            {
-                TempData["Error"] = "Los vuelos directos operan de lunes a sábado. Los domingos están reservados para Galápagos.";
-                return RedirectToAction("Buscar");
-            }
-
-            // 3. Consulta base: todos los vuelos de la fecha. Los cancelados, sin aeronave, sin cupo
-            //    o ya partidos se muestran igual, y la vista los marca como no disponibles (EsVendible)
-            int oId = origenId.Value;
-            int dId = destinoId.Value;
-
-            var consulta = db.Vuelo
-                .Include(v => v.Frecuencia.Ruta.Aeropuerto)
-                .Include(v => v.Frecuencia.Ruta.Aeropuerto1)
-                .Include(v => v.Aeronave)
-                .Include(v => v.ReservaPasajeroVuelo.Select(r => r.Reserva))
-                .Where(v => v.FechaOperacion == fechaBusqueda);
-
-            List<Vuelo> vuelosResultado = new List<Vuelo>();
-
-            if (esItinerario)
-            {
-                // Tramo 1: origen → GYE   ·   Tramo 2: GYE → destino   (mismo domingo)
-                // Se compara por Id (AeropuertoOrigenId / AeropuertoDestinoId) para no depender de
-                // las navegaciones del .edmx (Aeropuerto = DESTINO, Aeropuerto1 = ORIGEN)
-                int gyeId = db.Aeropuerto.Where(a => a.CodigoIATA == "GYE").Select(a => a.AeropuertoId).FirstOrDefault();
-
-                var vuelosDia = consulta.OrderBy(v => v.Frecuencia.HoraSalida).ToList();
-
-                var tramo1 = vuelosDia.FirstOrDefault(v => v.Frecuencia.Ruta.AeropuertoOrigenId == oId
-                                                        && v.Frecuencia.Ruta.AeropuertoDestinoId == gyeId);
-                var tramo2 = vuelosDia.FirstOrDefault(v => v.Frecuencia.Ruta.AeropuertoOrigenId == gyeId
-                                                        && v.Frecuencia.Ruta.AeropuertoDestinoId == dId);
-
-                // El itinerario solo se ofrece completo (DP-09: los tramos no se venden sueltos)
-                if (tramo1 != null && tramo2 != null)
-                {
-                    vuelosResultado.Add(tramo1);
-                    vuelosResultado.Add(tramo2);
-                }
-            }
-            else
-            {
-                // Vuelos directos de lunes a sábado (los tramos del domingo no se venden sueltos)
-                vuelosResultado = consulta
-                    .Where(v => v.Frecuencia.DiaSemana != 7
-                             && v.Frecuencia.Ruta.AeropuertoOrigenId == oId
-                             && v.Frecuencia.Ruta.AeropuertoDestinoId == dId)
-                    .OrderBy(v => v.Frecuencia.HoraSalida)
-                    .ToList();
-            }
-
-            // 4. Parámetros para la vista
-            ViewBag.EsItinerarioEscala = esItinerario;
+            // Parámetros para la vista
+            ViewBag.EsItinerarioEscala = busqueda.EsItinerario;
             ViewBag.OrigenId = origenId.Value;
             ViewBag.DestinoId = destinoId.Value;
-            ViewBag.CiudadOrigen = $"{aeroOrigen.Localidad} ({iataO})";
-            ViewBag.CiudadDestino = $"{aeroDestino.Localidad} ({iataD})";
-            ViewBag.Fecha = fechaBusqueda;
-            ViewBag.Pasajeros = totalPasajeros;
+            ViewBag.CiudadOrigen = $"{busqueda.Origen.Localidad} ({busqueda.Origen.CodigoIATA})";
+            ViewBag.CiudadDestino = $"{busqueda.Destino.Localidad} ({busqueda.Destino.CodigoIATA})";
+            ViewBag.Fecha = busqueda.Fecha;
+            ViewBag.Pasajeros = Math.Max(1, Math.Min(pasajeros, 7));
 
-            return View(vuelosResultado);
+            return View(busqueda.Vuelos);
         }
 
         // GET: Vuelos/Disponibilidad/5 (Pantalla 7)
