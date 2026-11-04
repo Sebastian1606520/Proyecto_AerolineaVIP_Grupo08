@@ -61,7 +61,12 @@ namespace Con_Autenticacion.Controllers
             // Pantalla 2 (punto 18): si ya hay sesión, redirigir a su área
             if (User.Identity.IsAuthenticated)
             {
-                return RedirigirPorRol(returnUrl);
+                // Ya tiene sesión: si llega con ReturnUrl es porque su rol no tiene permiso para esa página
+                if (!string.IsNullOrEmpty(returnUrl))
+                {
+                    TempData["Error"] = "Error de acceso: su usuario no tiene permisos para esa sección.";
+                }
+                return RedirigirPorRol(null);   // a su área, sin volver a la página prohibida
             }
 
             ViewBag.ReturnUrl = returnUrl;
@@ -204,7 +209,13 @@ namespace Con_Autenticacion.Controllers
 
             if (ModelState.IsValid)
             {
-                var user = new ApplicationUser { UserName = model.UserName, Email = model.Email };
+                var user = new ApplicationUser
+                {
+                    UserName = model.UserName,
+                    Email = model.Email,
+                    Nombres = model.Nombres.Trim(),
+                    Apellidos = model.Apellidos.Trim()
+                };
                 var result = await UserManager.CreateAsync(user, model.Password);
 
                 if (result.Succeeded)
@@ -220,6 +231,11 @@ namespace Con_Autenticacion.Controllers
                     {
                         // Si el rol aún no existe en la BD, no frena la creación del usuario
                     }
+                    if (User.Identity.IsAuthenticated && User.IsInRole("SuperUsuario"))
+                    {
+                        TempData["Exito"] = "Usuario " + user.UserName + " creado con rol " + model.Rol + ".";
+                        return RedirectToAction("Gestion", "Admin", new { tab = "usuarios" });
+                    }
 
                     await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
                     return RedirectToAction("Index", "Home");
@@ -227,6 +243,20 @@ namespace Con_Autenticacion.Controllers
 
                 AddErrors(result);
             }
+
+            var rolesDisponibles = new List<SelectListItem>();
+            if (User.Identity.IsAuthenticated && User.IsInRole("SuperUsuario"))
+            {
+                rolesDisponibles.Add(new SelectListItem { Value = "Cliente", Text = "Cliente" });
+                rolesDisponibles.Add(new SelectListItem { Value = "Counter", Text = "Counter" });
+                rolesDisponibles.Add(new SelectListItem { Value = "Administrador", Text = "Administrador" });
+                rolesDisponibles.Add(new SelectListItem { Value = "SuperUsuario", Text = "SuperUsuario" });
+            }
+            else
+            {
+                rolesDisponibles.Add(new SelectListItem { Value = "Cliente", Text = "Cliente", Selected = true });
+            }
+            ViewBag.RolesDisponibles = rolesDisponibles;
 
             return View(model);
         }
@@ -265,35 +295,56 @@ namespace Con_Autenticacion.Controllers
         [ValidateAntiForgeryToken]
         public async System.Threading.Tasks.Task<ActionResult> ForgotPassword(ForgotPasswordViewModel model)
         {
-            if (ModelState.IsValid)
+            if (User.Identity.IsAuthenticated)
             {
-                // Buscar el usuario por correo o nombre de usuario
-                var user = await UserManager.FindByEmailAsync(model.Email) ?? await UserManager.FindByNameAsync(model.Email);
+                return RedirectToAction("Index", "Home");
+            }
 
-                if (user == null)
-                {
-                    ViewBag.MostrarModal = true;
-                    ViewBag.ModalTipo = "error";
-                    ViewBag.ModalTitulo = "Usuario no registrado";
-                    ViewBag.ModalMensaje = "No se encontró ninguna cuenta asociada al correo ingresado. Verifique la dirección e intente nuevamente.";
-                    return View(model);
-                }
-
-                // Generar el token oficial de ASP.NET Identity
-                string code = await UserManager.GeneratePasswordResetTokenAsync(user.Id);
-
-                // Construir la URL completa que lleva a la Pantalla 5 (ResetPassword)
-                string callbackUrl = Url.Action("ResetPassword", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
-
-                // Parámetros para abrir el modal en pantalla
-                ViewBag.MostrarModal = true;
-                ViewBag.ModalTipo = "exito";
-                ViewBag.ModalTitulo = "Recuperación de contraseña";
-                ViewBag.ModalMensaje = "Se ha validado su cuenta en el sistema. Presione el botón a continuación para crear su nueva contraseña.";
-                ViewBag.ResetUrl = callbackUrl;
-
+            if (!ModelState.IsValid)
+            {
                 return View(model);
             }
+
+            // 1. Control de solicitudes repetidas (1 por minuto por sesión)
+            var ultimaSolicitud = Session["UltimaRecuperacion"] as DateTime?;
+            if (ultimaSolicitud.HasValue && (DateTime.Now - ultimaSolicitud.Value).TotalSeconds < 60)
+            {
+                ViewBag.MostrarModal = true;
+                ViewBag.ModalTipo = "error";
+                ViewBag.ModalTitulo = "Espere un momento";
+                ViewBag.ModalMensaje = "Ya se procesó una solicitud hace menos de un minuto. Intente nuevamente en unos segundos.";
+                return View(model);
+            }
+            Session["UltimaRecuperacion"] = DateTime.Now;
+
+            // 2. Buscar el usuario por correo o nombre de usuario
+            var user = await UserManager.FindByEmailAsync(model.Email) ?? await UserManager.FindByNameAsync(model.Email);
+
+            const string mensajeNeutral = "Si los datos corresponden a una cuenta registrada, recibirá las instrucciones para recuperar el acceso.";
+
+            // Cuenta inexistente o del personal: mismo mensaje, sin enlace (no revela qué cuentas existen)
+            if (user == null
+                || await UserManager.IsInRoleAsync(user.Id, "SuperUsuario")
+                || await UserManager.IsInRoleAsync(user.Id, "Administrador")
+                || await UserManager.IsInRoleAsync(user.Id, "Counter"))
+            {
+                ViewBag.MostrarModal = true;
+                ViewBag.ModalTipo = "exito";
+                ViewBag.ModalTitulo = "Solicitud recibida";
+                ViewBag.ModalMensaje = mensajeNeutral;
+                return View(model);
+            }
+
+            // 4. Token oficial de ASP.NET Identity y enlace a la pantalla de nueva contraseña
+            //    (simulación académica del correo de recuperación: el enlace se muestra en un modal)
+            string code = await UserManager.GeneratePasswordResetTokenAsync(user.Id);
+            string callbackUrl = Url.Action("ResetPassword", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
+
+            ViewBag.MostrarModal = true;
+            ViewBag.ModalTipo = "exito";
+            ViewBag.ModalTitulo = "Recuperación de contraseña";
+            ViewBag.ModalMensaje = "Se ha validado su cuenta en el sistema. Presione el botón a continuación para crear su nueva contraseña.";
+            ViewBag.ResetUrl = callbackUrl;
 
             return View(model);
         }
@@ -343,18 +394,17 @@ namespace Con_Autenticacion.Controllers
                 return View(model);
             }
 
-            // CORRECCIÓN CLAVE: Buscar tanto por Email como por UserName
+            // Buscar tanto por correo como por nombre de usuario
             string emailOUser = model.Email.Trim();
             var user = await UserManager.FindByEmailAsync(emailOUser) ?? await UserManager.FindByNameAsync(emailOUser);
 
             if (user == null)
             {
-                // Si no se encuentra el usuario, mostrar el error en pantalla en lugar de redirigir silenciosamente
                 ModelState.AddModelError("", "No se encontró ningún usuario asociado al correo o nombre de usuario ingresado.");
                 return View(model);
             }
 
-            // Restablecer la contraseña usando el Token oficial de ASP.NET Identity
+            // Restablecer la contraseña usando el token oficial de ASP.NET Identity
             var result = await UserManager.ResetPasswordAsync(user.Id, model.Code, model.Password);
             if (result.Succeeded)
             {
@@ -362,7 +412,7 @@ namespace Con_Autenticacion.Controllers
                 return RedirectToAction("Login", "Account");
             }
 
-            // Si no cumplió con las políticas de contraseña (mínimo 6 caracteres, número, mayúscula, etc.)
+            // No cumplió la política de contraseñas
             AddErrors(result);
             return View(model);
         }

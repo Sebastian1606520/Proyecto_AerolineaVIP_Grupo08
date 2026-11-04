@@ -49,6 +49,7 @@ namespace Con_Autenticacion.Models
     public class LoginViewModel
     {
         [Required(ErrorMessage = "El nombre de usuario o correo es obligatorio.")]
+        [StringLength(256, ErrorMessage = "Máximo 256 caracteres.")]
         [Display(Name = "Nombre de usuario")]
         public string UserName { get; set; }
 
@@ -63,6 +64,18 @@ namespace Con_Autenticacion.Models
 
     public class RegisterViewModel
     {
+        [Required(ErrorMessage = "Ingrese sus nombres.")]
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "Los nombres deben tener entre 2 y 100 caracteres.")]
+        [RegularExpression(@"^[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+$", ErrorMessage = "Los nombres solo admiten letras y espacios.")]
+        [Display(Name = "Nombres")]
+        public string Nombres { get; set; }
+
+        [Required(ErrorMessage = "Ingrese sus apellidos.")]
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "Los apellidos deben tener entre 2 y 100 caracteres.")]
+        [RegularExpression(@"^[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+$", ErrorMessage = "Los apellidos solo admiten letras y espacios.")]
+        [Display(Name = "Apellidos")]
+        public string Apellidos { get; set; }
+
         [Required(ErrorMessage = "Ingrese un nombre de usuario.")]
         [RegularExpression(@"^[A-Za-z0-9._]{4,50}$", ErrorMessage = "4 a 50 caracteres: letras, números, punto o guion bajo.")]
         [Display(Name = "Nombre de usuario")]
@@ -75,7 +88,9 @@ namespace Con_Autenticacion.Models
         public string Email { get; set; }
 
         [Required(ErrorMessage = "Ingrese una contraseña.")]
-        [StringLength(100, ErrorMessage = "El número de caracteres de {0} debe ser al menos {2}.", MinimumLength = 8)]
+        [StringLength(100, ErrorMessage = "La contraseña debe tener al menos {2} caracteres.", MinimumLength = 8)]
+        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,100}$",
+            ErrorMessage = "La contraseña no cumple los requisitos: mínimo 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.")]
         [DataType(DataType.Password)]
         [Display(Name = "Contraseña")]
         public string Password { get; set; }
@@ -89,7 +104,6 @@ namespace Con_Autenticacion.Models
         [Display(Name = "Rol")]
         public string Rol { get; set; }
 
-        [Range(typeof(bool), "true", "true", ErrorMessage = "Debe aceptar el aviso de privacidad y las condiciones.")]
         [Display(Name = "Acepto el aviso de privacidad y las condiciones")]
         public bool AceptoCondiciones { get; set; }
     }
@@ -102,7 +116,9 @@ namespace Con_Autenticacion.Models
         public string Email { get; set; }
 
         [Required]
-        [StringLength(100, ErrorMessage = "El número de caracteres de {0} debe ser al menos {2}.", MinimumLength = 3)]
+        [StringLength(100, ErrorMessage = "La contraseña debe tener al menos {2} caracteres.", MinimumLength = 8)]
+        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,100}$",
+            ErrorMessage = "La contraseña no cumple los requisitos: mínimo 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.")]
         [DataType(DataType.Password)]
         [Display(Name = "Contraseña")]
         public string Password { get; set; }
@@ -117,9 +133,9 @@ namespace Con_Autenticacion.Models
 
     public class ForgotPasswordViewModel
     {
-        [Required(ErrorMessage = "El correo electrónico es obligatorio.")]
-        [EmailAddress(ErrorMessage = "Ingrese un correo electrónico válido (ej.: usuario@ejemplo.com).")]
-        [Display(Name = "Correo electrónico")]
+        [Required(ErrorMessage = "Ingrese su correo o nombre de usuario.")]
+        [StringLength(256, ErrorMessage = "Máximo 256 caracteres.")]
+        [Display(Name = "Correo o nombre de usuario")]
         public string Email { get; set; }
     }
 }

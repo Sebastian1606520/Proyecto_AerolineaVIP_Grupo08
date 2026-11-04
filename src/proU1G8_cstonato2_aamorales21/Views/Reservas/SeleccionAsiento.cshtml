@@ -10,11 +10,12 @@
         letter-spacing: 0.8px;
         color: #94a3b8;
     }
-    .step-item.active {
-        color: #0f172a;
-        font-weight: 700;
-        border-bottom: 2px solid #0f172a;
-    }
+
+        .step-item.active {
+            color: #0f172a;
+            font-weight: 700;
+            border-bottom: 2px solid #0f172a;
+        }
 
     /* Fuselaje Aerodinámico Responsivo */
     .aircraft-body {
@@ -59,16 +60,55 @@
             color: #64748b;
         }
 
-        .seat-1d { grid-column: 3; grid-row: 2; }
-        .door-cell { grid-column: 1; grid-row: 2; }
-        .seat-2i { grid-column: 1; grid-row: 3; }
-        .seat-2d { grid-column: 3; grid-row: 3; }
-        .table-i { grid-column: 1; grid-row: 4; }
-        .table-d { grid-column: 3; grid-row: 4; }
-        .seat-3i { grid-column: 1; grid-row: 5; }
-        .seat-3d { grid-column: 3; grid-row: 5; }
-        .seat-4i { grid-column: 1; grid-row: 6; }
-        .seat-4d { grid-column: 3; grid-row: 6; }
+        .seat-1d {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        .door-cell {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .seat-2i {
+            grid-column: 1;
+            grid-row: 3;
+        }
+
+        .seat-2d {
+            grid-column: 3;
+            grid-row: 3;
+        }
+
+        .table-i {
+            grid-column: 1;
+            grid-row: 4;
+        }
+
+        .table-d {
+            grid-column: 3;
+            grid-row: 4;
+        }
+
+        .seat-3i {
+            grid-column: 1;
+            grid-row: 5;
+        }
+
+        .seat-3d {
+            grid-column: 3;
+            grid-row: 5;
+        }
+
+        .seat-4i {
+            grid-column: 1;
+            grid-row: 6;
+        }
+
+        .seat-4d {
+            grid-column: 3;
+            grid-row: 6;
+        }
 
         .aisle-zone {
             grid-column: 2;
@@ -135,12 +175,35 @@
             color: #64748b;
         }
 
-        .seat-1d { grid-column: 2; grid-row: 1; }
-        .seat-2d { grid-column: 3; grid-row: 1; }
-        .seat-3d { grid-column: 4; grid-row: 1; }
-        .seat-4d { grid-column: 5; grid-row: 1; }
-        .table-d { grid-column: 3; grid-row: 2; }
-        .table-i { grid-column: 4; grid-row: 2; }
+        .seat-1d {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .seat-2d {
+            grid-column: 3;
+            grid-row: 1;
+        }
+
+        .seat-3d {
+            grid-column: 4;
+            grid-row: 1;
+        }
+
+        .seat-4d {
+            grid-column: 5;
+            grid-row: 1;
+        }
+
+        .table-d {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        .table-i {
+            grid-column: 4;
+            grid-row: 2;
+        }
 
         .aisle-zone {
             grid-column: 2 / span 4;
@@ -158,10 +221,25 @@
             margin: 2px 0;
         }
 
-        .door-cell { grid-column: 2; grid-row: 4; }
-        .seat-2i { grid-column: 3; grid-row: 4; }
-        .seat-3i { grid-column: 4; grid-row: 4; }
-        .seat-4i { grid-column: 5; grid-row: 4; }
+        .door-cell {
+            grid-column: 2;
+            grid-row: 4;
+        }
+
+        .seat-2i {
+            grid-column: 3;
+            grid-row: 4;
+        }
+
+        .seat-3i {
+            grid-column: 4;
+            grid-row: 4;
+        }
+
+        .seat-4i {
+            grid-column: 5;
+            grid-row: 4;
+        }
 
         .popa-zone {
             grid-column: 6;
@@ -199,15 +277,15 @@
         user-select: none;
     }
 
-    .seat-label.seat-disponible {
-        background: linear-gradient(145deg, #047857 0%, #064e3b 100%);
-        border-color: #10b981;
-        color: #ffffff;
-    }
+        .seat-label.seat-disponible {
+            background: linear-gradient(145deg, #047857 0%, #064e3b 100%);
+            border-color: #10b981;
+            color: #ffffff;
+        }
 
-    .seat-label.seat-disponible:hover {
-        transform: translateY(-2px) scale(1.02);
-    }
+            .seat-label.seat-disponible:hover {
+                transform: translateY(-2px) scale(1.02);
+            }
 
     .seat-checkbox:checked + .seat-label {
         background: #0f172a !important;
@@ -217,9 +295,9 @@
         box-shadow: 0 8px 18px rgba(15, 23, 42, 0.4) !important;
     }
 
-    .seat-checkbox:checked + .seat-label .check-icon {
-        display: block !important;
-    }
+        .seat-checkbox:checked + .seat-label .check-icon {
+            display: block !important;
+        }
 
     .check-icon {
         position: absolute;
@@ -286,11 +364,13 @@
         border-radius: 12px;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
-    .passenger-card.assigned {
-        border-color: #cbd5e1;
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
-    }
+
+        .passenger-card.assigned {
+            border-color: #cbd5e1;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+        }
+
     .btn-remove-seat {
         width: 28px;
         height: 28px;
@@ -307,12 +387,13 @@
         padding: 0;
         transition: all 0.15s ease;
     }
-    .btn-remove-seat:hover {
-        background-color: #ffe4e6;
-        border-color: #fda4af;
-        color: #be123c;
-        transform: scale(1.08);
-    }
+
+        .btn-remove-seat:hover {
+            background-color: #ffe4e6;
+            border-color: #fda4af;
+            color: #be123c;
+            transform: scale(1.08);
+        }
 </style>
 
 <main class="container py-4 py-lg-5">
@@ -342,8 +423,8 @@
                     </div>
                     <h1 class="h3 fw-bold text-dark mb-1">Selección de asientos</h1>
                     <p class="text-secondary small mb-0">
-                        <strong>@Model.Frecuencia.Ruta.Aeropuerto.Localidad (@Model.Frecuencia.Ruta.Aeropuerto.CodigoIATA)</strong> &rarr;
-                        <strong>@ViewBag.UltimoTramo.Frecuencia.Ruta.Aeropuerto1.Localidad (@ViewBag.UltimoTramo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)</strong>
+                        <strong>@Model.Frecuencia.Ruta.Aeropuerto1.Localidad (@Model.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)</strong> &rarr;
+                        <strong>@ViewBag.UltimoTramo.Frecuencia.Ruta.Aeropuerto.Localidad (@ViewBag.UltimoTramo.Frecuencia.Ruta.Aeropuerto.CodigoIATA)</strong>
                         @if ((bool)ViewBag.EsItinerario)
                         {
                             <text>&middot; Itinerario con escala en GYE (@ViewBag.Tramos.Count tramos)</text>
@@ -382,7 +463,7 @@
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div>
                                 <span class="badge bg-dark text-white px-2 py-1 small me-1">Tramo @(k + 1)</span>
-                                <strong>@ViewBag.Tramos[k].Frecuencia.Ruta.Aeropuerto.CodigoIATA &rarr; @ViewBag.Tramos[k].Frecuencia.Ruta.Aeropuerto1.CodigoIATA</strong>
+                                <strong>@ViewBag.Tramos[k].Frecuencia.Ruta.Aeropuerto1.CodigoIATA &rarr; @ViewBag.Tramos[k].Frecuencia.Ruta.Aeropuerto.CodigoIATA</strong>
                                 <small class="text-muted ms-2">(@ViewBag.Tramos[k].Frecuencia.HoraSalida.ToString(@"hh\:mm"))</small>
                             </div>
                             <span class="badge bg-light text-secondary border small">
@@ -409,6 +490,7 @@
                                                    name="@(k == 0 ? "asientosSeleccionados" : "asientosTramo2")"
                                                    value="@s.Numero"
                                                    data-codigo="@s.Codigo"
+                                                   data-tramo="@k"
                                                    class="seat-checkbox" />
                                             <label for="seat-@(k)-@(s.Numero)" class="seat-label seat-disponible" title="@s.Ubicacion">
                                                 <span class="check-icon">&#10003;</span>
@@ -512,65 +594,78 @@
     </form>
 
 </main>
-
 @section Scripts {
     <script type="application/javascript">
-        function actualizarEstadoAsientos() {
-            var maxPasajeros = parseInt('@ViewBag.Pasajeros', 10);
-            var marcados = document.querySelectorAll('.seat-checkbox:checked');
+        // Cada tramo se valida por separado: en el itinerario de Galápagos cada pasajero
+        // necesita un asiento en el tramo 1 y otro en el tramo 2 (DP-09)
+        var maxPasajeros = parseInt('@ViewBag.Pasajeros', 10);
+        var totalTramos = parseInt('@ViewBag.Tramos.Count', 10);
 
-            // Si se intentan marcar más asientos que pasajeros, se desmarca el último ingresado
-            if (marcados.length > maxPasajeros) {
-                var exceso = marcados[marcados.length - 1];
-                if (exceso) {
-                    exceso.click();
+        function marcadosDelTramo(k) {
+            return document.querySelectorAll('.seat-checkbox[data-tramo="' + k + '"]:checked');
+        }
+
+        function actualizarEstadoAsientos(ultimoMarcado) {
+            // 1. No más asientos que pasajeros en cada tramo
+            for (var k = 0; k < totalTramos; k++) {
+                if (marcadosDelTramo(k).length > maxPasajeros) {
+                    if (ultimoMarcado) {
+                        ultimoMarcado.checked = false;
+                    }
+                    alert('Solo puede seleccionar ' + maxPasajeros + ' asiento(s)' + (totalTramos > 1 ? ' en cada tramo.' : ' para este vuelo.'));
+                    break;
                 }
-                alert('Solo puede seleccionar ' + maxPasajeros + ' asiento(s) para este vuelo.');
-                return;
             }
 
-            // Actualizar tarjetas y botones de borrado
+            // 2. Tarjeta de cada pasajero: su asiento en cada tramo
             for (var p = 1; p <= maxPasajeros; p++) {
                 var slot = document.getElementById('slot-pasajero-' + p);
                 var badge = document.getElementById('badge-pasajero-' + p);
                 var subtitulo = document.getElementById('subtitulo-pasajero-' + p);
                 var btnQuitar = document.getElementById('btn-quitar-' + p);
+                if (!slot || !badge || !subtitulo || !btnQuitar) continue;
 
-                if (badge && subtitulo && slot && btnQuitar) {
+                var codigos = [];
+                var ids = [];
+                for (var t = 0; t < totalTramos; t++) {
+                    var marcados = marcadosDelTramo(t);
                     if (p <= marcados.length) {
-                        var checkboxActual = marcados[p - 1];
-                        var codigo = checkboxActual.getAttribute('data-codigo') || '';
-
-                        badge.textContent = codigo;
-                        badge.className = 'badge bg-dark text-warning border px-3 py-2 fs-6 fw-bold shadow-sm';
-
-                        subtitulo.textContent = 'Asiento asignado';
-                        subtitulo.className = 'text-success small fw-semibold';
-
-                        slot.classList.add('assigned');
-
-                        // Vincula el ID del checkbox al botón para desmarcarlo directamente al hacer clic
-                        btnQuitar.setAttribute('data-target-id', checkboxActual.id);
-                        btnQuitar.classList.remove('d-none');
-                    } else {
-                        badge.innerHTML = '&mdash;';
-                        badge.className = 'badge bg-light text-muted border px-3 py-2 fs-6 fw-bold';
-
-                        subtitulo.textContent = 'Pendiente de selección';
-                        subtitulo.className = 'text-muted small';
-
-                        slot.classList.remove('assigned');
-
-                        btnQuitar.removeAttribute('data-target-id');
-                        btnQuitar.classList.add('d-none');
+                        codigos.push(marcados[p - 1].getAttribute('data-codigo') || '');
+                        ids.push(marcados[p - 1].id);
                     }
+                }
+
+                if (codigos.length > 0) {
+                    badge.textContent = codigos.join(' / ');
+                    badge.className = 'badge bg-dark text-warning border px-3 py-2 fs-6 fw-bold shadow-sm';
+                    btnQuitar.setAttribute('data-target-ids', ids.join(','));
+                    btnQuitar.classList.remove('d-none');
+                } else {
+                    badge.innerHTML = '&mdash;';
+                    badge.className = 'badge bg-light text-muted border px-3 py-2 fs-6 fw-bold';
+                    btnQuitar.removeAttribute('data-target-ids');
+                    btnQuitar.classList.add('d-none');
+                }
+
+                if (codigos.length === totalTramos) {
+                    subtitulo.textContent = totalTramos > 1 ? 'Asientos asignados en ambos tramos' : 'Asiento asignado';
+                    subtitulo.className = 'text-success small fw-semibold';
+                    slot.classList.add('assigned');
+                } else {
+                    subtitulo.textContent = codigos.length === 0 ? 'Pendiente de selección' : 'Falta el asiento del tramo ' + (codigos.length + 1);
+                    subtitulo.className = 'text-muted small';
+                    slot.classList.remove('assigned');
                 }
             }
 
-            // Habilitar o deshabilitar botón Continuar
+            // 3. Continuar solo con todos los asientos de todos los tramos
+            var completo = true;
+            for (var j = 0; j < totalTramos; j++) {
+                if (marcadosDelTramo(j).length !== maxPasajeros) completo = false;
+            }
             var btn = document.getElementById('btnContinuar');
             if (btn) {
-                if (marcados.length === maxPasajeros) {
+                if (completo) {
                     btn.removeAttribute('disabled');
                 } else {
                     btn.setAttribute('disabled', 'disabled');
@@ -578,26 +673,27 @@
             }
         }
 
-        // Delegación de evento al cambiar estado de checkboxes/radios en el avión
+        // Al marcar o desmarcar una butaca del avión
         document.addEventListener('change', function (ev) {
             var target = ev.target;
             if (target && target.classList && target.classList.contains('seat-checkbox')) {
-                actualizarEstadoAsientos();
+                actualizarEstadoAsientos(target.checked ? target : null);
             }
         });
 
-        // Delegación de evento al hacer clic en el botón de eliminar asiento
+        // Botón «×» de un pasajero: libera sus asientos en todos los tramos
         document.addEventListener('click', function (ev) {
             var btn = ev.target;
             if (btn && btn.classList && btn.classList.contains('btn-remove-seat')) {
                 ev.preventDefault();
-                var targetId = btn.getAttribute('data-target-id');
-                if (targetId) {
-                    var inputCheckbox = document.getElementById(targetId);
-                    if (inputCheckbox) {
-                        inputCheckbox.click(); // Desmarca el input y actualiza la lista automáticamente
+                var ids = (btn.getAttribute('data-target-ids') || '').split(',');
+                for (var i = 0; i < ids.length; i++) {
+                    var input = ids[i] ? document.getElementById(ids[i]) : null;
+                    if (input) {
+                        input.checked = false;   // también funciona con radios (1 pasajero)
                     }
                 }
+                actualizarEstadoAsientos(null);
             }
         });
     </script>

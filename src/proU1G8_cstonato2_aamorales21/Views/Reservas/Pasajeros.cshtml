@@ -10,11 +10,12 @@
         letter-spacing: 0.8px;
         color: #94a3b8;
     }
-    .step-item.active {
-        color: #0f172a;
-        font-weight: 700;
-        border-bottom: 2px solid #0f172a;
-    }
+
+        .step-item.active {
+            color: #0f172a;
+            font-weight: 700;
+            border-bottom: 2px solid #0f172a;
+        }
 
     /* Tarjetas de Pasajeros */
     .passenger-block {
@@ -24,10 +25,11 @@
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
-    .passenger-block:focus-within {
-        border-color: #cbd5e1;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07);
-    }
+
+        .passenger-block:focus-within {
+            border-color: #cbd5e1;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07);
+        }
 
     .passenger-block-header {
         background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
@@ -241,8 +243,8 @@
                     <div class="mb-3">
                         <span class="text-muted d-block small">Ruta de vuelo</span>
                         <strong class="text-dark">
-                            @Model.Frecuencia.Ruta.Aeropuerto.Localidad (@Model.Frecuencia.Ruta.Aeropuerto.CodigoIATA) &rarr;
-                            @ViewBag.UltimoTramo.Frecuencia.Ruta.Aeropuerto1.Localidad (@ViewBag.UltimoTramo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA)
+                            @Model.Frecuencia.Ruta.Aeropuerto1.Localidad (@Model.Frecuencia.Ruta.Aeropuerto1.CodigoIATA) &rarr;
+                            @ViewBag.UltimoTramo.Frecuencia.Ruta.Aeropuerto.Localidad (@ViewBag.UltimoTramo.Frecuencia.Ruta.Aeropuerto.CodigoIATA)
                         </strong>
                     </div>
 
@@ -265,8 +267,8 @@
                                     @((bool)ViewBag.EsItinerario ? "Tramo " + (k + 1) : "Vuelo")
                                 </span>
                                 <strong>VIP@(((Con_Autenticacion.Models.Vuelo)ViewBag.Tramos[k]).VueloId.ToString("D5"))</strong> &middot;
-                                @(((Con_Autenticacion.Models.Vuelo)ViewBag.Tramos[k]).Frecuencia.Ruta.Aeropuerto.CodigoIATA) &rarr;
-                                @(((Con_Autenticacion.Models.Vuelo)ViewBag.Tramos[k]).Frecuencia.Ruta.Aeropuerto1.CodigoIATA)
+                                @(((Con_Autenticacion.Models.Vuelo)ViewBag.Tramos[k]).Frecuencia.Ruta.Aeropuerto1.CodigoIATA) &rarr;
+                                @(((Con_Autenticacion.Models.Vuelo)ViewBag.Tramos[k]).Frecuencia.Ruta.Aeropuerto.CodigoIATA)
                                 <span class="text-muted d-block ms-4">
                                     Salida: @(((Con_Autenticacion.Models.Vuelo)ViewBag.Tramos[k]).Frecuencia.HoraSalida.ToString(@"hh\:mm"))
                                 </span>

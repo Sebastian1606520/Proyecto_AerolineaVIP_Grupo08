@@ -198,11 +198,25 @@
     <form id="formConfirmarReserva" action="@Url.Action("Confirmar", "Reservas")" method="post">
         @Html.AntiForgeryToken()
         <input type="hidden" name="accionBoton" id="accionBoton" value="Reservar" />
-
+        @if (ViewBag.EsCounter == true)
+        {
+            <div class="confirm-card shadow-sm p-4 mb-4 border border-warning">
+                <h2 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">Atención en counter</h2>
+                <label for="correoCliente" class="form-label small fw-semibold text-secondary mb-1">
+                    Correo del cliente titular <span class="text-danger">*</span>
+                </label>
+                <input type="email" id="correoCliente" name="correoCliente" class="form-control"
+                       maxlength="256" required value="@ViewBag.CorreoCliente" placeholder="cliente@ejemplo.com" />
+                <small class="text-muted d-block mt-1">
+                    La reserva quedará a nombre de ese cliente y la verá en su «Mi cuenta».
+                    Si no tiene cuenta, primero debe registrarse.
+                </small>
+            </div>
+        }
         <div class="confirm-card shadow-sm p-4 mb-4">
             <h2 class="h6 fw-bold text-dark border-bottom pb-2 mb-3">Condiciones de la reserva</h2>
             <div class="small text-secondary mb-3 p-3 bg-light rounded-3" style="max-height: 120px; overflow-y: auto; line-height: 1.6;" tabindex="0">
-                La reserva queda pendiente de pago durante el plazo de retención indicado (120 minutos); si no se paga, los asientos se liberan automáticamente en el plano de cabina.
+                La reserva queda pendiente de pago durante el plazo de retención indicado (@retencionMin minutos); si no se paga, los asientos se liberan automáticamente en el plano de cabina.
                 Las cancelaciones y reembolsos se rigen por la política aprobada (DP-08). Los datos de los pasajeros deben
                 coincidir con su documento de identidad. Los pagos son simulados con fines académicos.
             </div>

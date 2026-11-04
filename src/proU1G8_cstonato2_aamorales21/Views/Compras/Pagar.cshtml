@@ -13,11 +13,12 @@
         letter-spacing: 0.8px;
         color: #94a3b8;
     }
-    .step-item.active {
-        color: #0f172a;
-        font-weight: 700;
-        border-bottom: 2px solid #0f172a;
-    }
+
+        .step-item.active {
+            color: #0f172a;
+            font-weight: 700;
+            border-bottom: 2px solid #0f172a;
+        }
 
     /* ==========================================================================
        SELECTOR DE MARCAS CON CSS PURO (:checked)
@@ -38,10 +39,10 @@
         user-select: none;
     }
 
-    .brand-card-label:hover {
-        border-color: #cbd5e1;
-        transform: translateY(-2px);
-    }
+        .brand-card-label:hover {
+            border-color: #cbd5e1;
+            transform: translateY(-2px);
+        }
 
     .brand-radio-input:checked + .brand-card-label {
         border-color: #0f172a !important;
@@ -49,10 +50,10 @@
         box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
     }
 
-    .brand-radio-input:checked + .brand-card-label .brand-badge {
-        background-color: #0f172a !important;
-        color: #ffffff !important;
-    }
+        .brand-radio-input:checked + .brand-card-label .brand-badge {
+            background-color: #0f172a !important;
+            color: #ffffff !important;
+        }
 
     /* ==========================================================================
        CAMPOS DE TARJETA & CONTENEDORES
@@ -293,10 +294,18 @@
                         <span class="text-dark fw-semibold">@ViewBag.NumPasajeros persona(s)</span>
                     </div>
 
-                    <div class="d-flex justify-content-between mb-3 small">
+                    <div class="d-flex justify-content-between mb-2 small">
                         <span class="text-secondary">Tramos</span>
                         <span class="text-dark">@ViewBag.NumTramos</span>
                     </div>
+
+                    @if (Model.FechaExpiracion.HasValue)
+                    {
+                        <div class="d-flex justify-content-between mb-3 small">
+                            <span class="text-secondary">Pagar antes de</span>
+                            <strong class="text-danger">@Model.FechaExpiracion.Value.ToString("dd/MM/yyyy HH:mm")</strong>
+                        </div>
+                    }
 
                     <div class="border-top pt-3 mt-2">
                         <div class="d-flex justify-content-between align-items-center">
@@ -476,6 +485,9 @@
                     if (modalElem && window['bootstrap']) {
                         var modalInstancia = new window['bootstrap'].Modal(modalElem);
                         modalInstancia.show();
+                    } else if (confirm('¿Confirma el pago simulado de esta reserva?')) {
+                        // Respaldo si el script de Bootstrap no cargó: se envía sin el modal
+                        formReal.submit();
                     }
                 });
             }

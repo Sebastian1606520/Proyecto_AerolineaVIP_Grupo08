@@ -13,11 +13,12 @@
         letter-spacing: 0.8px;
         color: #94a3b8;
     }
-    .step-item.active {
-        color: #0f172a;
-        font-weight: 700;
-        border-bottom: 2px solid #0f172a;
-    }
+
+        .step-item.active {
+            color: #0f172a;
+            font-weight: 700;
+            border-bottom: 2px solid #0f172a;
+        }
 
     /* ==========================================================================
        BANNERS DE RESULTADO (CARD EXECUTIVE)
@@ -308,9 +309,9 @@
                                         </td>
                                         <td class="text-nowrap fw-bold text-dark">VIP@(a.Vuelo.VueloId.ToString("D5"))</td>
                                         <td class="text-nowrap">
-                                            <strong>@a.Vuelo.Frecuencia.Ruta.Aeropuerto.CodigoIATA</strong>
-                                            <span class="text-muted">&rarr;</span>
                                             <strong>@a.Vuelo.Frecuencia.Ruta.Aeropuerto1.CodigoIATA</strong>
+                                            <span class="text-muted">&rarr;</span>
+                                            <strong>@a.Vuelo.Frecuencia.Ruta.Aeropuerto.CodigoIATA</strong>
                                         </td>
                                         <td class="text-nowrap">@a.Vuelo.FechaOperacion.ToString("dd/MM/yyyy")</td>
                                         <td class="text-nowrap text-secondary">

@@ -53,16 +53,55 @@
             color: #64748b;
         }
 
-        .seat-1d { grid-column: 3; grid-row: 2; }
-        .door-cell { grid-column: 1; grid-row: 2; }
-        .seat-2i { grid-column: 1; grid-row: 3; }
-        .seat-2d { grid-column: 3; grid-row: 3; }
-        .table-i { grid-column: 1; grid-row: 4; }
-        .table-d { grid-column: 3; grid-row: 4; }
-        .seat-3i { grid-column: 1; grid-row: 5; }
-        .seat-3d { grid-column: 3; grid-row: 5; }
-        .seat-4i { grid-column: 1; grid-row: 6; }
-        .seat-4d { grid-column: 3; grid-row: 6; }
+        .seat-1d {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        .door-cell {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .seat-2i {
+            grid-column: 1;
+            grid-row: 3;
+        }
+
+        .seat-2d {
+            grid-column: 3;
+            grid-row: 3;
+        }
+
+        .table-i {
+            grid-column: 1;
+            grid-row: 4;
+        }
+
+        .table-d {
+            grid-column: 3;
+            grid-row: 4;
+        }
+
+        .seat-3i {
+            grid-column: 1;
+            grid-row: 5;
+        }
+
+        .seat-3d {
+            grid-column: 3;
+            grid-row: 5;
+        }
+
+        .seat-4i {
+            grid-column: 1;
+            grid-row: 6;
+        }
+
+        .seat-4d {
+            grid-column: 3;
+            grid-row: 6;
+        }
 
         .aisle-zone {
             grid-column: 2;
@@ -131,12 +170,35 @@
             color: #64748b;
         }
 
-        .seat-1d { grid-column: 2; grid-row: 1; }
-        .seat-2d { grid-column: 3; grid-row: 1; }
-        .seat-3d { grid-column: 4; grid-row: 1; }
-        .seat-4d { grid-column: 5; grid-row: 1; }
-        .table-d { grid-column: 3; grid-row: 2; }
-        .table-i { grid-column: 4; grid-row: 2; }
+        .seat-1d {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .seat-2d {
+            grid-column: 3;
+            grid-row: 1;
+        }
+
+        .seat-3d {
+            grid-column: 4;
+            grid-row: 1;
+        }
+
+        .seat-4d {
+            grid-column: 5;
+            grid-row: 1;
+        }
+
+        .table-d {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        .table-i {
+            grid-column: 4;
+            grid-row: 2;
+        }
 
         .aisle-zone {
             grid-column: 2 / span 4;
@@ -155,10 +217,25 @@
             box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
         }
 
-        .door-cell { grid-column: 2; grid-row: 4; }
-        .seat-2i { grid-column: 3; grid-row: 4; }
-        .seat-3i { grid-column: 4; grid-row: 4; }
-        .seat-4i { grid-column: 5; grid-row: 4; }
+        .door-cell {
+            grid-column: 2;
+            grid-row: 4;
+        }
+
+        .seat-2i {
+            grid-column: 3;
+            grid-row: 4;
+        }
+
+        .seat-3i {
+            grid-column: 4;
+            grid-row: 4;
+        }
+
+        .seat-4i {
+            grid-column: 5;
+            grid-row: 4;
+        }
 
         .popa-zone {
             grid-column: 6;
@@ -192,15 +269,15 @@
         overflow: hidden;
     }
 
-    .seat-slot::before {
-        content: '';
-        position: absolute;
-        top: 4px;
-        width: 60%;
-        height: 3px;
-        border-radius: 2px;
-        background: rgba(255, 255, 255, 0.25);
-    }
+        .seat-slot::before {
+            content: '';
+            position: absolute;
+            top: 4px;
+            width: 60%;
+            height: 3px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.25);
+        }
 
     .seat-disponible {
         background: linear-gradient(145deg, #047857 0%, #064e3b 100%);
@@ -209,11 +286,11 @@
         box-shadow: 0 4px 10px rgba(6, 95, 70, 0.25);
     }
 
-    .seat-disponible span.seat-status-tag {
-        color: #a7f3d0;
-        font-size: 0.62rem;
-        letter-spacing: 0.5px;
-    }
+        .seat-disponible span.seat-status-tag {
+            color: #a7f3d0;
+            font-size: 0.62rem;
+            letter-spacing: 0.5px;
+        }
 
     .seat-reservado {
         background: linear-gradient(145deg, #6b21a8 0%, #3b0764 100%);
@@ -222,11 +299,11 @@
         box-shadow: 0 4px 10px rgba(88, 28, 135, 0.25);
     }
 
-    .seat-reservado span.seat-status-tag {
-        color: #e9d5ff;
-        font-size: 0.62rem;
-        letter-spacing: 0.5px;
-    }
+        .seat-reservado span.seat-status-tag {
+            color: #e9d5ff;
+            font-size: 0.62rem;
+            letter-spacing: 0.5px;
+        }
 
     .seat-ocupado {
         background: linear-gradient(145deg, #9f1239 0%, #4c0519 100%);
@@ -235,11 +312,11 @@
         box-shadow: 0 4px 10px rgba(136, 19, 55, 0.25);
     }
 
-    .seat-ocupado span.seat-status-tag {
-        color: #fecdd3;
-        font-size: 0.62rem;
-        letter-spacing: 0.5px;
-    }
+        .seat-ocupado span.seat-status-tag {
+            color: #fecdd3;
+            font-size: 0.62rem;
+            letter-spacing: 0.5px;
+        }
 
     .table-zone {
         background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
@@ -436,8 +513,8 @@
                 </div>
                 <div class="d-flex flex-wrap gap-3 text-secondary small">
                     <span>Disponibles: <strong style="color: #047857;">@Model.AsientosDisponibles</strong></span> &middot;
-                    <span>Reservados: <strong style="color: #6b21a8;">@(Model.ReservaPasajeroVuelo != null ? Model.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "PENDIENTE") : 0)</strong></span> &middot;
-                    <span>Ocupados: <strong style="color: #9f1239;">@(Model.ReservaPasajeroVuelo != null ? Model.ReservaPasajeroVuelo.Count(r => r.EstadoAsignacionCodigo == "CONFIRMADA") : 0)</strong></span>
+                    <span>Reservados: <strong style="color: #6b21a8;">@Model.AsientosCabina.Count(x => x.Estado == "reservado")</strong></span> &middot;
+                    <span>Ocupados: <strong style="color: #9f1239;">@Model.AsientosCabina.Count(x => x.Estado == "ocupado")</strong></span>
                 </div>
             </div>
 

@@ -452,10 +452,13 @@
                                         <td class="text-end pe-4">
                                             <div class="d-flex flex-wrap justify-content-end gap-1">
                                                 <a href="@Url.Action("Gestion", "Admin", new { tab = "pasajeros", editarPasajero = p.PasajeroId })#formPasajero" class="btn btn-outline-dark btn-sm px-2 py-1">Editar</a>
-                                                <button type="button" class="btn btn-outline-danger btn-sm px-2 py-1 btn-eliminar"
-                                                        data-id="@p.PasajeroId" data-nombre="@nombreCompleto" data-asignaciones="@numAsig">
-                                                    Eliminar
-                                                </button>
+                                                @if (User.IsInRole("Delete"))
+                                                {
+                                                    <button type="button" class="btn btn-outline-danger btn-sm px-2 py-1 btn-eliminar"
+                                                            data-id="@p.PasajeroId" data-nombre="@nombreCompleto" data-asignaciones="@numAsig">
+                                                        Eliminar
+                                                    </button>
+                                                }
                                             </div>
                                         </td>
                                     }

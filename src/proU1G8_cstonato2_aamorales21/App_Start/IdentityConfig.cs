@@ -53,11 +53,11 @@ namespace Con_Autenticacion
             // Configure la lógica de validación de contraseñas
             manager.PasswordValidator = new PasswordValidator
             {
-                RequiredLength = 3,
-                RequireNonLetterOrDigit = false,
+                RequiredLength = 8,
+                RequireNonLetterOrDigit = true,
                 RequireDigit = true,
-                RequireLowercase = false,
-                RequireUppercase = false,
+                RequireLowercase = true,
+                RequireUppercase = true,
             };
 
             // Configurar valores predeterminados para bloqueo de usuario
