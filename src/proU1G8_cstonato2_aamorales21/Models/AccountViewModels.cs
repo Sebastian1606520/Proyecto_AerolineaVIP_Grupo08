@@ -64,6 +64,18 @@ namespace Con_Autenticacion.Models
 
     public class RegisterViewModel
     {
+        [Required(ErrorMessage = "Ingrese sus nombres.")]
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "Los nombres deben tener entre 2 y 100 caracteres.")]
+        [RegularExpression(@"^[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+$", ErrorMessage = "Los nombres solo admiten letras y espacios.")]
+        [Display(Name = "Nombres")]
+        public string Nombres { get; set; }
+
+        [Required(ErrorMessage = "Ingrese sus apellidos.")]
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "Los apellidos deben tener entre 2 y 100 caracteres.")]
+        [RegularExpression(@"^[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+$", ErrorMessage = "Los apellidos solo admiten letras y espacios.")]
+        [Display(Name = "Apellidos")]
+        public string Apellidos { get; set; }
+
         [Required(ErrorMessage = "Ingrese un nombre de usuario.")]
         [RegularExpression(@"^[A-Za-z0-9._]{4,50}$", ErrorMessage = "4 a 50 caracteres: letras, números, punto o guion bajo.")]
         [Display(Name = "Nombre de usuario")]
